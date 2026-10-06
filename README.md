@@ -1,50 +1,36 @@
 # Snow Plugins
 
-Snow App 插件源码集合。两个插件共享源码仓库，分别安装与打包；本仓库不是插件市场索引。
+Snow App 插件源码集合。两个插件可分别安装，本仓库不是插件市场索引。
 
-## 插件
+## 插件一览
 
-| 插件 | 源码目录 | 插件标识 |
+| 插件 | 功能与入口 | 使用说明 |
 | --- | --- | --- |
-| 提示词优化 | `plugins/prompt-optimizer` | `com.snow.prompt-optimizer` |
-| 会话文件统计 | `plugins/session-file-count` | `com.snow.session-file-count` |
+| 提示词优化 | 配置优化规则、上下文与模型服务，通过输入栏魔杖改写草稿；支持安全回填和还原，不自动发送 | [提示词优化](plugins/prompt-optimizer/README.md) |
+| 会话文件统计 | 在最新已结束回复下方展示当前会话及子代理的已记录文件数和清单；无独立面板 | [会话文件统计](plugins/session-file-count/README.md) |
 
-提示词优化提供配置面板与输入栏优化动作，支持已配置服务及模型选择、安全回填与还原。会话文件统计在回复下方展示已记录文件数量和清单，不提供独立面板。
+## 安装与更新
 
-## 本地安装
+1. 下载或克隆本仓库。
+2. 在 Snow App 插件管理页点击「从目录安装」。
+3. 在您实际保存仓库的位置，选择相应插件目录：
+   - 提示词优化：`plugins/prompt-optimizer`，标识 `com.snow.prompt-optimizer`。
+   - 会话文件统计：`plugins/session-file-count`，标识 `com.snow.session-file-count`。
+4. 确认所选目录**直接包含 `plugin.json`**，不要选择仓库根目录；安装后确认插件已启用。
 
-分别选择包含 `plugin.json` 的插件目录，不要选择仓库根目录。
+重复安装同一标识会替换已安装副本，并保留启用状态和已保存偏好。修改下载的源码不会自动更新已安装副本，更新时需重新安装相应目录。
 
-```text
-config-set scope=plugins key=com.snow.prompt-optimizer
-value={"sourceDir":"D:/code/snow-plugins/plugins/prompt-optimizer"}
+## 宿主兼容性
 
-config-set scope=plugins key=com.snow.session-file-count
-value={"sourceDir":"D:/code/snow-plugins/plugins/session-file-count"}
-```
+配套宿主改动已通过 [Snow App PR #179](https://github.com/MayDay-wpf/snow-app/pull/179 "提供两个插件所需宿主能力的配套改动已合并") 合并，但正式发行标签 `v0.4.15` 尚未包含该合并。**安装插件不会更新 Snow App，也不能只凭宿主版本号判断功能可用。**
 
-重复安装同一标识会替换已安装副本，保留启用状态和插件保存偏好。源码更新不等于运行中的插件已重新加载。
+- 提示词优化需要专用优化接口、输入栏动作与安全草稿回填能力。
+- 会话文件统计需要通用回复插槽及增强文件追踪元数据。
 
-## 宿主要求
-
-需要支持专用优化接口、草稿令牌动作、通用回复插槽与文件追踪元数据的 Snow App。请查看各插件说明，不能仅凭相同宿主版本号判断能力是否已具备。配套宿主改动正在 [拉取请求 179](https://github.com/MayDay-wpf/snow-app/pull/179) 中审阅。
-
-## 校验
-
-```bash
-npm --prefix plugins/prompt-optimizer run check
-node --input-type=module --check < plugins/session-file-count/footer.js
-node --input-type=module --check < plugins/session-file-count/index.js
-```
-
-这些命令仅检查语法，不代表桌面端或真实模型请求验收。
-
-## 发布与市场上架
-
-同一次发行可以包含两个独立压缩包。每个压缩包只包含对应插件，`plugin.json` 位于压缩包根目录。分别计算最终发行资产的校验值，再向商店仓库提交两个 `app/plugins/<插件标识>.json` 条目。本仓库初始化不发布资产，也未完成市场上架。
+请使用包含上述能力的宿主构建，具体要求见各插件说明。这里提供源码安装说明，不表示插件已发布 Release 或完成市场上架；市场上架需等待包含这些能力的正式发行版本。
 
 ## 来源与许可证
 
-源码复制自 `BaSui01/snow-plugin-store` 的提交 `14f6cd398ab871a6c40cfa76940bef40bd8a6ab7` 中两个插件目录。原仓库提交历史保留，新仓库从独立初始化提交开始，并未迁入商店的其他文件或历史。
+源码复制自 `BaSui01/sno**************` 的提交 `14f6cd398ab871a6c40cfa76940bef40bd8a6ab7` 中两个插件目录。原仓库提交历史保留，本仓库从独立初始化提交开始，未迁入商店的其他文件或历史。
 
-沿用原有 MIT 许可证及版权声明，详见根目录和插件目录中的许可证文件。
+沿用原有 MIT 许可证与版权声明，详见 [LICENSE](LICENSE) 和 [提示词优化许可证](plugins/prompt-optimizer/LICENSE)。

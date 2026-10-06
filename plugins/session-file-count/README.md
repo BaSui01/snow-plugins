@@ -1,69 +1,48 @@
-# 会话文件统计 / Session File Count
+# 会话文件统计
 
-支持消息结束插槽的只读 Snow App 插件，不提供独立详情面板。只订阅 `runtime`，只读取当前 `conversationId` 的记录；不自行扫描 Git、不执行命令、不读取消息正文、不联网、不持久化路径或差异。
+在 Snow App 最新已结束回复下方展示**当前会话及其子代理已记录的文件数量和清单**，方便回顾本次会话涉及哪些文件。仅提供回复卡片，**没有独立面板、路径筛选或采集覆盖详情展开区**。
 
-## 使用
+## 安装与使用
 
-在支持插槽的 Snow App 中启用本插件，**Agent 本轮结束后的最新回复正文下方、消息操作按钮之前** 自动显示紧凑文件卡片：默认四条路径，可展开全部；运行、暂停或停止中不显示。卡片由插件 `footer.js` 提供，不是宿主原生文件统计 UI，也不需要打开插件面板。禁用或卸载插件会移除卡片、样式与订阅；底层数据采集与历史记录仍由宿主提供。显示当前会话累计记录，含该会话的子代理；新增/删除行数只来自各文件最后一条已知 diff，不冒称累计净差异。终端没有行级 diff 时显示「行数未采集」。
+1. 在 Snow App 插件管理页点击「从目录安装」。
+2. 从您下载或克隆仓库的实际位置选择 `plugins/session-file-count`，确认目录内直接包含 `plugin.json`。
+3. 确认插件已启用，打开会话，待 Agent 本轮结束后查看最新回复正文下方、消息操作按钮之前的文件卡片。
 
-没有独立面板入口，也不显示「采集范围与缺口」展开区。宿主继续后台采集及计算，footer 仍读取覆盖记录，但不显示部分或未采集的底部说明。数量仅代表已采集记录，不代表完整修改或最终净差异。
+卡片默认显示 **4 条文件路径**；超过 4 条时可展开全部，再收起。会话运行、暂停或正在停止时不显示。没有文件记录且覆盖记录为空时，卡片也不显示。
 
-插件包运行入口为 `footer.js`；清单使用 `panels: []`，仅加载 `footer.css`。原 `index.js`（详情面板）和 `style.css` 保留在源码中但不再声明或加载，不删除文件。宿主的清单解析允许空面板数组，消息插槽按 `contributions.messageFooters` 独立加载。
+无需打开插件面板或配置。禁用或卸载会移除插件卡片，宿主已有的采集与历史记录不因此删除。重复安装同一标识会更新已安装副本；修改源码目录不会自动更新已安装副本。
 
-## 应用能力要求
+插件标识为 `com.snow.session-file-count`，清单版本为 `1.1.0`。
 
-增强后的 Snow App 提供：
+## 如何理解统计
 
-- `api.ui.messageFooterVersion === 1`：通用消息结束插槽，缺少时没有独立面板或 DOM 注入替代。
-- `runtime.conversation.fileChangeTrackingVersion === 1`
-- `fileChangeStats[conversationId]`：原始累计文件记录，使用 `fileKey ?? filePath` 去重。
-- `fileChangeCoverage[conversationId]`：工具采集覆盖记录，与文件数独立。
+| 显示内容 | 实际含义 |
+| --- | --- |
+| 已记录文件数 | 当前会话跨轮次累计的有效文件记录，包含其子代理；按宿主文件身份去重，不是编辑次数、整个仓库改动数或最终净 Git 差异 |
+| 文件路径 | 优先显示相对于采集根目录的路径；无法安全转成相对路径时保留原路径 |
+| `+` / `−` 行数 | 每个文件最新记录中可计算的差异行数；卡片汇总这些已知行数，不是从会话开始累计的新增、删除或净差异 |
+| 行数未采集 | 终端来源、二进制文件或没有可用差异文本，不能解释为新增和删除均为 0 |
 
-应用源码增强位于 `D:/code/snow-app`，必须构建并运行增强后的应用才能生效。插件安装不会自动部署应用源码。
+同一文件由文件工具与终端重复记录时，有规范身份的记录只计一次；旧历史可能缺少身份键，路径写法不同的记录不一定能合并。卡片会对旧记录或缺失覆盖数据给出简短提示，但**不提供完整覆盖详情**。最新记录不可计算行数时，不回取更早的差异充当当前行数。
 
-没有增强数据契约时卡片明确提示升级，不展示假统计。旧宿主缺少插槽时不会加载卡片，也没有独立面板回退。应用 `minAppVersion` 不是能力探测，本插件直接检查契约版本。
+## 宿主要求与采集边界
 
-## 统计口径与边界
+需要 Snow App 提供通用回复插槽和增强文件追踪元数据。配套改动已通过 [PR #179](https://github.com/MayDay-wpf/snow-app/pull/179 "会话文件统计所需回复插槽及文件追踪增强已合并") 合并，但正式发行标签 `v0.4.15` 尚未包含该合并。安装插件不会更新宿主；相同版本号也不代表运行代码已具备这些能力。
 
-- **已记录唯一文件**：所有可用记录去重后的总数，不是最终净 Git 改动数，也不是编辑次数。
-- **文件工具确认**：专用文件工具成功写入记录，有规范化身份键。
-- **终端检测（部分）**：真实执行目录对应采集根在命令执行前后的内容指纹变化；同文件可与文件工具来源重叠，来源计数不能直接相加。
-- **旧记录**：缺少规范化身份或来源，保留原路径显示，可能无法合并不同写法。
-- 分支不是归属键：共享目录按 Snow 受控写入协调；独立工作树按实际物理路径隔离。
-- 终端最多为部分覆盖：人工/外部进程并发、既有后台/PTY、外部路径、修改后在同一命令中恢复原样等不保证归属或覆盖。detach/SSH 未完整采集。
-- Git 扫描范围为已跟踪和未跟踪、排除 ignored。非 Git 扫描排除常见 build/dependency 目录与 symlink。
-- 应用默认上限：每轮 2048 文件、8192 枚举条目、单文件 4 MiB、总内容 32 MiB、3 秒；Git 清单 1 MiB，返回变更 256 文件。超限有理由标记，缺失不能视为未修改。
-- 卡片默认展示 4 个已记录文件，可展开全部；数量按全部可用记录去重计算，不再提供面板筛选。
-- 历史从实际工具结果恢复；隐私过滤、工具结果截断、旧历史可能使记录不可用。没有记录不代表没有修改。
-- 不提供 OS 级审计，也不展示“绝对准确／完整”的终端计数。
+- 缺少回复插槽时不会加载卡片，也没有独立面板或聊天 DOM 注入替代。
+- 插槽已加载但增强数据契约不满足时会提示升级；读取失败或缺少记录时不会展示假统计。
+- **文件采集由宿主完成，插件只展示记录。**文件工具成功写入可以留下明确目标记录；终端采集主要比较命令执行前后、限定范围内的内容变化。
+- 人工或外部进程并发修改、后台 / PTY、SSH、外部路径，以及同一命令内修改后恢复原样等，不保证被采集或正确归属。
+- 扫描范围、文件数量、内容大小、时间预算、隐私过滤、结果截断与旧历史都可能导致缺口。Git 扫描排除 ignored；非 Git 扫描也会排除常见构建、依赖目录和符号链接等。
 
-## 本地安装
+**数量仅代表已取得的记录，不是完整审计。没有记录不等于没有修改，已记录也不等于最终仍有净改动。**
 
-使用 Snow App 配置工具：
+## 隐私与开发参考
 
-```text
-config-set scope=plugins key=new
-value={"sourceDir":"D:/code/snow-plugins/plugins/session-file-count"}
-```
+插件只订阅公开 `runtime` 元数据中当前会话的文件记录和覆盖状态，不读取消息正文，不扫描 Git、不执行命令、不联网、不修改项目文件，也不持久化路径或差异。卡片会显示宿主提供的文件路径；分享截图时请留意路径中可能包含的敏感信息。
 
-重复安装同 ID 会替换已安装插件目录；后续更新前应确认覆盖对象。源目录修改不会自动更新已安装副本。
+运行入口是 `footer.js`，清单仅声明 `contributions.messageFooters`，`panels` 为空。宿主契约使用 `messageFooterVersion === 1`、`fileChangeTrackingVersion === 1`，以及会话对应的 `fileChangeStats` / `fileChangeCoverage`。接口与生命周期详情请查阅 Snow App 内置文档「插件开发与安装」及「插件元数据域参考」。
 
-## 插槽与生命周期
+## 来源与许可证
 
-`plugin.json` 的顶层 `contributions.messageFooters` 声明 `{ id: "files", entry: "footer.js", exportName: "mountFooter" }`。宿主提供通用插槽，不编码本插件 ID，也不负责文件列表布局。
-
-`mountFooter(container, api, context, signal)` 在专属容器中同步挂载，并返回清理函数；`context` 包含冻结的会话、回复与已知目录身份，不传消息正文。插槽 API 仅有元数据、资源、翻译和 UI 等只读能力，仍遵守原隐私声明；不暴露写入、AI、网络或持久化接口。
-
-`metadata.subscribe` 返回 Promise，卡片等待订阅句柄；禁用、卸载、切会话、新 run 或语言切换后，宿主取消 signal 并回收订阅、样式及 DOM。插件也清理自身监听。迟到的订阅不再挂回界面。ESM 仍是可信本地代码，不是沙箱隔离；本插件只操作传入容器，不查询或注入聊天 DOM。
-
-## English
-
-With this plugin enabled on a host supporting `api.ui.messageFooterVersion === 1`, a compact card appears below the latest completed Agent reply, before message actions. The card is provided by this plugin's `footer.js`, not by a native statistics component. It defaults to four files and can expand. Disabling or uninstalling removes its card, styles and subscriptions; host collection and history remain intact.
-
-There is no standalone panel or expandable coverage detail view. The footer follows only the focused conversation and its own sub-agents. Counts cover collected records across runs, not a complete audit, repository-wide changes or net Git diffs. The total deduplicates by the host's `fileKey`. Line counts represent the latest known diff fragments, not cumulative net changes.
-
-The host and data contracts are detected at runtime. Missing footer support has no panel or DOM-injection fallback. Terminal collection is bounded before/after content comparison, not OS auditing; background, external and manual writes may be untracked or unattributable. Coverage remains available in runtime metadata; the footer does not display the partial or unavailable collection note. Installing this plugin does not build or deploy the enhanced Snow App.
-
-## 验证说明
-
-仅可运行现有静态检查、构建与相关既有测试。本任务不新增测试或临时测试脚本。插件语法/资源检查、应用编译、安装登记与实机端到端验收是不同证据；未进行的验收不得宣称通过。
+源码来源见 [仓库说明](../../README.md#来源与许可证)，沿用仓库的 [MIT 许可证](../../LICENSE) 与原版权声明。
