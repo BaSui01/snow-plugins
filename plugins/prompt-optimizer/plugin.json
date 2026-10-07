@@ -13,6 +13,7 @@
     "icon": "lucide:WandSparkles",
     "chatInput": true,
     "chatInputAction": "optimizeDraft",
+    "chatInputSettings": { "defaultVisible": false, "storageKey": "inputSettingsVisible" },
     "chatInputTitle": { "default": "Optimize prompt", "en": "Optimize prompt", "zh-CN": "优化提示词", "zh-TW": "優化提示詞" }
   }],
   "styles": ["style.css"],

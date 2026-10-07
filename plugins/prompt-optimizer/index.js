@@ -187,6 +187,32 @@ export default function PromptOptimizerSettings({ api }) {
   const [dirty, setDirty] = useState(false);
   const [retry, setRetry] = useState(0);
   const [resetPending, setResetPending] = useState(false);
+  // This private UI preference is saved immediately and independently of the
+  // unsaved optimization rules; it never changes the action's preferences.
+  const [settingsVisible, setSettingsVisible] = useState(false);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsStatus, setSettingsStatus] = useState("");
+  const [settingsRetry, setSettingsRetry] = useState(0);
+  const settingsLock = useRef(false);
+  useEffect(() => {
+    let alive = true;
+    setSettingsLoaded(false);
+    api.storage.getJson("inputSettingsVisible", false).then((value) => {
+      if (alive) { setSettingsVisible(value === true); setSettingsLoaded(true); setSettingsStatus(""); }
+    }).catch(() => { if (alive) setSettingsStatus("inputSettingsError"); });
+    return () => { alive = false; };
+  }, [api, settingsRetry]);
+  const toggleSettings = async (visible) => {
+    if (!settingsLoaded || settingsLock.current) return;
+    settingsLock.current = true;
+    setSettingsSaving(true);
+    try {
+      await api.storage.setJson("inputSettingsVisible", visible);
+      if (mounted.current) { setSettingsVisible(visible); setSettingsStatus("inputSettingsSaved"); }
+    } catch { if (mounted.current) setSettingsStatus("inputSettingsError"); }
+    finally { settingsLock.current = false; if (mounted.current) setSettingsSaving(false); }
+  };
   const mounted = useRef(false);
   const saveLock = useRef(false);
   useEffect(() => {
@@ -271,6 +297,13 @@ export default function PromptOptimizerSettings({ api }) {
       h("h2", null, t("title"))),
     !supported(api) && h("div", { className: "po-status po-warning", role: "alert" }, t("unavailable")),
     h("p", { className: "po-disclosure" }, t("privacy")),
+    h("div", { className: "po-card" },
+      h("label", { className: "po-check" }, h("input", { type: "checkbox", checked: settingsVisible,
+        disabled: !settingsLoaded || settingsSaving,
+        onChange: (event) => { void toggleSettings(event.target.checked); } }), t("inputSettingsVisible")),
+      h("p", { className: "po-muted" }, t("inputSettingsHelp")),
+      settingsStatus && h("div", { className: "po-status", role: "status" }, t(settingsStatus)),
+      !settingsLoaded && settingsStatus === "inputSettingsError" && h("button", { type: "button", onClick: () => setSettingsRetry((value) => value + 1) }, t("retry"))),
     h("div", { className: "po-card" },
       h("h3", null, t("rulesTitle")),
       field("strategy", select("strategy", Object.keys(STRATEGIES))),
