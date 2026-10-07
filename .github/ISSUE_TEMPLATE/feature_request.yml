@@ -1,0 +1,64 @@
+name: 功能建议
+description: 描述目标插件、使用场景、宿主能力和隐私边界。
+title: "[Feature] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请先阅读 README.md 和 CONTRIBUTING.md，避免提交重复需求。资料必须脱敏，不附凭据或真实业务数据。
+        两个插件基础功能最低需要 Snow App v0.4.16；该版本 footer 没有 write，不能点击打开文件。
+  - type: input
+    id: plugin
+    attributes:
+      label: 目标插件名称或 ID
+    validations:
+      required: true
+  - type: input
+    id: plugin-version
+    attributes:
+      label: 当前插件版本与安装来源
+      description: 填写实际清单版本、Release 标签或源码提交。
+    validations:
+      required: true
+  - type: input
+    id: host-version
+    attributes:
+      label: Snow App 版本或构建
+      description: 填写实际版本；尚未验证的宿主能力请明确标注。
+    validations:
+      required: true
+  - type: textarea
+    id: scenario
+    attributes:
+      label: 使用场景与现状复现
+      description: 描述当前操作步骤、限制与需求动机，提供脱敏示例。
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 期望功能与验收标准
+      description: 说明预期行为、替代方案及不应改变的现有行为。
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility-privacy
+    attributes:
+      label: 宿主兼容性与隐私影响
+      description: 是否需要新接口、网络、上下文、文件访问或写权限？未知请说明，不猜测最低版本。
+    validations:
+      required: true
+  - type: textarea
+    id: sanitized-logs
+    attributes:
+      label: 脱敏日志或补充材料
+      description: 若相关请提供最小脱敏片段；无日志或不适用时请说明，不上传秘密和真实会话正文。
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: 公开资料确认
+      options:
+        - label: 我已脱敏资料，没有公开凭据、敏感路径或安全利用细节。
+          required: true

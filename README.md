@@ -1,46 +1,52 @@
 # Snow Plugins
 
+[![Plugin CI](https://github.com/BaSui01/snow-plugins/actions/workflows/ci.yml/badge.svg)](https://github.com/BaSui01/snow-plugins/actions/workflows/ci.yml "查看真实插件静态校验工作流")
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Snow App 插件源码集合。两个插件可分别安装，本仓库不是插件市场索引。
 
-## 自动发布与市场更新
+## 插件、版本与下载
 
-CI、插件独立标签、独立 Release 和各自市场 PR 的配置见 [发布指南](RELEASING.md)。标签格式为 `<插件目录>/v<版本>`；新增 `plugins/<目录>/plugin.json` 会自动纳入发现，无需修改插件列表。预发行不自动提交市场 PR，正式版 PR 仍需维护者审核合并。2026-10-07 已核实市场 PR #6 合并，本文下方旧的市场等待状态说明已过时；收录不代表宿主兼容性已验证。
+| 插件 / ID | 清单版本 | 下载与发行状态 | 最低宿主（基础功能） | 使用说明 |
+| --- | --- | --- | --- | --- |
+| 提示词优化 / `com.snow.prompt-optimizer` | `1.1.0` | [历史预发行 v1.1.0-preview.1](https://github.com/BaSui01/snow-plugins/releases/tag/v1.1.0-preview.1 "提示词优化的历史预发行安装包") | Snow App `v0.4.16` | [配置与使用](plugins/prompt-optimizer/README.md) |
+| 会话文件统计 / `com.snow.session-file-count` | `1.1.1` | [正式 Release session-file-count/v1.1.1](https://github.com/BaSui01/snow-plugins/releases/tag/session-file-count/v1.1.1 "会话文件统计1.1.1正式安装包与发布说明") | Snow App `v0.4.16`（统计展示） | [使用说明](plugins/session-file-count/README.md) · [发布说明](plugins/session-file-count/RELEASE.md) |
 
-## 插件一览
-
-| 插件 | 功能与入口 | 使用说明 |
-| --- | --- | --- |
-| 提示词优化 | 配置优化规则、上下文与模型服务，通过输入栏魔杖改写草稿；支持安全回填和还原，不自动发送 | [提示词优化](plugins/prompt-optimizer/README.md) |
-| 会话文件统计 | 在最新已结束回复下方展示当前会话及子代理的已记录文件数和清单；无独立面板 | [会话文件统计](plugins/session-file-count/README.md) |
+- 提示词优化：配置优化规则、上下文与模型服务，通过输入栏魔杖改写草稿；支持安全回填和还原，不自动发送。
+- 会话文件统计：在最新已结束回复下方展示当前会话及子代理的已记录文件数和清单；无独立面板。统计不是完整审计，没有记录不等于没有修改。
+- 版本、标签和安装包按插件独立管理；历史统一预发行标签不是两个插件当前版本的统一下载入口。
 
 ## 安装与更新
 
-1. 下载或克隆本仓库。
+1. 从上表选择所需插件的 Release，下载对应压缩包并解压；也可下载或克隆本仓库。
 2. 在 Snow App 插件管理页点击「从目录安装」。
-3. 在您实际保存仓库的位置，选择相应插件目录：
-   - 提示词优化：`plugins/prompt-optimizer`，标识 `com.snow.prompt-optimizer`。
-   - 会话文件统计：`plugins/session-file-count`，标识 `com.snow.session-file-count`。
-4. 确认所选目录**直接包含 `plugin.json`**，不要选择仓库根目录；安装后确认插件已启用。
+3. 选择直接包含 `plugin.json` 的解压目录；从源码安装时分别选择 `plugins/prompt-optimizer` 或 `plugins/session-file-count`，不要选择仓库根目录。
+4. 确认插件已启用，并按该插件说明验收功能。
 
-重复安装同一标识会替换已安装副本，并保留启用状态和已保存偏好。修改下载的源码不会自动更新已安装副本，更新时需重新安装相应目录。
+重复安装同一标识会替换已安装副本，并保留启用状态和已保存偏好。修改下载的源码不会自动更新已安装副本，更新时需重新安装相应目录。**安装或更新插件不会更新 Snow App。**
 
 ## 宿主兼容性
 
-配套宿主改动已通过 [Snow App PR #179](https://github.com/MayDay-wpf/snow-app/pull/179 "提供两个插件所需宿主能力的配套改动已合并") 合并，已进入正式版本 **v0.4.16**；v0.4.15 不包含这些能力。**安装插件不会更新 Snow App。**
+配套能力通过 [Snow App PR #179](https://github.com/MayDay-wpf/snow-app/pull/179 "两个插件基础能力的配套宿主改动已合并") 合并并进入正式版本 **v0.4.16**；v0.4.15 不包含这些能力。
 
-- 提示词优化需要专用优化接口、输入栏动作与安全草稿回填能力。
-- 会话文件统计需要通用回复插槽及增强文件追踪元数据。
+- 提示词优化的基础功能需要专用优化接口、输入栏动作与安全草稿回填能力。
+- 会话文件统计的基础功能需要通用回复插槽及增强文件追踪元数据。
+- **Snow App v0.4.16 的 footer 没有 `write` API，不支持点击打开文件。** 会话文件统计 `1.1.1` 在该版本禁用路径按钮，但仍可展示统计。
+- 点击打开文件还需要 footer 的受限 `write` API 提供 `panels.openFile`。完整功能需另有已验证支持该接口的宿主构建；目前未确认支持此功能的正式宿主发行版，不把基础最低版本等同于完整功能兼容版本。
 
-两个插件的基础功能最低要求 v0.4.16。会话文件统计 1.1.1 的点击打开文件还需要 footer `panels.openFile`；v0.4.16 未提供该接口，按钮会禁用但统计仍可展示。完整要求见各插件说明。
+## 市场状态
 
-## 预发行下载与市场请求
+2026-10-07 通过 GitHub CLI 只读核实：[市场 PR #6](https://github.com/MayDay-wpf/snow-plugin-store/pull/6 "历史插件条目请求已合并") 已合并；[市场 PR #8](https://github.com/MayDay-wpf/snow-plugin-store/pull/8 "市场更新请求仍打开待审核") 待审核。市场收录不代表所有宿主功能已经验证；源码仍由本仓库维护，Release 已发布也不等于市场更新已合并。
 
-[预发行安装包](https://github.com/BaSui01/snow-plugins/releases/tag/v1.1.0-preview.1 "分别提供两个独立安装包、校验值和宿主要求") 已发布，仅供相应宿主新构建使用。分别下载所需压缩包并解压，在插件管理页选择直接包含 `plugin.json` 的解压目录。
+## 贡献、发布与安全
 
-[市场草稿请求 6](https://github.com/MayDay-wpf/snow-plugin-store/pull/6 "仅提交两个真实市场条目，等待适配的正式宿主发行后再合并") 已合并，两个历史条目已收录。请求仅包含两个索引条目，源码仍由本仓库维护；后续版本分别提交市场更新 PR。
+- [贡献指南](CONTRIBUTING.md)：目录、ID、版本约定、验证要求与协作边界。
+- [独立插件发布指南](RELEASING.md)：独立标签、安装包、Release 与市场更新流程；发布需明确授权。
+- [安全政策](SECURITY.md)：脱敏报告、凭据泄露处置与私密联系边界。
+- [报告问题](https://github.com/BaSui01/snow-plugins/issues/new?template=bug_report.yml "填写插件和宿主版本及脱敏复现资料") · [提出功能建议](https://github.com/BaSui01/snow-plugins/issues/new?template=feature_request.yml "描述需求与宿主兼容性边界")。
 
 ## 来源与许可证
 
-源码复制自 `BaSui01/sno**************` 的提交 `14f6cd398ab871a6c40cfa76940bef40bd8a6ab7` 中两个插件目录。原仓库提交历史保留，本仓库从独立初始化提交开始，未迁入商店的其他文件或历史。
+源码复制自 `BaSui01/snow-plugin-store` 的提交 `14f6cd398ab871a6c40cfa76940bef40bd8a6ab7` 中两个插件目录。原仓库提交历史保留，本仓库从独立初始化提交开始，未迁入商店的其他文件或历史。
 
 沿用原有 MIT 许可证与版权声明，详见 [LICENSE](LICENSE) 和 [提示词优化许可证](plugins/prompt-optimizer/LICENSE)。
