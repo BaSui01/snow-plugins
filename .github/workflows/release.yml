@@ -1,0 +1,181 @@
+name: Independent plugin release
+
+on:
+  push:
+    tags: ['*/v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing plugin tag, e.g. prompt-optimizer/v1.2.0
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# Same plugin releases are serialized; different plugins may release independently.
+concurrency:
+  group: plugin-release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.target.outputs.tag }}
+      plugin: ${{ steps.target.outputs.plugin }}
+      asset: ${{ steps.target.outputs.asset }}
+      id: ${{ steps.target.outputs.id }}
+      stable: ${{ steps.target.outputs.stable }}
+    steps:
+      - name: Validate tag shape before checkout
+        id: tag
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          REF_TAG: ${{ github.ref_name }}
+        run: |
+          tag="${INPUT_TAG:-$REF_TAG}"
+          [[ "$tag" =~ ^[a-z0-9]+(-[a-z0-9]+)*/v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]] || exit 1
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ steps.tag.outputs.tag }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Resolve existing plugin and matching manifest version
+        id: target
+        env:
+          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
+        run: python scripts/release.py resolve --tag "$RELEASE_TAG" --github-output "$GITHUB_OUTPUT"
+
+  release:
+    needs: resolve
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: publish-${{ needs.resolve.outputs.plugin }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ needs.resolve.outputs.tag }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate and package only the selected plugin
+        env:
+          RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
+        run: python scripts/release.py package --tag "$RELEASE_TAG" --output "$RUNNER_TEMP/packages"
+      - name: Publish immutable release assets or verify existing assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: BaSui01/snow-plugins
+          RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
+          ASSET: ${{ needs.resolve.outputs.asset }}
+          PLUGIN: ${{ needs.resolve.outputs.plugin }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            mkdir -p "$RUNNER_TEMP/published"
+            gh release download "$RELEASE_TAG" --dir "$RUNNER_TEMP/published" --pattern "$ASSET" --pattern SHA256SUMS.txt
+            (cd "$RUNNER_TEMP/published" && sha256sum --check SHA256SUMS.txt)
+          else
+            flags=()
+            if [[ "${RELEASE_TAG#*/v}" == *-* ]]; then flags+=(--prerelease); fi
+            notes="plugins/$PLUGIN/RELEASE.md"
+            if [[ -f "$notes" ]]; then flags+=(--notes-file "$notes"); else flags+=(--generate-notes); fi
+            gh release create "$RELEASE_TAG" "$RUNNER_TEMP/packages/$ASSET" "$RUNNER_TEMP/packages/SHA256SUMS.txt" \
+              --verify-tag --title "$RELEASE_TAG" --latest=false "${flags[@]}"
+          fi
+
+  market-pr:
+    needs: [resolve, release]
+    if: needs.resolve.outputs.stable == 'true'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: market-${{ needs.resolve.outputs.plugin }}
+      cancel-in-progress: false
+    steps:
+      - name: Require cross-repository credential
+        env:
+          MARKET_TOKEN: ${{ secrets.MARKET_PR_TOKEN }}
+        run: |
+          if [[ -z "$MARKET_TOKEN" ]]; then
+            echo '::error::MARKET_PR_TOKEN is missing. Release remains published; configure the secret and retry.'
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ needs.resolve.outputs.tag }}
+          path: source
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: MayDay-wpf/snow-plugin-store
+          ref: main
+          path: market
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download published bytes and prepare only the selected market entry
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: BaSui01/snow-plugins
+          RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
+          ASSET: ${{ needs.resolve.outputs.asset }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/published"
+          gh release download "$RELEASE_TAG" --dir "$RUNNER_TEMP/published" --pattern "$ASSET" --pattern SHA256SUMS.txt
+          (cd "$RUNNER_TEMP/published" && sha256sum --check SHA256SUMS.txt)
+          python source/scripts/release.py market --tag "$RELEASE_TAG" --output "$RUNNER_TEMP/published" --market market
+          node market/app/scripts/validate-registry.mjs
+      - name: Guard pending updates, push fork branch and open a review PR
+        working-directory: market
+        env:
+          GH_TOKEN: ${{ secrets.MARKET_PR_TOKEN }}
+          RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
+          PLUGIN: ${{ needs.resolve.outputs.plugin }}
+          PLUGIN_ID: ${{ needs.resolve.outputs.id }}
+        run: |
+          set -euo pipefail
+          branch="release/$RELEASE_TAG"
+          head="BaSui01:$branch"
+          existing=$(gh pr list --repo MayDay-wpf/snow-plugin-store --head "$head" --state all --json url --jq '.[0].url // empty')
+          if [[ -n "$existing" ]]; then
+            echo "Existing PR: $existing; no branch or PR overwritten."
+            exit 0
+          fi
+          pending=$(gh pr list --repo MayDay-wpf/snow-plugin-store --state open --limit 1000 \
+            --json headRefName,headRepositoryOwner,url \
+            --jq ".[] | select(.headRepositoryOwner.login == \"BaSui01\" and (.headRefName | startswith(\"release/$PLUGIN/v\"))) | .url")
+          if [[ -n "$pending" ]]; then
+            echo "::error::Resolve the pending market PR before updating this plugin: $pending"
+            exit 1
+          fi
+          git config user.name 'snow-plugins release bot'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -c "$branch"
+          git add "app/plugins/$PLUGIN_ID.json"
+          if git diff --cached --quiet; then
+            echo 'Market already points to this release asset.'
+            exit 0
+          fi
+          git commit -m "chore(market): update $RELEASE_TAG"
+          git remote add author-fork https://github.com/BaSui01/snow-plugin-store.git
+          gh auth setup-git
+          # No forced update or fork main modification.
+          git push author-fork "HEAD:refs/heads/$branch"
+          gh pr create --repo MayDay-wpf/snow-plugin-store --base main --head "$head" \
+            --title "chore(market): update $RELEASE_TAG" \
+            --body "Updates only $PLUGIN_ID to $RELEASE_TAG. SHA-256 is calculated from verified published bytes. Display metadata is preserved; an explicitly declared market.json minimum host version is applied. See https://github.com/BaSui01/snow-plugins/releases/tag/$RELEASE_TAG for changes, supported Snow App versions and optional feature limitations. For a new entry, review host compatibility and display metadata before merge. Maintainer review required; never auto-merged."
