@@ -151,7 +151,7 @@ jobs:
           set -euo pipefail
           branch="release/$RELEASE_TAG"
           head="BaSui01:$branch"
-          existing=$(gh pr list --repo MayDay-wpf/snow-plugin-store --head "$head" --state all --json url --jq '.[0].url // empty')
+          existing=$(gh pr list --repo MayDay-wpf/snow-plugin-store --head "$branch" --author BaSui01 --state all --json url --jq '.[0].url // empty')
           if [[ -n "$existing" ]]; then
             echo "Existing PR: $existing; no branch or PR overwritten."
             exit 0
