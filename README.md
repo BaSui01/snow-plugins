@@ -9,8 +9,8 @@ Snow App 插件源码集合。两个插件可分别安装，本仓库不是插�
 
 | 插件 / ID | 清单版本 | 下载与发行状态 | 最低宿主（基础功能） | 使用说明 |
 | --- | --- | --- | --- | --- |
-| 提示词优化 / `com.snow.prompt-optimizer` | `1.1.1` | **1.1.1 未发布**；[历史预发行 v1.1.0-preview.1](https://github.com/BaSui01/snow-plugins/releases/tag/v1.1.0-preview.1 "提示词优化的历史预发行安装包，不是1.1.1") | Snow App `v0.4.16`（历史基础功能；新行为另需配套构建） | [配置与使用](plugins/prompt-optimizer/README.md) · [发布说明](plugins/prompt-optimizer/RELEASE.md) |
-| 会话文件统计 / `com.snow.session-file-count` | `1.1.3` | **1.1.3 未发布**；[历史 Release session-file-count/v1.1.2](https://github.com/BaSui01/snow-plugins/releases/tag/session-file-count/v1.1.2 "会话文件统计历史1.1.2安装包，不是1.1.3") | Snow App `v0.4.16`（历史统计展示；不代表 1.1.3 taskHistory 兼容） | [使用说明](plugins/session-file-count/README.md) · [发布说明](plugins/session-file-count/RELEASE.md) |
+| 提示词优化 / `com.snow.prompt-optimizer` | `1.1.2` | **1.1.2 未发布**；[历史预发行 v1.1.0-preview.1](https://github.com/BaSui01/snow-plugins/releases/tag/v1.1.0-preview.1 "提示词优化的历史预发行安装包，不是1.1.2") | Snow App `v0.4.16`（历史基础功能；新行为另需配套构建） | [配置与使用](plugins/prompt-optimizer/README.md) · [发布说明](plugins/prompt-optimizer/RELEASE.md) |
+| 会话文件统计 / `com.snow.session-file-count` | `1.1.4` | **1.1.4 未发布**；[历史 Release session-file-count/v1.1.2](https://github.com/BaSui01/snow-plugins/releases/tag/session-file-count/v1.1.2 "会话文件统计历史1.1.2安装包，不是1.1.4") | Snow App `v0.4.16`（历史统计展示；不代表 1.1.4 taskHistory 兼容） | [使用说明](plugins/session-file-count/README.md) · [发布说明](plugins/session-file-count/RELEASE.md) |
 
 - 提示词优化：配置优化规则、上下文与模型服务，通过输入栏魔杖改写草稿；支持安全回填和还原，不自动发送。
 - 会话文件统计：当前开发源码在每次任务的结束回复下方展示该任务及子代理的独立文件数和清单，旧卡片保留并支持历史恢复；无独立面板。统计不是完整审计，没有记录不等于没有修改。

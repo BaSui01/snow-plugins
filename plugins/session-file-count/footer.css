@@ -90,6 +90,9 @@
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb, var(--border-color, currentColor)) transparent;
 }
+.sfc-inline .sfc-inline-list:has(.sfc-inline-diff:not([hidden])) {
+  max-height: 560px;
+}
 .sfc-inline .sfc-inline-file {
   display: flex;
   flex-wrap: wrap;
@@ -124,8 +127,9 @@
   text-decoration: underline;
 }
 .sfc-inline .sfc-inline-path:focus-visible {
-  outline: 2px solid var(--accent-blue, currentColor);
+  outline: 1px solid var(--accent-blue-text, var(--accent-blue, currentColor));
   outline-offset: 2px;
+  background: var(--accent-blue-bg, var(--bg-hover, transparent));
 }
 .sfc-inline .sfc-inline-path:disabled {
   cursor: default;
@@ -207,7 +211,7 @@
 }
 .sfc-inline .sfc-inline-diff[hidden] { display: none; }
 .sfc-inline .sfc-inline-diff-scroll {
-  max-height: 320px;
+  max-height: 340px;
   overflow: auto;
   scrollbar-width: thin;
 }
@@ -215,41 +219,128 @@
   outline: 2px solid var(--accent-blue, currentColor);
   outline-offset: -2px;
 }
-.sfc-inline .sfc-inline-diff-table {
+
+/* Side-by-Side (左右两侧) Split Diff Table */
+.sfc-inline .sfc-split-diff-table {
   border-collapse: collapse;
   width: 100%;
+  min-width: 580px;
+  table-layout: fixed;
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 11px;
   line-height: 1.6;
 }
-.sfc-inline .sfc-inline-diff-table th {
-  text-align: start;
+.sfc-inline .sfc-split-diff-table thead tr {
+  background: var(--bg-tertiary, transparent);
+  border-bottom: 1px solid var(--border-color, currentColor);
+}
+.sfc-inline .sfc-split-diff-table th {
+  padding: 3px 6px;
+  font-weight: 500;
+  font-size: 10px;
   color: var(--text-secondary, inherit);
   background: var(--bg-tertiary, transparent);
-  font-weight: 400;
+  text-align: start;
 }
-.sfc-inline .sfc-inline-diff-table th,
-.sfc-inline .sfc-inline-diff-table td { padding: 1px 7px; }
-.sfc-inline .sfc-inline-diff-number {
-  width: 1%;
-  min-width: 3.5em;
+.sfc-inline .sfc-split-th-num {
+  width: 4em;
+  min-width: 4em;
+  max-width: 4em;
+  text-align: end;
+  color: var(--text-tertiary, var(--text-secondary, inherit));
+  border-right: 1px solid var(--border-color, currentColor);
+  overflow: hidden;
+  white-space: nowrap;
+}
+.sfc-inline .sfc-split-th-code {
+  width: calc(50% - 4em);
+  text-align: start;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.sfc-inline .sfc-split-diff-table td {
+  padding: 2px 6px;
+  border-top: 0;
+  color: inherit;
+  vertical-align: top;
+}
+.sfc-inline .sfc-split-num {
+  width: 4em;
+  min-width: 4em;
+  max-width: 4em;
   text-align: end;
   white-space: nowrap;
   user-select: none;
-  color: var(--text-tertiary, var(--text-secondary, inherit));
-  border-right: 1px solid var(--border-color, currentColor);
   font-variant-numeric: tabular-nums;
+  border-right: 1px solid var(--border-color, currentColor);
+  color: var(--text-tertiary, var(--text-secondary, inherit));
+  vertical-align: top;
+  overflow: hidden;
 }
-.sfc-inline .sfc-inline-diff-code { white-space: pre; tab-size: 4; }
-.sfc-inline .sfc-inline-diff-added {
-  background: var(--accent-green-bg, transparent);
-  color: var(--accent-green-text, var(--text-primary, inherit));
+.sfc-inline .sfc-split-code {
+  width: calc(50% - 4em);
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  tab-size: 4;
+  vertical-align: top;
+  overflow: hidden;
 }
-.sfc-inline .sfc-inline-diff-deleted {
-  background: var(--accent-red-bg, transparent);
-  color: var(--accent-red-text, var(--text-primary, inherit));
+/* Center divider separating left (before) and right (after) */
+.sfc-inline .sfc-split-divider {
+  border-right: 2px solid var(--border-color, currentColor);
 }
-.sfc-inline .sfc-inline-diff-meta {
+/* Hunk header row */
+.sfc-inline .sfc-split-hunk-cell {
   background: var(--bg-tertiary, transparent);
-  color: var(--text-secondary, inherit);
+  color: var(--accent-blue-text, var(--accent-blue, currentColor));
+  font-size: 10px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-top: 1px solid var(--border-color, currentColor);
+  border-bottom: 1px solid var(--border-color, currentColor);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Metadata rows (headers before hunk) */
+.sfc-inline .sfc-split-meta-cell {
+  background: var(--bg-primary, transparent);
+  color: var(--text-tertiary, var(--text-secondary, inherit));
+  font-size: 10px;
+  padding: 2px 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Context rows */
+.sfc-inline .sfc-split-context td {
+  background: var(--bg-primary, transparent);
+  color: var(--text-primary, inherit);
+}
+.sfc-inline .sfc-split-context .sfc-split-num {
+  color: var(--text-tertiary, var(--text-secondary, inherit));
+}
+/* Left deleted side */
+.sfc-inline td.sfc-diff-del {
+  background: var(--accent-red-bg, transparent);
+  color: var(--accent-red-text, var(--accent-red, currentColor));
+}
+/* Right added side */
+.sfc-inline td.sfc-diff-add {
+  background: var(--accent-green-bg, transparent);
+  color: var(--accent-green-text, var(--accent-green, currentColor));
+}
+/* Empty cell */
+.sfc-inline td.sfc-diff-empty {
+  background: color-mix(in srgb, var(--bg-secondary, transparent) 40%, transparent);
+  color: transparent;
+  user-select: none;
+}
+/* EOF newline indicator */
+.sfc-inline .sfc-diff-eof {
+  color: var(--text-tertiary, var(--text-secondary, inherit));
+  font-style: italic;
+  font-size: 10px;
 }
