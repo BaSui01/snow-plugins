@@ -7,9 +7,9 @@
     "en": "Session File Count"
   },
   "description": {
-    "default": "Count recorded files from the focused conversation below replies.",
-    "zh-CN": "在回复下方展示当前会话及子代理已采集的文件数量和清单。",
-    "zh-TW": "在回覆下方顯示目前會話及子代理已採集的檔案數量和清單。"
+    "default": "Count each Agent task's recorded files below its final reply.",
+    "zh-CN": "在每次任务结束回复下方展示该任务及子代理的独立文件记录，保留历史卡片。",
+    "zh-TW": "在每次任務結束回覆下方顯示該任務及子代理的獨立檔案記錄，保留歷史卡片。"
   },
   "version": "1.1.2",
   "author": "小青枣 & Snow App contributors",
@@ -20,7 +20,7 @@
   "panels": [],
   "contributions": {
     "messageFooters": [
-      { "id": "files", "entry": "footer.js", "exportName": "mountFooter" }
+      { "id": "files", "entry": "footer.js", "exportName": "mountFooter", "taskHistory": true }
     ]
   },
   "styles": ["footer.css"],
@@ -31,6 +31,6 @@
   },
   "privacy": {
     "scopes": [],
-    "note": "仅订阅公开 runtime 域当前会话的文件统计与覆盖状态。不读取聊天正文，不执行命令，不访问网络，不修改项目文件，不持久化路径或差异。"
+    "note": "仅展示宿主在任务结束插槽提供的只读文件记录与覆盖快照。不读取聊天正文，不执行命令，不访问网络，不修改项目文件，不持久化路径或差异。"
   }
 }

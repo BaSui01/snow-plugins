@@ -12,10 +12,12 @@ export function mountFooter(container, api, context, signal) {
   root.setAttribute("aria-label", t("footer.title"));
   container.append(root);
   let disposed = false;
-  let subscription;
-  let runtime = null;
   let expanded = false;
-  let latestGeneratedAt = 0;
+  const expandedDiffs = new Set();
+  const keyFor = (record) =>
+    typeof record.fileKey === "string" && record.fileKey
+      ? record.fileKey
+      : record.filePath;
   // Match the host's platform-aware primary modifier convention.
   const isMac = /mac/i.test(navigator.platform ?? "") || /mac/i.test(navigator.userAgent ?? "");
   const modifier = isMac ? "⌘" : "Ctrl";
@@ -54,13 +56,6 @@ export function mountFooter(container, api, context, signal) {
     return wrapper;
   };
   const active = () => !disposed && !signal.aborted;
-  const recordsFor = (map) =>
-    map &&
-    typeof map === "object" &&
-    Object.prototype.hasOwnProperty.call(map, context.conversationId) &&
-    Array.isArray(map[context.conversationId])
-      ? map[context.conversationId]
-      : null;
   const relativePath = (record) => {
     if (typeof record.root !== "string" || !record.root) return record.filePath;
     const path = record.filePath.replaceAll("\\", "/");
@@ -108,29 +103,98 @@ export function mountFooter(container, api, context, signal) {
     );
     return row;
   };
+  // Render only the supplied snapshot. Hunk counts provide line numbers, never file contents.
+  const renderDiff = (panel, file) => {
+    panel.append(element("p", "sfc-inline-note", t("footer.diffSnapshot")));
+    const patch = file.diff?.patch;
+    if (file.diff?.isBinary || typeof patch !== "string" || !patch.trim()) {
+      panel.append(element("p", "sfc-inline-note", t(
+        file.diff?.isBinary ? "footer.diffBinary" : "footer.diffUnavailable",
+      )));
+      return;
+    }
+    const scroll = element("div", "sfc-inline-diff-scroll");
+    scroll.tabIndex = 0;
+    scroll.setAttribute("role", "region");
+    scroll.setAttribute("aria-label", `${relativePath(file)}: ${t("footer.viewDiff")}`);
+    const table = element("table", "sfc-inline-diff-table");
+    const head = element("thead");
+    const labels = element("tr");
+    for (const key of ["footer.oldLine", "footer.newLine", "footer.viewDiff"]) {
+      const label = element("th", "", t(key));
+      label.scope = "col";
+      labels.append(label);
+    }
+    head.append(labels);
+    const body = element("tbody");
+    const lines = patch.split(/\r?\n/);
+    if (lines.at(-1) === "") lines.pop();
+    const limit = 1000;
+    let hunk = null;
+    let incomplete = false;
+    let sawHunk = false;
+    const unfinished = () => hunk && (hunk.oldRemaining !== 0 || hunk.newRemaining !== 0);
+    for (const line of lines.slice(0, limit)) {
+      const match = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@(?:.*)$/.exec(line);
+      let oldLine = "";
+      let newLine = "";
+      let kind = "meta";
+      if (match) {
+        if (unfinished()) incomplete = true;
+        const numbers = [Number(match[1]), Number(match[3]), Number(match[2] ?? 1), Number(match[4] ?? 1)];
+        if (numbers.every(Number.isSafeInteger)) {
+          sawHunk = true;
+          hunk = { oldLine: numbers[0], newLine: numbers[1], oldRemaining: numbers[2], newRemaining: numbers[3] };
+        } else {
+          incomplete = true;
+          hunk = null;
+        }
+      } else if (hunk && /^[ +\-]/.test(line) &&
+        (hunk.oldRemaining > 0 || hunk.newRemaining > 0)) {
+        const prefix = line[0];
+        const consumesOld = prefix !== "+";
+        const consumesNew = prefix !== "-";
+        if ((consumesOld && hunk.oldRemaining <= 0) || (consumesNew && hunk.newRemaining <= 0)) {
+          incomplete = true;
+          hunk = null;
+        } else {
+          if (consumesOld) { oldLine = hunk.oldLine++; hunk.oldRemaining--; }
+          if (consumesNew) { newLine = hunk.newLine++; hunk.newRemaining--; }
+          kind = prefix === "+" ? "added" : prefix === "-" ? "deleted" : "context";
+        }
+      } else if (line.startsWith("@@")) {
+        incomplete = true;
+        hunk = null;
+      } else if (hunk && !line.startsWith("\\ No newline at end of file")) {
+        if (unfinished() || /^[ +\-@]/.test(line)) incomplete = true;
+        hunk = null;
+      }
+      const row = element("tr", `sfc-inline-diff-${kind}`);
+      row.append(
+        element("td", "sfc-inline-diff-number", oldLine),
+        element("td", "sfc-inline-diff-number", newLine),
+        element("td", "sfc-inline-diff-code", line),
+      );
+      body.append(row);
+    }
+    table.append(head, body);
+    scroll.append(table);
+    panel.append(scroll);
+    if (lines.length > limit)
+      panel.append(element("p", "sfc-inline-note", t("footer.diffLimit", { count: limit })));
+    else if (!sawHunk || incomplete || unfinished())
+      panel.append(element("p", "sfc-inline-note", t("footer.diffIncomplete")));
+  };
   const render = () => {
     if (!active()) return;
     root.replaceChildren();
-    const conversation = runtime?.conversation;
-    if (
-      conversation?.conversationId !== context.conversationId ||
-      conversation.isStreaming ||
-      conversation.isPaused ||
-      conversation.isAborting
-    ) {
-      root.hidden = true;
-      return;
-    }
     root.hidden = false;
-    if (
-      api.ui?.messageFooterVersion !== 1 ||
-      conversation.fileChangeTrackingVersion !== 1
-    ) {
-      root.append(element("p", "sfc-inline-note", t("footerUpgrade")));
+    if (api.ui?.messageFooterVersion !== 1 || !context.task) {
+      root.append(element("p", "sfc-inline-note", t("footer.taskUnavailable")));
       return;
     }
-    const raw = recordsFor(conversation.fileChangeStats);
-    const coverage = recordsFor(conversation.fileChangeCoverage);
+    const raw = Array.isArray(context.task.records) ? context.task.records : null;
+    const coverage = Array.isArray(context.task.coverage) ? context.task.coverage : null;
     if (!raw) {
       root.append(element("p", "sfc-inline-note", t("unavailable")));
       return;
@@ -194,45 +258,55 @@ export function mountFooter(container, api, context, signal) {
       path.type = "button";
       path.title = `${file.filePath}\n${t("footer.clickHint", { modifier })}\n${t("footer.diffSnapshot")}`;
       path.setAttribute("aria-label", `${relativePath(file)}: ${t("footer.clickHint", { modifier })}`);
+      const key = keyFor(file);
+      const diff = element("div", "sfc-inline-diff");
+      diff.id = `sfc-diff-${crypto.randomUUID()}`;
+      diff.hidden = !expandedDiffs.has(key);
+      path.setAttribute("aria-expanded", String(!diff.hidden));
+      path.setAttribute("aria-controls", diff.id);
+      let rendered = false;
+      const populateDiff = () => {
+        if (rendered) return;
+        renderDiff(diff, file);
+        rendered = true;
+      };
+      if (!diff.hidden) populateDiff();
       let pending = false;
       const open = async (event) => {
-        if (!active() || pending || (event.button !== undefined && event.button !== 0)) return;
+        if (!active() || (event.button !== undefined && event.button !== 0)) return;
         event.preventDefault();
         const openDocument = isMac ? event.metaKey : event.ctrlKey;
-        const action = openDocument ? "panels.openFile" : "panels.openFileDiff";
-        const patch = file.diff?.patch;
-        const changeType = { create: "added", edit: "modified", delete: "deleted" }[file.kind];
-        const reason = !actions.has(action)
-          ? openDocument ? "footer.openUpgrade" : "footer.diffUpgrade"
-          : openDocument
-            ? file.kind === "delete" ? "footer.deletedFile"
-              : typeof file.root === "string" && file.root.startsWith("ssh://") ? "footer.remoteUnavailable"
-                : !/^(?:[a-zA-Z]:[\\/]|\/|\\\\)/.test(file.filePath) || file.filePath.includes("\0") ? "footer.invalidPath" : null
-            : file.diff?.isBinary || typeof patch !== "string" || !patch.trim() || !changeType
-              ? "footer.diffUnavailable" : null;
+        if (!openDocument) {
+          diff.hidden = !diff.hidden;
+          if (diff.hidden) expandedDiffs.delete(key);
+          else { expandedDiffs.add(key); populateDiff(); }
+          path.setAttribute("aria-expanded", String(!diff.hidden));
+          return;
+        }
+        if (pending) return;
+        const reason = !actions.has("panels.openFile")
+          ? "footer.openUpgrade"
+          : file.kind === "delete" ? "footer.deletedFile"
+            : typeof file.root === "string" && file.root.startsWith("ssh://") ? "footer.remoteUnavailable"
+              : !/^(?:[a-zA-Z]:[\\/]|\/|\\\\)/.test(file.filePath) || file.filePath.includes("\0") ? "footer.invalidPath" : null;
         if (reason) {
           showNotice(reason);
           return;
         }
         pending = true;
-        path.disabled = true;
         root.querySelector(".sfc-inline-open-error")?.remove();
         try {
-          const result = await api.write.run(action, openDocument
-            ? { filePath: file.filePath }
-            : { filePath: file.filePath, patch, changeType });
+          const result = await api.write.run("panels.openFile", { filePath: file.filePath });
           if (!result?.ok) throw new Error("Navigation request failed");
         } catch {
-          if (active() && path.isConnected)
-            showNotice(openDocument ? "footer.openError" : "footer.diffOpenError");
+          if (active() && path.isConnected) showNotice("footer.openError");
         } finally {
           pending = false;
-          if (active() && path.isConnected) path.disabled = false;
         }
       };
       path.addEventListener("click", open);
       row.addEventListener("click", (event) => {
-        if (event.target.closest("button")) return;
+        if (event.target.closest("button, .sfc-inline-diff")) return;
         void open(event);
       });
       row.append(path);
@@ -241,6 +315,7 @@ export function mountFooter(container, api, context, signal) {
         stats
           ? signedLines(stats)
           : element("span", "sfc-inline-muted", t("footer.linesUnavailable")),
+        diff,
       );
       list.append(row);
     }
@@ -278,38 +353,19 @@ export function mountFooter(container, api, context, signal) {
       notes.push(t("footer.legacy"));
     root.title = notes.join("\n");
   };
-  const accept = (response) => {
-    if (!active()) return;
-    const generatedAt = Number(response?.generatedAt) || 0;
-    if (generatedAt < latestGeneratedAt) return;
-    latestGeneratedAt = generatedAt;
-    runtime = response?.domains?.runtime ?? null;
-    render();
-  };
   const cleanup = () => {
     if (disposed) return;
     disposed = true;
     signal.removeEventListener("abort", cleanup);
-    try {
-      subscription?.unsubscribe();
-    } finally {
-      root.remove();
-      runtime = null;
-    }
+    root.replaceChildren();
+    root.remove();
+    expandedDiffs.clear();
   };
   signal.addEventListener("abort", cleanup, { once: true });
   if (!active()) {
     cleanup();
     return cleanup;
   }
-  void (async () => {
-    const sub = await api.metadata.subscribe("runtime", accept);
-    if (!active()) sub.unsubscribe();
-    else subscription = sub;
-  })().catch(() => {
-    if (!active()) return;
-    root.replaceChildren(element("p", "sfc-inline-note", t("readError")));
-    root.hidden = false;
-  });
+  render();
   return cleanup;
 }
