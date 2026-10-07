@@ -5,3 +5,6 @@ Thumbs.db
 
 # Local project collaboration rules
 /ROLE.md
+
+# Local packaging, release and runtime artifacts
+/.snow/
