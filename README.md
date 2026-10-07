@@ -10,7 +10,7 @@ Snow App 插件源码集合。两个插件可分别安装，本仓库不是插�
 | 插件 / ID | 清单版本 | 下载与发行状态 | 最低宿主（基础功能） | 使用说明 |
 | --- | --- | --- | --- | --- |
 | 提示词优化 / `com.snow.prompt-optimizer` | `1.1.0` | [历史预发行 v1.1.0-preview.1](https://github.com/BaSui01/snow-plugins/releases/tag/v1.1.0-preview.1 "提示词优化的历史预发行安装包") | Snow App `v0.4.16` | [配置与使用](plugins/prompt-optimizer/README.md) |
-| 会话文件统计 / `com.snow.session-file-count` | `1.1.1` | [正式 Release session-file-count/v1.1.1](https://github.com/BaSui01/snow-plugins/releases/tag/session-file-count/v1.1.1 "会话文件统计1.1.1正式安装包与发布说明") | Snow App `v0.4.16`（统计展示） | [使用说明](plugins/session-file-count/README.md) · [发布说明](plugins/session-file-count/RELEASE.md) |
+| 会话文件统计 / `com.snow.session-file-count` | `1.1.2`（本地开发，未发布） | [上一正式 Release session-file-count/v1.1.1](https://github.com/BaSui01/snow-plugins/releases/tag/session-file-count/v1.1.1 "会话文件统计1.1.1正式安装包与发布说明") | Snow App `v0.4.16`（统计展示） | [使用说明](plugins/session-file-count/README.md) · [发布说明](plugins/session-file-count/RELEASE.md) |
 
 - 提示词优化：配置优化规则、上下文与模型服务，通过输入栏魔杖改写草稿；支持安全回填和还原，不自动发送。
 - 会话文件统计：在最新已结束回复下方展示当前会话及子代理的已记录文件数和清单；无独立面板。统计不是完整审计，没有记录不等于没有修改。
@@ -31,8 +31,8 @@ Snow App 插件源码集合。两个插件可分别安装，本仓库不是插�
 
 - 提示词优化的基础功能需要专用优化接口、输入栏动作与安全草稿回填能力。
 - 会话文件统计的基础功能需要通用回复插槽及增强文件追踪元数据。
-- **Snow App v0.4.16 的 footer 没有 `write` API，不支持点击打开文件。** 会话文件统计 `1.1.1` 在该版本禁用路径按钮，但仍可展示统计。
-- 点击打开文件还需要 footer 的受限 `write` API 提供 `panels.openFile`。完整功能需另有已验证支持该接口的宿主构建；目前未确认支持此功能的正式宿主发行版，不把基础最低版本等同于完整功能兼容版本。
+- **Snow App v0.4.16 的 footer 没有 `write` API，不支持点击导航。** 已发布的会话文件统计 `1.1.1` 在该版本禁用路径按钮；当前开发源码保留统计，点击时提示缺少宿主能力。
+- 当前开发源码支持普通点击打开宿主 diff 阅读器；Windows/Linux 使用 Ctrl+点击、macOS 使用 ⌘+点击打开当前文档。分别需要 footer 的受限 `panels.openFileDiff` 与 `panels.openFile` 动作。配套宿主源码已实现，尚未发布或进行跨系统 UI 验收；不要将基础最低版本等同于完整功能兼容版本。
 
 ## 市场状态
 

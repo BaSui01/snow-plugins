@@ -77,5 +77,12 @@
   "footer.linesUnavailable": "行數未採集",
   "footer.allFiles": "全部 {{count}} 個檔案",
   "footer.collapse": "收合檔案清單",
-  "footer.legacy": "含舊歷史記錄，路徑未經規範身分確認"
+  "footer.legacy": "含舊歷史記錄，路徑未經規範身分確認",
+  "footer.viewDiff": "查看最新記錄的 diff",
+  "footer.diffUnavailable": "此記錄沒有可顯示的文字 diff（可能未採集或為二進位檔案）。",
+  "footer.diffSnapshot": "宿主採集的最新差異快照，可能被截斷；不是目前磁碟內容或會話累計淨差異。",
+  "footer.clickHint": "點擊查看 diff；{{modifier}}+點擊開啟目前檔案",
+  "footer.diffUpgrade": "請更新宿主以支援在右側面板開啟 diff。",
+  "footer.diffOpenError": "開啟 diff 請求失敗，請檢查宿主是否支援差異閱讀器介面。",
+  "footer.remoteUnavailable": "目前卡片不支援開啟遠端文件，不會將遠端路徑當作本機檔案。"
 }

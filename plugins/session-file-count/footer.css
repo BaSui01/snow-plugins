@@ -38,7 +38,8 @@
   border-radius: var(--radius-md, 8px);
   background: var(--accent-blue-bg, transparent);
   color: var(--accent-blue-text, var(--accent-blue, currentColor));
-  font-size: 24px;
+  line-height: 0;
+  align-self: center;
 }
 .sfc-inline .sfc-inline-heading-text {
   display: flex;
@@ -99,9 +100,6 @@
   padding: 7px 10px;
   border-radius: var(--radius-sm, 6px);
 }
-.sfc-inline .sfc-inline-file:nth-child(even) {
-  background: var(--bg-tertiary, transparent);
-}
 .sfc-inline .sfc-inline-file:hover {
   background: var(--bg-hover, var(--bg-tertiary, transparent));
 }
@@ -156,17 +154,20 @@
   background: var(--bg-hover, transparent);
 }
 .sfc-inline .sfc-inline-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+}
+.sfc-inline .sfc-inline-icon svg,
+.sfc-inline .sfc-inline-chevron svg {
   display: block;
-  flex: 0 0 8px;
-  width: 8px;
-  height: 8px;
-  border-right: 1.5px solid currentColor;
-  border-bottom: 1.5px solid currentColor;
-  transform: translateY(-2px) rotate(45deg);
+  width: 100%;
+  height: 100%;
 }
-.sfc-inline .sfc-inline-toggle[aria-expanded="true"] .sfc-inline-chevron {
-  transform: translateY(2px) rotate(225deg);
-}
+.sfc-inline .sfc-inline-icon svg { width: 22px; height: 22px; }
 .sfc-inline .sfc-inline-toggle:focus-visible {
   outline: 2px solid var(--accent-blue, currentColor);
   outline-offset: -2px;
@@ -192,3 +193,5 @@
     padding: 9px 10px;
   }
 }
+
+.sfc-inline .sfc-inline-file { cursor: pointer; }

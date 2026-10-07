@@ -16,11 +16,43 @@ export function mountFooter(container, api, context, signal) {
   let runtime = null;
   let expanded = false;
   let latestGeneratedAt = 0;
-  const canOpenFiles = Boolean(
-    api.write?.domains?.().some((domain) =>
-      domain.actions?.some((action) => action.id === "panels.openFile" && action.granted),
-    ),
+  // Match the host's platform-aware primary modifier convention.
+  const isMac = /mac/i.test(navigator.platform ?? "") || /mac/i.test(navigator.userAgent ?? "");
+  const modifier = isMac ? "⌘" : "Ctrl";
+  const actions = new Set(
+    api.write?.domains?.().flatMap((domain) =>
+      (domain.actions ?? []).filter((action) => action.granted).map((action) => action.id),
+    ) ?? [],
   );
+  const showNotice = (key) => {
+    root.querySelector(".sfc-inline-open-error")?.remove();
+    const note = element("p", "sfc-inline-note sfc-inline-open-error", t(key));
+    note.setAttribute("role", "alert");
+    root.append(note);
+  };
+  // The DOM footer uses the host Lucide component's SVG node data, not a bundled icon.
+  const hostIcon = (name, className) => {
+    const wrapper = element("span", className);
+    wrapper.setAttribute("aria-hidden", "true");
+    const component = api.ui.icon(name);
+    const nodes = component?.render?.({}, null)?.props?.iconNode;
+    if (!Array.isArray(nodes)) return wrapper;
+    const ns = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(ns, "svg");
+    for (const [key, value] of Object.entries({
+      viewBox: "0 0 24 24", width: "24", height: "24", fill: "none",
+      stroke: "currentColor", "stroke-width": "2",
+      "stroke-linecap": "round", "stroke-linejoin": "round",
+    })) svg.setAttribute(key, value);
+    for (const [tag, attributes] of nodes) {
+      const node = document.createElementNS(ns, tag);
+      for (const [key, value] of Object.entries(attributes))
+        if (key !== "key") node.setAttribute(key, String(value));
+      svg.append(node);
+    }
+    wrapper.append(svg);
+    return wrapper;
+  };
   const active = () => !disposed && !signal.aborted;
   const recordsFor = (map) =>
     map &&
@@ -131,7 +163,7 @@ export function mountFooter(container, api, context, signal) {
       return;
     }
     const heading = element("div", "sfc-inline-heading");
-    const icon = element("span", "sfc-inline-icon", "▤");
+    const icon = hostIcon("Files", "sfc-inline-icon");
     icon.setAttribute("aria-hidden", "true");
     const text = element("div", "sfc-inline-heading-text");
     text.title = t("footer.cumulative");
@@ -160,35 +192,48 @@ export function mountFooter(container, api, context, signal) {
       const row = element("li", "sfc-inline-file");
       const path = element("button", "sfc-inline-path", relativePath(file));
       path.type = "button";
-      const absolute = /^(?:[a-zA-Z]:[\\/]|\/|\\\\)/.test(file.filePath);
-      const reason = !canOpenFiles
-        ? "footer.openUpgrade"
-        : file.kind === "delete"
-          ? "footer.deletedFile"
-          : !absolute
-            ? "footer.invalidPath"
-            : null;
-      path.disabled = reason !== null;
-      path.title = `${file.filePath}\n${t(reason ?? "footer.openFile")}`;
-      path.setAttribute("aria-label", `${t(reason ?? "footer.openFile")}: ${relativePath(file)}`);
-      path.addEventListener("click", async () => {
-        if (!active() || path.disabled) return;
+      path.title = `${file.filePath}\n${t("footer.clickHint", { modifier })}\n${t("footer.diffSnapshot")}`;
+      path.setAttribute("aria-label", `${relativePath(file)}: ${t("footer.clickHint", { modifier })}`);
+      let pending = false;
+      const open = async (event) => {
+        if (!active() || pending || (event.button !== undefined && event.button !== 0)) return;
+        event.preventDefault();
+        const openDocument = isMac ? event.metaKey : event.ctrlKey;
+        const action = openDocument ? "panels.openFile" : "panels.openFileDiff";
+        const patch = file.diff?.patch;
+        const changeType = { create: "added", edit: "modified", delete: "deleted" }[file.kind];
+        const reason = !actions.has(action)
+          ? openDocument ? "footer.openUpgrade" : "footer.diffUpgrade"
+          : openDocument
+            ? file.kind === "delete" ? "footer.deletedFile"
+              : typeof file.root === "string" && file.root.startsWith("ssh://") ? "footer.remoteUnavailable"
+                : !/^(?:[a-zA-Z]:[\\/]|\/|\\\\)/.test(file.filePath) || file.filePath.includes("\0") ? "footer.invalidPath" : null
+            : file.diff?.isBinary || typeof patch !== "string" || !patch.trim() || !changeType
+              ? "footer.diffUnavailable" : null;
+        if (reason) {
+          showNotice(reason);
+          return;
+        }
+        pending = true;
         path.disabled = true;
         root.querySelector(".sfc-inline-open-error")?.remove();
         try {
-          const result = await api.write.run("panels.openFile", {
-            filePath: file.filePath,
-          });
-          if (!result?.ok) throw new Error("File open request failed");
+          const result = await api.write.run(action, openDocument
+            ? { filePath: file.filePath }
+            : { filePath: file.filePath, patch, changeType });
+          if (!result?.ok) throw new Error("Navigation request failed");
         } catch {
-          if (active() && path.isConnected) {
-            const note = element("p", "sfc-inline-note sfc-inline-open-error", t("footer.openError"));
-            note.setAttribute("role", "alert");
-            root.append(note);
-          }
+          if (active() && path.isConnected)
+            showNotice(openDocument ? "footer.openError" : "footer.diffOpenError");
         } finally {
+          pending = false;
           if (active() && path.isConnected) path.disabled = false;
         }
+      };
+      path.addEventListener("click", open);
+      row.addEventListener("click", (event) => {
+        if (event.target.closest("button")) return;
+        void open(event);
       });
       row.append(path);
       const stats = linesFor(file);
@@ -205,7 +250,7 @@ export function mountFooter(container, api, context, signal) {
       toggle.type = "button";
       toggle.setAttribute("aria-expanded", String(expanded));
       toggle.setAttribute("aria-controls", list.id);
-      const chevron = element("span", "sfc-inline-chevron");
+      const chevron = hostIcon(expanded ? "ChevronUp" : "ChevronDown", "sfc-inline-chevron");
       chevron.setAttribute("aria-hidden", "true");
       toggle.append(
         element(

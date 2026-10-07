@@ -77,5 +77,12 @@
   "footer.linesUnavailable": "行数未采集",
   "footer.allFiles": "全部 {{count}} 个文件",
   "footer.collapse": "收起文件列表",
-  "footer.legacy": "含旧历史记录，路径未经规范身份确认"
+  "footer.legacy": "含旧历史记录，路径未经规范身份确认",
+  "footer.viewDiff": "查看最新记录的 diff",
+  "footer.diffUnavailable": "此记录没有可展示的文本 diff（可能未采集或为二进制文件）。",
+  "footer.diffSnapshot": "宿主采集的最新差异快照，可能被截断；不是当前磁盘内容或会话累计净差异。",
+  "footer.clickHint": "点击查看 diff；{{modifier}}+点击打开当前文件",
+  "footer.diffUpgrade": "请更新宿主以支持在右侧面板打开 diff。",
+  "footer.diffOpenError": "打开 diff 请求失败，请检查宿主是否支持差异阅读器接口。",
+  "footer.remoteUnavailable": "当前卡片不支持打开远程文档，不会把远程路径当作本地文件。"
 }
