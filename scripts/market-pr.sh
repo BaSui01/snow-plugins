@@ -31,13 +31,15 @@ if [[ -n "$existing" ]]; then
     *) echo '::error::Unknown PR state'; exit 1 ;;
   esac
 fi
-pending=$(gh pr list --repo "$upstream" --state open --limit 1000 \
-  --json headRefName,headRepositoryOwner,url \
-  --jq ".[] | select(.headRepositoryOwner.login == \"BaSui01\" and (.headRefName | startswith(\"release/$PLUGIN/v\"))) | .url")
-if [[ -n "$pending" ]]; then
-  echo "::error::Resolve the pending market PR before updating this plugin: $pending"
-  exit 1
-fi
+# Auto-supersede previous pending open PRs for the same plugin:
+while read -r pr_num; do
+  [[ -z "$pr_num" ]] && continue
+  echo "Superseding previous market PR #$pr_num in favor of $RELEASE_TAG..."
+  gh pr close "$pr_num" --repo "$upstream" \
+    --comment "Superseded by release \`$RELEASE_TAG\`. A new market pull request is being opened with the updated release asset." || true
+done < <(gh pr list --repo "$upstream" --state open --limit 1000 \
+  --json number,headRefName,headRepositoryOwner \
+  --jq '.[] | select(.headRepositoryOwner.login == "BaSui01" and (.headRefName | startswith("release/'"$PLUGIN"'/v"))) | "\(.number)"')
 if git diff --quiet -- "$entry"; then
   echo 'Market already points to this release asset.'
   exit 0
