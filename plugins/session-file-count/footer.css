@@ -1,17 +1,17 @@
 .sfc-inline {
   box-sizing: border-box;
+  container: sfc / inline-size;
   margin: 12px 0 4px;
   width: 100%;
   min-width: 0;
-  border: 1px solid var(--border-color, #7775);
-  border-radius: 14px;
-  background: var(--bg-secondary, #7771);
+  border: 1px solid var(--border-color, currentColor);
+  border-radius: var(--radius-lg, 12px);
+  background: var(--bg-secondary, transparent);
   color: var(--text-primary, inherit);
   font: inherit;
   font-size: 12px;
   line-height: 1.6;
   overflow: hidden;
-  box-shadow: 0 3px 12px #0000000a;
 }
 .sfc-inline[hidden] {
   display: none;
@@ -26,54 +26,58 @@
   gap: 10px;
   align-items: center;
   padding: 11px 12px;
-  border-bottom: 1px solid var(--border-color, #7774);
+  border-bottom: 1px solid var(--border-color, currentColor);
 }
 .sfc-inline .sfc-inline-icon {
   display: grid;
   place-items: center;
-  flex: 0 0 38px;
-  width: 38px;
-  height: 38px;
-  border: 1px solid var(--border-color, #7774);
-  border-radius: 9px;
-  background: var(--accent-blue-bg, #4488ee22);
-  color: var(--accent-blue, #629cff);
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border-color, currentColor);
+  border-radius: var(--radius-md, 8px);
+  background: var(--accent-blue-bg, transparent);
+  color: var(--accent-blue-text, var(--accent-blue, currentColor));
   font-size: 24px;
 }
 .sfc-inline .sfc-inline-heading-text {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  gap: 1px;
+  gap: 2px;
 }
 .sfc-inline strong {
   font-size: 13px;
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 .sfc-inline .sfc-inline-heading-lines {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  column-gap: 10px;
+  min-width: 0;
 }
 .sfc-inline .sfc-inline-lines {
   display: inline-flex;
   flex-shrink: 0;
-  gap: 7px;
+  flex-wrap: wrap;
+  max-width: 100%;
+  gap: 2px 7px;
   font-size: 11px;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+}
+.sfc-inline .sfc-inline-lines > span {
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
 .sfc-inline .sfc-inline-add {
-  color: var(--accent-green, #34d399);
+  color: var(--accent-green-text, var(--accent-green, currentColor));
 }
 .sfc-inline .sfc-inline-delete {
-  color: var(--accent-red, #f87171);
+  color: var(--accent-red-text, var(--accent-red, currentColor));
 }
 .sfc-inline .sfc-inline-muted {
-  color: var(--text-secondary, inherit);
-  opacity: 0.8;
+  color: var(--text-tertiary, var(--text-secondary, inherit));
   font-size: 11px;
+  overflow-wrap: anywhere;
 }
 .sfc-inline .sfc-inline-list {
   padding: 8px;
@@ -81,44 +85,60 @@
   list-style: none;
   max-height: 280px;
   overflow-y: auto;
+  overflow-x: hidden;
   scrollbar-width: thin;
-  scrollbar-color: var(--border-color, #7775) transparent;
+  scrollbar-color: var(--scrollbar-thumb, var(--border-color, currentColor)) transparent;
 }
 .sfc-inline .sfc-inline-file {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
+  gap: 2px 12px;
   min-width: 0;
   padding: 7px 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm, 6px);
 }
 .sfc-inline .sfc-inline-file:nth-child(even) {
-  background: var(--bg-tertiary, #7771);
+  background: var(--bg-tertiary, transparent);
 }
 .sfc-inline .sfc-inline-file:hover {
-  background: var(--accent-blue-bg, #4488ee14);
+  background: var(--bg-hover, var(--bg-tertiary, transparent));
 }
 .sfc-inline .sfc-inline-path {
-  flex: 1;
+  flex: 1 1 12rem;
   min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
   color: var(--text-secondary, inherit);
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
 }
-.sfc-inline .sfc-inline-file > .sfc-inline-muted {
-  flex-shrink: 0;
+.sfc-inline .sfc-inline-path:not(:disabled):hover {
+  color: var(--accent-blue-text, var(--accent-blue, currentColor));
+  text-decoration: underline;
+}
+.sfc-inline .sfc-inline-path:focus-visible {
+  outline: 2px solid var(--accent-blue, currentColor);
+  outline-offset: 2px;
+}
+.sfc-inline .sfc-inline-path:disabled {
+  cursor: default;
+  opacity: 1;
 }
 .sfc-inline .sfc-inline-toggle {
   display: flex;
-  flex-direction: row;
   align-items: center;
   justify-content: center;
-  flex-wrap: nowrap;
   width: 100%;
   gap: 7px;
-  white-space: nowrap;
   padding: 9px 12px;
   border: 0;
   background: transparent;
@@ -127,8 +147,13 @@
   font-size: 12px;
   cursor: pointer;
 }
+.sfc-inline .sfc-inline-toggle > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .sfc-inline .sfc-inline-toggle:hover {
   color: var(--text-primary, inherit);
+  background: var(--bg-hover, transparent);
 }
 .sfc-inline .sfc-inline-chevron {
   display: block;
@@ -143,25 +168,27 @@
   transform: translateY(2px) rotate(225deg);
 }
 .sfc-inline .sfc-inline-toggle:focus-visible {
-  outline: 2px solid var(--accent-blue, #629cff);
+  outline: 2px solid var(--accent-blue, currentColor);
   outline-offset: -2px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm, 6px);
 }
 .sfc-inline .sfc-inline-note {
   margin: 7px 12px;
   color: var(--text-secondary, inherit);
-  font-size: 11px;
+  font-size: 12px;
   overflow-wrap: anywhere;
 }
-@media (max-width: 340px) {
+@container sfc (max-width: 360px) {
   .sfc-inline .sfc-inline-file {
-    flex-wrap: wrap;
-    gap: 2px 8px;
+    padding: 7px 6px;
   }
   .sfc-inline .sfc-inline-path {
     flex-basis: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
   .sfc-inline .sfc-inline-heading {
     gap: 7px;
+    padding: 9px 10px;
   }
 }

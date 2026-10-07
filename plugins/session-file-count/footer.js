@@ -16,6 +16,11 @@ export function mountFooter(container, api, context, signal) {
   let runtime = null;
   let expanded = false;
   let latestGeneratedAt = 0;
+  const canOpenFiles = Boolean(
+    api.write?.domains?.().some((domain) =>
+      domain.actions?.some((action) => action.id === "panels.openFile" && action.granted),
+    ),
+  );
   const active = () => !disposed && !signal.aborted;
   const recordsFor = (map) =>
     map &&
@@ -121,7 +126,7 @@ export function mountFooter(container, api, context, signal) {
       (left, right) =>
         (Number(left.timestamp) || 0) - (Number(right.timestamp) || 0),
     );
-    if (!files.length && coverage?.length === 0) {
+    if (!files.length) {
       root.hidden = true;
       return;
     }
@@ -129,15 +134,9 @@ export function mountFooter(container, api, context, signal) {
     const icon = element("span", "sfc-inline-icon", "▤");
     icon.setAttribute("aria-hidden", "true");
     const text = element("div", "sfc-inline-heading-text");
+    text.title = t("footer.cumulative");
     text.append(
-      element(
-        "strong",
-        "",
-        files.length
-          ? t("footer.recorded", { count: files.length })
-          : t("footer.empty"),
-      ),
-      element("span", "sfc-inline-muted", t("footer.cumulative")),
+      element("strong", "", t("footer.recorded", { count: files.length })),
     );
     const known = files.map(linesFor).filter(Boolean);
     if (known.length) {
@@ -149,15 +148,9 @@ export function mountFooter(container, api, context, signal) {
         { additions: 0, deletions: 0 },
       );
       const stats = element("div", "sfc-inline-heading-lines");
-      stats.append(
-        signedLines(totals),
-        element("span", "sfc-inline-muted", t("footer.knownLines")),
-      );
+      stats.title = t("footer.knownLines");
+      stats.append(signedLines(totals));
       text.append(stats);
-    } else if (files.length) {
-      text.append(
-        element("span", "sfc-inline-muted", t("footer.linesUnavailable")),
-      );
     }
     heading.append(icon, text);
     root.append(heading);
@@ -165,8 +158,38 @@ export function mountFooter(container, api, context, signal) {
     list.id = `sfc-files-${crypto.randomUUID()}`;
     for (const file of expanded ? files : files.slice(0, 4)) {
       const row = element("li", "sfc-inline-file");
-      const path = element("span", "sfc-inline-path", relativePath(file));
-      path.title = file.filePath;
+      const path = element("button", "sfc-inline-path", relativePath(file));
+      path.type = "button";
+      const absolute = /^(?:[a-zA-Z]:[\\/]|\/|\\\\)/.test(file.filePath);
+      const reason = !canOpenFiles
+        ? "footer.openUpgrade"
+        : file.kind === "delete"
+          ? "footer.deletedFile"
+          : !absolute
+            ? "footer.invalidPath"
+            : null;
+      path.disabled = reason !== null;
+      path.title = `${file.filePath}\n${t(reason ?? "footer.openFile")}`;
+      path.setAttribute("aria-label", `${t(reason ?? "footer.openFile")}: ${relativePath(file)}`);
+      path.addEventListener("click", async () => {
+        if (!active() || path.disabled) return;
+        path.disabled = true;
+        root.querySelector(".sfc-inline-open-error")?.remove();
+        try {
+          const result = await api.write.run("panels.openFile", {
+            filePath: file.filePath,
+          });
+          if (!result?.ok) throw new Error("File open request failed");
+        } catch {
+          if (active() && path.isConnected) {
+            const note = element("p", "sfc-inline-note sfc-inline-open-error", t("footer.openError"));
+            note.setAttribute("role", "alert");
+            root.append(note);
+          }
+        } finally {
+          if (active() && path.isConnected) path.disabled = false;
+        }
+      });
       row.append(path);
       const stats = linesFor(file);
       row.append(
@@ -204,10 +227,11 @@ export function mountFooter(container, api, context, signal) {
       });
       root.append(toggle);
     }
-    if (coverage === null)
-      root.append(element("p", "sfc-inline-note", t("coverageMissing")));
+    const notes = [];
+    if (coverage === null) notes.push(t("coverageMissing"));
     if (files.some((file) => !file.fileKey || !file.source))
-      root.append(element("p", "sfc-inline-note", t("footer.legacy")));
+      notes.push(t("footer.legacy"));
+    root.title = notes.join("\n");
   };
   const accept = (response) => {
     if (!active()) return;
