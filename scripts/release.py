@@ -47,7 +47,19 @@ def files(directory):
             yield path
 
 
+def validate_market_metadata(metadata):
+    if not isinstance(metadata, dict) or set(metadata) - {"minAppVersion"}:
+        raise ValueError("market.json must be an object containing only minAppVersion")
+    minimum = metadata.get("minAppVersion")
+    if "minAppVersion" in metadata and (not isinstance(minimum, str) or not re.fullmatch(VERSION, minimum)):
+        raise ValueError("Invalid minimum host version")
+    return metadata
+
+
 def validate(directory, manifest):
+    market_path = directory / "market.json"
+    if market_path.exists():
+        validate_market_metadata(json.loads(market_path.read_text(encoding="utf-8")))
     resources = [manifest["entry"], *manifest.get("styles", []), *manifest.get("locales", {}).values()]
     resources += [item["entry"] for item in manifest.get("contributions", {}).get("messageFooters", [])]
     icon = manifest.get("icon", "")
@@ -143,14 +155,14 @@ def main():
             entry["author"] = published["author"]
         if published.get("minAppVersion"):
             entry["minAppVersion"] = published["minAppVersion"]
-    if not isinstance(market_metadata, dict):
-        raise ValueError("market.json must be an object")
-    if set(market_metadata) - {"minAppVersion"}:
-        raise ValueError("market.json only accepts an explicit minAppVersion")
-    if "minAppVersion" in market_metadata:
+    if "minAppVersion" in validate_market_metadata(market_metadata):
         minimum = market_metadata["minAppVersion"]
-        if not isinstance(minimum, str) or not re.fullmatch(VERSION, minimum):
-            raise ValueError("Invalid minimum host version")
+        previous = entry.get("minAppVersion")
+        if previous:
+            if not re.fullmatch(VERSION, previous):
+                raise ValueError("Review existing non-stable minimum host version manually")
+            if tuple(map(int, minimum.split("."))) < tuple(map(int, previous.split("."))):
+                raise ValueError("Refusing to lower the market minimum host version")
         entry["minAppVersion"] = minimum
     entry.update(version=version, tag=args.tag, asset=asset,
                  downloadUrl=f"{REPO}/releases/download/{quote(args.tag, safe='')}/{asset}",
