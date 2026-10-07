@@ -77,18 +77,26 @@ const selectionError = (profiles, prefs) => {
   return "";
 };
 
-const buildInstructions = (api, prefs) => {
+const buildInstructions = (api, prefs, hasImages = false) => {
   if (!prefs.optimizationPrompt.trim()) throw new Error(api.t("promptRequired"));
   if (Array.from(prefs.optimizationPrompt).length > 7000) {
     throw new Error(api.t("settingsTooLong"));
   }
-  const text = [
+  const parts = [
     "Apply these preferences together: the strategy sets the editing focus, length sets detail, and presentation sets the format. Preserve all meaningful constraints and uncertainty before style or length targets; do not pad the result just to preserve length.",
+  ];
+  if (hasImages) {
+    parts.push(
+      "Attachment context:\nThe user attached one or more images/screenshots with this draft. Preserve and clarify any references to the visual attachments (such as 'as shown in the screenshot', 'the attached image', UI elements, or error callouts), ensuring the rewritten prompt clearly guides the model to inspect them. Do not remove, contradict, or obscure references to the visual input.",
+    );
+  }
+  parts.push(
     "Optimization rules:\n" + prefs.optimizationPrompt.trim(),
     "Selected strategy:\n" + STRATEGIES[prefs.strategy],
     "Length preference:\n" + LENGTHS[prefs.length],
     "Presentation preference:\n" + STRUCTURES[prefs.structure],
-  ].join("\n\n");
+  );
+  const text = parts.join("\n\n");
   if (Array.from(text).length > 8000) throw new Error(api.t("settingsTooLong"));
   return text;
 };
@@ -117,12 +125,14 @@ export async function optimizeDraft({ api, signal, onStatus }) {
   checkActive(signal);
   const invalidSelection = selectionError(profiles, prefs);
   if (invalidSelection) throw new Error(api.t(invalidSelection));
-  const optimizationInstructions = buildInstructions(api, prefs);
   checkActive(signal);
   const captured = await api.write.run("chatInput.captureDraft", {});
   if (!captured.ok || !captured.data?.draftToken) throw new Error(api.t("captureError"));
   const draft = captured.data;
   if (!draft.text?.trim()) throw new Error(api.t("empty"));
+  const hasImages =
+    typeof draft.inputText === "string" && draft.inputText.includes("@@image:");
+  const optimizationInstructions = buildInstructions(api, prefs, hasImages);
   const includeContext = prefs.contextMode === "recent" && Boolean(draft.conversationId);
   checkActive(signal);
   onStatus(api.t("generating"));
