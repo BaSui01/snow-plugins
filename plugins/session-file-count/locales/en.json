@@ -19,7 +19,7 @@
   "footer.diffLimit": "To keep the card responsive, only the first {{count}} patch lines are shown; this is not the complete diff.",
   "footer.noNewline": "No newline at this point (original marker preserved)",
   "footer.clickHint": "Click to expand/collapse inline diff; {{modifier}}+click to open the current file",
-  "footer.taskUnavailable": "The host or this history lacks a reliable task-end record. An independent task card cannot be restored; cumulative conversation counts are not shown. Complete a new task on the companion host build.",
+  "footer.taskUnavailable": "The current host lacks message footer slot support; task file cards cannot be displayed. Complete the task on a supporting host build.",
   "footer.openUpgrade": "Update the host to enable opening files",
   "footer.deletedFile": "This record is a deletion; the deleted file cannot be viewed",
   "footer.remoteUnavailable": "This card cannot open remote documents; remote paths are never treated as local files.",

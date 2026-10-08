@@ -19,7 +19,7 @@
   "footer.diffLimit": "為保持卡片回應，僅顯示 patch 前 {{count}} 行；不代表完整差異。",
   "footer.noNewline": "此處沒有末尾換行（保留原始標記）",
   "footer.clickHint": "點擊展開/收合內聯 diff；{{modifier}}+點擊開啟目前檔案",
-  "footer.taskUnavailable": "宿主或這段歷史缺少可靠的任務結束記錄，無法還原獨立任務卡片；不顯示會話累計統計。請使用配套宿主建置完成新任務。",
+  "footer.taskUnavailable": "目前宿主缺少訊息結束插槽支援，無法顯示任務檔案卡片。請使用配套宿主建置。",
   "footer.openUpgrade": "請更新宿主以支援點擊開啟檔案",
   "footer.deletedFile": "此記錄為刪除操作，無法查看已刪除的檔案",
   "footer.remoteUnavailable": "目前卡片不支援開啟遠端文件，不會將遠端路徑當作本機檔案。",

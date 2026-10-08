@@ -11,7 +11,7 @@
     "zh-CN": "在每次任务结束回复下方展示该任务及子代理的独立文件记录，保留历史卡片。",
     "zh-TW": "在每次任務結束回覆下方顯示該任務及子代理的獨立檔案記錄，保留歷史卡片。"
   },
-  "version": "1.1.4",
+  "version": "1.1.5",
   "author": "小青枣 & Snow App contributors",
   "license": "MIT",
   "icon": "lucide:Files",

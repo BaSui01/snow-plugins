@@ -286,15 +286,12 @@ export function mountFooter(container, api, context, signal) {
     if (!active()) return;
     root.replaceChildren();
     root.hidden = false;
-    const isSubAgent =
-      typeof context.conversationId === "string" &&
-      context.conversationId.startsWith("sub-");
-    if (isSubAgent && !context.task) {
-      root.hidden = true;
+    if (api.ui?.messageFooterVersion !== 1) {
+      root.append(element("p", "sfc-inline-note", t("footer.taskUnavailable")));
       return;
     }
-    if (api.ui?.messageFooterVersion !== 1 || !context.task) {
-      root.append(element("p", "sfc-inline-note", t("footer.taskUnavailable")));
+    if (!context.task) {
+      root.hidden = true;
       return;
     }
     const raw = Array.isArray(context.task.records) ? context.task.records : null;

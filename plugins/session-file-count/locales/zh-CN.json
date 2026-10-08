@@ -19,7 +19,7 @@
   "footer.diffLimit": "为保持卡片响应，仅展示 patch 前 {{count}} 行；不代表完整差异。",
   "footer.noNewline": "此处没有末尾换行（保留原始标记）",
   "footer.clickHint": "点击展开/收起内联 diff；{{modifier}}+点击打开当前文件",
-  "footer.taskUnavailable": "宿主或这段历史缺少可靠的任务结束记录，无法恢复独立任务卡片；不展示会话累计统计。请使用配套宿主构建完成新任务。",
+  "footer.taskUnavailable": "当前宿主缺少消息结束插槽支持，无法显示任务文件卡片。请使用配套宿主构建。",
   "footer.openUpgrade": "请更新宿主以支持点击打开文件",
   "footer.deletedFile": "该记录为删除操作，无法查看已删除的文件",
   "footer.remoteUnavailable": "当前卡片不支持打开远程文档，不会把远程路径当作本地文件。",
