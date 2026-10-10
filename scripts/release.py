@@ -14,6 +14,8 @@ SLUG = r"[a-z0-9]+(?:-[a-z0-9]+)*"
 VERSION = r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
 TAG = re.compile(rf"(?P<plugin>{SLUG})/v(?P<version>{VERSION})(?P<preview>-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?")
 EXCLUDED = {".git", "node_modules", "__pycache__"}
+# Build-time only: validated in CI, but never shipped inside an install package.
+DEV_ONLY = {"src", "scripts", "tsconfig.json", "package.json", "package-lock.json"}
 
 
 def discover():
@@ -37,9 +39,12 @@ def discover():
     return plugins
 
 
-def files(directory):
+def files(directory, include_dev=True):
     for path in sorted(directory.rglob("*")):
-        if set(path.relative_to(directory).parts).intersection(EXCLUDED):
+        parts = set(path.relative_to(directory).parts)
+        if parts.intersection(EXCLUDED):
+            continue
+        if not include_dev and parts.intersection(DEV_ONLY):
             continue
         if path.is_symlink():
             raise ValueError(f"Symlinks are not allowed: {path}")
@@ -116,7 +121,7 @@ def main():
         if archive.exists():
             raise FileExistsError(archive)
         with ZipFile(archive, "w", ZIP_DEFLATED) as bundle:
-            for path in files(directory):
+            for path in files(directory, include_dev=False):
                 bundle.write(path, path.relative_to(directory).as_posix())
             if not (directory / "LICENSE").exists():
                 bundle.write(ROOT / "LICENSE", "LICENSE")

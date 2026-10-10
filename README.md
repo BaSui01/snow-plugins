@@ -9,10 +9,10 @@ Snow App 插件源码集合。两个插件可分别安装，本仓库不是插�
 
 | 插件 / ID | 清单版本 | 下载与发行状态 | 最低宿主（基础功能） | 使用说明 |
 | --- | --- | --- | --- | --- |
-| 提示词优化 / `com.snow.prompt-optimizer` | `1.1.2` | [Release prompt-optimizer/v1.1.2](https://github.com/BaSui01/snow-plugins/releases/tag/prompt-optimizer/v1.1.2 "提示词优化 v1.1.2 安装包") · [历史预发行 v1.1.0-preview.1](https://github.com/BaSui01/snow-plugins/releases/tag/v1.1.0-preview.1 "历史预发行包") | Snow App `v0.4.16`（历史基础功能；新行为另需配套构建） | [配置与使用](plugins/prompt-optimizer/README.md) · [发布说明](plugins/prompt-optimizer/RELEASE.md) |
+| 提示词优化 / `com.snow.prompt-optimizer` | `1.2.0` | 本地源码已升版，**尚未发布**；历史 Release 见 [prompt-optimizer/v1.1.2](https://github.com/BaSui01/snow-plugins/releases/tag/prompt-optimizer/v1.1.2 "提示词优化 v1.1.2 安装包") · [历史预发行 v1.1.0-preview.1](https://github.com/BaSui01/snow-plugins/releases/tag/v1.1.0-preview.1 "历史预发行包") | Snow App `v0.4.16`（历史基础功能；新行为另需配套构建） | [配置与使用](plugins/prompt-optimizer/README.md) · [发布说明](plugins/prompt-optimizer/RELEASE.md) |
 | 会话文件统计 / `com.snow.session-file-count` | `1.1.5` | [Release session-file-count/v1.1.5](https://github.com/BaSui01/snow-plugins/releases/tag/session-file-count/v1.1.5 "会话文件统计 v1.1.5 安装包") · [历史 Release v1.1.4](https://github.com/BaSui01/snow-plugins/releases/tag/session-file-count/v1.1.4 "历史1.1.4安装包") · [历史 Release v1.1.2](https://github.com/BaSui01/snow-plugins/releases/tag/session-file-count/v1.1.2 "历史1.1.2安装包") | Snow App `v0.4.16`（历史统计展示；不代表 1.1.5 taskHistory 兼容） | [使用说明](plugins/session-file-count/README.md) · [发布说明](plugins/session-file-count/RELEASE.md) |
 
-- 提示词优化：配置优化规则、上下文与模型服务，通过输入栏魔杖改写草稿；支持安全回填和还原，不自动发送。
+- 提示词优化：配置优化规则、上下文与模型服务，通过输入栏魔杖改写草稿；支持安全回填和还原，不自动发送。源码为 TypeScript，`index.js` 由 `npm run build` 生成。
 - 会话文件统计：当前开发源码在每次任务的结束回复下方展示该任务及子代理的独立文件数和清单，旧卡片保留并支持历史恢复；无独立面板。统计不是完整审计，没有记录不等于没有修改。
 - 版本、标签和安装包按插件独立管理；历史统一预发行标签不是两个插件当前版本的统一下载入口。
 
@@ -31,6 +31,7 @@ Snow App 插件源码集合。两个插件可分别安装，本仓库不是插�
 
 - 提示词优化的基础功能需要专用优化接口、输入栏动作与安全草稿回填能力。
 - 会话文件统计的基础功能需要通用回复插槽及增强文件追踪元数据。
+- 提示词优化 1.2.0 的「执行期间只显示转圈」是宿主通用行为改动（`ChatInputPluginAction.tsx` 忙碌时隐藏状态文字、仅保留读屏播报），**尚未进入任何已发布宿主版本**；旧宿主仍会显示状态文字，不影响插件功能。
 - **Snow App v0.4.16 的 footer 没有 `write` API，不支持修饰键文件导航。** 当前开发源码的普通点击在文件下方内联展开/收起最新记录的左右双栏 diff，无需 footer diff write 能力；已发布安装包的行为请参阅对应发行说明。
 - 当前会话文件统计源码保留 Windows/Linux Ctrl+点击、macOS ⌘+点击打开当前文档，仍需 footer 的受限 `panels.openFile` 动作。配套能力安排为 Snow App `v0.4.17` 新功能，正式版及跨系统 UI 验收尚未完成；市场最低版本仍为 `0.4.16`，不要将基础安装门槛等同于修饰键导航兼容版本。内联 diff 为左右双栏对比，仅展示最新记录快照，非当前文件或累计净差异。
 

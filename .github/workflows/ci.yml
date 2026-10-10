@@ -28,3 +28,8 @@ jobs:
         run: bash -n scripts/market-pr.sh
       - name: Validate plugin manifests, resources and syntax
         run: python scripts/release.py validate
+      - name: Verify the TypeScript entry matches its sources
+        working-directory: plugins/prompt-optimizer
+        run: |
+          npm ci --no-audit --no-fund
+          npm run check

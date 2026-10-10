@@ -1,230 +1,338 @@
-// ESM configuration panel plus an explicitly user-triggered input action.
-// No top-level network calls, draft persistence, provider keys or DOM writes.
-const STRATEGIES = {
+// Generated from src/ by scripts/build.mjs — edit the TypeScript sources, not this file.
+
+// src/preferences.ts
+var STRATEGIES = {
   faithful: "Improve clarity conservatively. Clarify ambiguity only when supported by the draft or reference context; otherwise preserve it. Preserve all intent, facts, constraints and uncertainty; never add requirements.",
   structured: "Organize the task's existing objectives, context, constraints and output requirements into a coherent order. Follow the presentation preference rather than imposing headings. Omit missing information instead of inventing it.",
   concise: "Remove repetition and redundant wording while preserving every meaningful requirement, qualifier, fact and uncertainty.",
-  custom: "Use the user's optimization instructions without adding an extra preset strategy.",
+  custom: "Use the user's optimization instructions without adding an extra preset strategy."
 };
-const LENGTHS = {
+var LENGTHS = {
   preserve: "Keep the result approximately as long as the draft where practical; never discard valid constraints to hit a length target.",
   expand: "Expand only to explain existing intent or constraints more clearly. Do not add facts, examples, requirements or assumptions.",
-  concise: "Prefer the shortest wording that retains the full intent and all valid constraints.",
+  concise: "Prefer the shortest wording that retains the full intent and all valid constraints."
 };
-const STRUCTURES = {
+var STRUCTURES = {
   natural: "Use clear natural-language paragraphs, with no unnecessary template headings.",
-  structured: "Use concise sections or bullets for the information that actually exists. Omit empty or unevidenced sections.",
+  structured: "Use concise sections or bullets for the information that actually exists. Omit empty or unevidenced sections."
 };
-
-const defaults = (api) => ({
+var CONTEXT_MODES = ["recent", "draft"];
+var PROMPT_LIMIT = 7e3;
+var INSTRUCTIONS_LIMIT = 8e3;
+var PROMPT_INPUT_MAX = PROMPT_LIMIT * 2;
+var PREFERENCES_KEY = "preferences";
+var INPUT_SETTINGS_KEY = "inputSettingsVisible";
+var isRecord = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
+var hasOwn = (source, key) => Object.hasOwn(source, key);
+var createDefaults = (t) => ({
   apiProfile: "",
   strategy: "faithful",
-  optimizationPrompt: api.t("defaultPrompt"),
+  optimizationPrompt: t("defaultPrompt"),
   contextMode: "recent",
   contextRounds: 3,
   model: "",
   length: "preserve",
   structure: "natural",
-  autoApply: true,
+  autoApply: true
 });
-
-const normalize = (api, raw) => {
-  const value = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
-  const base = defaults(api);
+var asString = (value) => typeof value === "string" ? value : "";
+var normalizePreferences = (t, raw) => {
+  const value = isRecord(raw) ? raw : {};
+  const base = createDefaults(t);
   return {
     ...base,
-    strategy: Object.hasOwn(STRATEGIES, value.strategy) ? value.strategy : base.strategy,
+    strategy: hasOwn(STRATEGIES, asString(value.strategy)) ? value.strategy : base.strategy,
     optimizationPrompt: typeof value.optimizationPrompt === "string" ? value.optimizationPrompt : base.optimizationPrompt,
-    contextMode: ["recent", "draft"].includes(value.contextMode) ? value.contextMode : base.contextMode,
+    contextMode: CONTEXT_MODES.includes(value.contextMode) ? value.contextMode : base.contextMode,
     contextRounds: Number.isInteger(value.contextRounds) ? Math.max(1, Math.min(10, value.contextRounds)) : base.contextRounds,
     apiProfile: typeof value.apiProfile === "string" ? value.apiProfile : base.apiProfile,
     model: typeof value.model === "string" ? value.model : base.model,
-    length: Object.hasOwn(LENGTHS, value.length) ? value.length : base.length,
-    structure: Object.hasOwn(STRUCTURES, value.structure) ? value.structure : base.structure,
-    autoApply: typeof value.autoApply === "boolean" ? value.autoApply : base.autoApply,
+    length: hasOwn(LENGTHS, asString(value.length)) ? value.length : base.length,
+    structure: hasOwn(STRUCTURES, asString(value.structure)) ? value.structure : base.structure,
+    autoApply: typeof value.autoApply === "boolean" ? value.autoApply : base.autoApply
   };
 };
-
-const readProfiles = async (api) => {
-  try {
-    const response = await api.metadata.get("apiProfiles");
-    const profiles = response?.domains?.apiProfiles;
-    if (response?.denied?.apiProfiles || !Array.isArray(profiles) ||
-        profiles.some((profile) => !profile || typeof profile.profileName !== "string" || !profile.profileName.trim())) {
-      throw new Error("Invalid API profile metadata");
-    }
-    return profiles.map((profile) => ({
-      profileName: profile.profileName,
-      displayName: typeof profile.displayName === "string" && profile.displayName.trim() ? profile.displayName : profile.profileName,
-      isActive: profile.isActive === true,
-      basicModel: typeof profile.basicModel === "string" && profile.basicModel.trim() ? profile.basicModel : "",
-      models: [...new Set([profile.basicModel, profile.advancedModel].filter((model) => typeof model === "string" && model.trim()))],
-    }));
-  } catch { throw new Error(api.t("profilesError")); }
-};
-
-const selectionError = (profiles, prefs) => {
-  if (!profiles.length) return "profilesEmpty";
-  if (!prefs.apiProfile && !prefs.model) {
-    const activeProfiles = profiles.filter((item) => item.isActive);
-    if (activeProfiles.length !== 1) return "activeProfileUnavailable";
-    if (!activeProfiles[0].basicModel) return "basicModelUnavailable";
+var InstructionBuildError = class extends Error {
+  reason;
+  constructor(reason) {
+    super(reason);
+    this.name = "InstructionBuildError";
+    this.reason = reason;
   }
-  const profile = profiles.find((item) => item.profileName === prefs.apiProfile);
-  if (!profile) return prefs.apiProfile ? "profileInvalid" : "profileRequired";
-  if (!profile.models.length) return "modelsEmpty";
-  if (!profile.models.includes(prefs.model)) return prefs.model ? "modelInvalid" : "modelRequired";
-  return "";
 };
-
-const buildInstructions = (api, prefs, hasImages = false) => {
-  if (!prefs.optimizationPrompt.trim()) throw new Error(api.t("promptRequired"));
-  if (Array.from(prefs.optimizationPrompt).length > 7000) {
-    throw new Error(api.t("settingsTooLong"));
+var countCodePoints = (text) => Array.from(text).length;
+var buildInstructions = (preferences, hasImages = false) => {
+  const prompt = preferences.optimizationPrompt.trim();
+  if (!prompt) {
+    throw new InstructionBuildError("promptRequired");
+  }
+  if (countCodePoints(preferences.optimizationPrompt) > PROMPT_LIMIT) {
+    throw new InstructionBuildError("settingsTooLong");
   }
   const parts = [
-    "Apply these preferences together: the strategy sets the editing focus, length sets detail, and presentation sets the format. Preserve all meaningful constraints and uncertainty before style or length targets; do not pad the result just to preserve length.",
+    "Apply these preferences together: the strategy sets the editing focus, length sets detail, and presentation sets the format. Preserve all meaningful constraints and uncertainty before style or length targets; do not pad the result just to preserve length."
   ];
   if (hasImages) {
     parts.push(
-      "Attachment context:\nThe user attached one or more images/screenshots with this draft. Preserve and clarify any references to the visual attachments (such as 'as shown in the screenshot', 'the attached image', UI elements, or error callouts), ensuring the rewritten prompt clearly guides the model to inspect them. Do not remove, contradict, or obscure references to the visual input.",
+      "Attachment context:\nThe user attached one or more images/screenshots with this draft. Preserve and clarify any references to the visual attachments (such as 'as shown in the screenshot', 'the attached image', UI elements, or error callouts), ensuring the rewritten prompt clearly guides the model to inspect them. Do not remove, contradict, or obscure references to the visual input."
     );
   }
   parts.push(
-    "Optimization rules:\n" + prefs.optimizationPrompt.trim(),
-    "Selected strategy:\n" + STRATEGIES[prefs.strategy],
-    "Length preference:\n" + LENGTHS[prefs.length],
-    "Presentation preference:\n" + STRUCTURES[prefs.structure],
+    "Optimization rules:\n" + prompt,
+    "Selected strategy:\n" + STRATEGIES[preferences.strategy],
+    "Length preference:\n" + LENGTHS[preferences.length],
+    "Presentation preference:\n" + STRUCTURES[preferences.structure]
   );
   const text = parts.join("\n\n");
-  if (Array.from(text).length > 8000) throw new Error(api.t("settingsTooLong"));
+  if (countCodePoints(text) > INSTRUCTIONS_LIMIT) {
+    throw new InstructionBuildError("settingsTooLong");
+  }
   return text;
 };
-
-const supported = (api) => {
-  const ids = new Set((api.write?.domains?.() ?? []).flatMap((domain) =>
-    domain.actions.filter((action) => action.granted).map((action) => action.id)));
-  return typeof api.ai?.optimizePrompt === "function" &&
-    ["chatInput.captureDraft", "chatInput.applyDraft", "chatInput.restoreDraft"].every((id) => ids.has(id));
+var previewInstructions = (t, preferences) => {
+  try {
+    return { text: buildInstructions(preferences), error: "" };
+  } catch (error) {
+    if (error instanceof InstructionBuildError) {
+      return { text: t(error.reason), error: error.reason };
+    }
+    return { text: t("settingsTooLong"), error: "settingsTooLong" };
+  }
 };
 
-const checkActive = (signal) => {
-  if (signal.aborted) throw new DOMException("Optimization cancelled", "AbortError");
+// src/profiles.ts
+var readProfiles = async (api) => {
+  let response;
+  try {
+    response = await api.metadata.get("apiProfiles");
+  } catch {
+    throw new Error(api.t("profilesError"));
+  }
+  const profiles = response?.domains?.apiProfiles;
+  const invalid = response?.denied?.apiProfiles !== void 0 || !Array.isArray(profiles) || profiles.some(
+    (profile) => !profile || typeof profile.profileName !== "string" || !profile.profileName.trim()
+  );
+  if (invalid) {
+    throw new Error(api.t("profilesError"));
+  }
+  return profiles.map((profile) => {
+    const profileName = profile.profileName;
+    const displayName = typeof profile.displayName === "string" && profile.displayName.trim() ? profile.displayName : profileName;
+    const models = [profile.basicModel, profile.advancedModel].filter(
+      (model) => typeof model === "string" && !!model.trim()
+    );
+    return {
+      profileName,
+      displayName,
+      isActive: profile.isActive === true,
+      basicModel: typeof profile.basicModel === "string" && profile.basicModel.trim() ? profile.basicModel : "",
+      models: [...new Set(models)]
+    };
+  });
+};
+var selectionError = (profiles, selection) => {
+  if (!profiles.length) return "profilesEmpty";
+  if (!selection.apiProfile && !selection.model) {
+    const active = profiles.filter((item) => item.isActive);
+    if (active.length !== 1) return "activeProfileUnavailable";
+    const fallback = active[0];
+    if (!fallback?.basicModel) return "basicModelUnavailable";
+  }
+  const profile = profiles.find(
+    (item) => item.profileName === selection.apiProfile
+  );
+  if (!profile) return selection.apiProfile ? "profileInvalid" : "profileRequired";
+  if (!profile.models.length) return "modelsEmpty";
+  if (!profile.models.includes(selection.model)) {
+    return selection.model ? "modelInvalid" : "modelRequired";
+  }
+  return "";
+};
+var isRuntimeSupported = (api) => {
+  const granted = new Set(
+    (api.write?.domains() ?? []).flatMap(
+      (domain) => domain.actions.filter((action) => action.granted).map((action) => action.id)
+    )
+  );
+  return typeof api.ai?.optimizePrompt === "function" && ["chatInput.captureDraft", "chatInput.applyDraft", "chatInput.restoreDraft"].every(
+    (id) => granted.has(id)
+  );
 };
 
-// Host invokes this export only on a toolbar click. Every click gets a fresh
-// API/storage snapshot, independently of the configuration panel's lifecycle.
-export async function optimizeDraft({ api, signal, onStatus }) {
-  if (!supported(api)) throw new Error(api.t("unavailable"));
+// src/action.ts
+var cancelled = () => new DOMException("Optimization cancelled", "AbortError");
+var checkActive = (signal) => {
+  if (signal.aborted) throw cancelled();
+};
+var isAbort = (error) => error?.name === "AbortError";
+var silentFailure = () => new Error("");
+async function optimizeDraft(context) {
+  context.onStatus("");
+  try {
+    return await runOptimization(context);
+  } catch (error) {
+    context.onStatus("");
+    if (isAbort(error)) throw error;
+    context.api.log?.("optimizeDraft failed:", error);
+    throw silentFailure();
+  }
+}
+async function runOptimization({
+  api,
+  signal
+}) {
+  if (!isRuntimeSupported(api)) throw new Error(api.t("unavailable"));
   checkActive(signal);
   let prefs;
-  try { prefs = normalize(api, await api.storage.getJson("preferences", {})); }
-  catch { throw new Error(api.t("settingsError")); }
-  onStatus(api.t("profilesLoading"));
+  try {
+    prefs = normalizePreferences(
+      (key) => api.t(key),
+      await api.storage.getJson(PREFERENCES_KEY, {})
+    );
+  } catch {
+    throw new Error(api.t("settingsError"));
+  }
   const profiles = await readProfiles(api);
   checkActive(signal);
   const invalidSelection = selectionError(profiles, prefs);
   if (invalidSelection) throw new Error(api.t(invalidSelection));
   checkActive(signal);
-  const captured = await api.write.run("chatInput.captureDraft", {});
-  if (!captured.ok || !captured.data?.draftToken) throw new Error(api.t("captureError"));
+  const write = api.write;
+  if (!write) throw new Error(api.t("unavailable"));
+  const captured = await write.run("chatInput.captureDraft", {});
+  if (!captured.ok || !captured.data) throw new Error(api.t("captureError"));
   const draft = captured.data;
+  if (typeof draft.draftToken !== "string" || !draft.draftToken) {
+    throw new Error(api.t("captureError"));
+  }
   if (!draft.text?.trim()) throw new Error(api.t("empty"));
-  const hasImages =
-    typeof draft.inputText === "string" && draft.inputText.includes("@@image:");
-  const optimizationInstructions = buildInstructions(api, prefs, hasImages);
+  const hasImages = typeof draft.inputText === "string" && draft.inputText.includes("@@image:");
+  const optimizationInstructions = buildInstructions(prefs, hasImages);
   const includeContext = prefs.contextMode === "recent" && Boolean(draft.conversationId);
   checkActive(signal);
-  onStatus(api.t("generating"));
   let output;
   try {
-    output = await api.ai.optimizePrompt({
+    const optimize = api.ai?.optimizePrompt;
+    if (!optimize) throw new Error(api.t("unavailable"));
+    output = await optimize({
       draft: draft.text,
-      conversationId: draft.conversationId ?? undefined,
+      conversationId: draft.conversationId ?? void 0,
       apiProfile: prefs.apiProfile,
       model: prefs.model,
       contextRounds: prefs.contextRounds,
       includeContext,
       optimizationInstructions,
-      signal,
+      signal
     });
   } catch (error) {
-    if (signal.aborted || error?.name === "AbortError") throw new DOMException("Optimization cancelled", "AbortError");
+    if (signal.aborted || error?.name === "AbortError") {
+      throw cancelled();
+    }
     throw new Error(api.t("generateError"));
   }
   checkActive(signal);
-  if (typeof output?.content !== "string" || !output.content.trim()) throw new Error(api.t("generateError"));
+  if (typeof output?.content !== "string" || !output.content.trim()) {
+    throw new Error(api.t("generateError"));
+  }
   const preview = output.content;
   let used = false;
   const apply = async () => {
     checkActive(signal);
-    if (used) return { message: api.t("applyError"), preview };
+    if (used) return { preview };
     used = true;
-    // Never recapture and overwrite newer user text when this token is stale.
     let applied;
-    try { applied = await api.write.run("chatInput.applyDraft", { draftToken: draft.draftToken, text: preview }); }
-    catch { checkActive(signal); return { message: api.t("applyError"), preview }; }
+    try {
+      applied = await write.run("chatInput.applyDraft", {
+        draftToken: draft.draftToken,
+        text: preview
+      });
+    } catch {
+      checkActive(signal);
+      return { preview };
+    }
     checkActive(signal);
-    if (!applied.ok || !applied.data?.restoreToken) return { message: api.t("applyError"), preview };
+    const restoreToken = applied.data?.restoreToken;
+    if (!applied.ok || typeof restoreToken !== "string") {
+      return { preview };
+    }
     let restored = false;
     return {
-      message: api.t("applied"),
       undo: async () => {
         checkActive(signal);
-        if (restored) throw new Error(api.t("restoreError"));
+        if (restored) throw silentFailure();
         restored = true;
-        const response = await api.write.run("chatInput.restoreDraft", { restoreToken: applied.data.restoreToken });
-        if (!response.ok) throw new Error(api.t("restoreError"));
-      },
+        const response = await write.run("chatInput.restoreDraft", {
+          restoreToken
+        });
+        if (!response.ok) throw silentFailure();
+      }
     };
   };
-  return prefs.autoApply ? await apply() : { message: api.t("previewReady"), preview, apply };
+  return prefs.autoApply ? await apply() : { preview, apply };
 }
 
-// The right panel is configuration only. Opening or saving it never calls AI.
-export default function PromptOptimizerSettings({ api }) {
-  const { createElement: h, useState, useEffect, useRef } = api.ui.React;
-  const t = (key) => api.t(key);
-  const [prefs, setPrefs] = useState(() => defaults(api));
+// src/jsx.ts
+var react = null;
+var bindReact = (value) => {
+  react = value;
+  return value;
+};
+var getReact = () => {
+  if (!react) {
+    throw new Error("Plugin React runtime is unavailable");
+  }
+  return react;
+};
+var h = (type, props, ...children) => getReact().createElement(type, props, ...children);
+
+// src/panel.tsx
+function PromptOptimizerSettings({ api }) {
+  const { useState, useEffect, useRef } = bindReact(api.ui.React);
+  const t = (key, options) => api.t(key, options);
+  const [prefs, setPrefs] = useState(() => createDefaults(t));
   const [loaded, setLoaded] = useState(false);
-  const [profiles, setProfiles] = useState([]);
-  const [profilesStatus, setProfilesStatus] = useState("profilesLoading");
-  const [profilesRetry, setProfilesRetry] = useState(0);
-  const [profilesFeedback, setProfilesFeedback] = useState("");
-  const profilesLock = useRef(true);
-  const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("loading");
   const [dirty, setDirty] = useState(false);
   const [retry, setRetry] = useState(0);
+  const [saving, setSaving] = useState(false);
   const [resetPending, setResetPending] = useState(false);
-  // This private UI preference is saved immediately and independently of the
-  // unsaved optimization rules; it never changes the action's preferences.
+  const [profiles, setProfiles] = useState([]);
+  const [profilesStatus, setProfilesStatus] = useState("profilesLoading");
+  const [profilesFeedback, setProfilesFeedback] = useState("");
+  const [profilesRetry, setProfilesRetry] = useState(0);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsStatus, setSettingsStatus] = useState("");
   const [settingsRetry, setSettingsRetry] = useState(0);
-  const settingsLock = useRef(false);
-  useEffect(() => {
-    let alive = true;
-    setSettingsLoaded(false);
-    api.storage.getJson("inputSettingsVisible", false).then((value) => {
-      if (alive) { setSettingsVisible(value === true); setSettingsLoaded(true); setSettingsStatus(""); }
-    }).catch(() => { if (alive) setSettingsStatus("inputSettingsError"); });
-    return () => { alive = false; };
-  }, [api, settingsRetry]);
-  const toggleSettings = async (visible) => {
-    if (!settingsLoaded || settingsLock.current) return;
-    settingsLock.current = true;
-    setSettingsSaving(true);
-    try {
-      await api.storage.setJson("inputSettingsVisible", visible);
-      if (mounted.current) { setSettingsVisible(visible); setSettingsStatus("inputSettingsSaved"); }
-    } catch { if (mounted.current) setSettingsStatus("inputSettingsError"); }
-    finally { settingsLock.current = false; if (mounted.current) setSettingsSaving(false); }
-  };
   const mounted = useRef(false);
   const saveLock = useRef(false);
+  const profilesLock = useRef(false);
+  const settingsLock = useRef(false);
+  const [hasConversation, setHasConversation] = useState(false);
+  const [boundMessageCount, setBoundMessageCount] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    let subscription = null;
+    api.metadata.subscribe("runtime", (response) => {
+      if (!alive) return;
+      const runtime = response?.domains?.runtime;
+      const bound = Boolean(runtime?.chatInput?.conversationId);
+      setHasConversation(bound);
+      const focused = runtime?.conversation;
+      setBoundMessageCount(
+        bound && focused?.conversationId === runtime?.chatInput?.conversationId ? focused?.messageCount ?? 0 : 0
+      );
+    }).then((value) => {
+      if (alive) subscription = value;
+      else value.unsubscribe();
+    }).catch(() => {
+    });
+    return () => {
+      alive = false;
+      subscription?.unsubscribe();
+    };
+  }, [api]);
   useEffect(() => {
     let alive = true;
     mounted.current = true;
@@ -233,41 +341,89 @@ export default function PromptOptimizerSettings({ api }) {
     setDirty(false);
     setResetPending(false);
     saveLock.current = false;
-    api.storage.getJson("preferences", {}).then((value) => {
-      if (alive) { setPrefs(normalize(api, value)); setLoaded(true); setStatus("ready"); }
-    }).catch(() => { if (alive) setStatus("settingsError"); });
-    return () => { alive = false; mounted.current = false; };
+    api.storage.getJson(PREFERENCES_KEY, {}).then((value) => {
+      if (!alive) return;
+      setPrefs(normalizePreferences(t, value));
+      setLoaded(true);
+      setStatus("ready");
+    }).catch(() => {
+      if (alive) setStatus("settingsError");
+    });
+    return () => {
+      alive = false;
+      mounted.current = false;
+    };
   }, [api, retry]);
+  useEffect(() => {
+    let alive = true;
+    setSettingsLoaded(false);
+    api.storage.getJson(INPUT_SETTINGS_KEY, false).then((value) => {
+      if (!alive) return;
+      setSettingsVisible(value === true);
+      setSettingsLoaded(true);
+      setSettingsStatus("");
+    }).catch(() => {
+      if (alive) setSettingsStatus("inputSettingsError");
+    });
+    return () => {
+      alive = false;
+    };
+  }, [api, settingsRetry]);
   useEffect(() => {
     let alive = true;
     profilesLock.current = true;
     setProfilesStatus("profilesLoading");
     setProfilesFeedback("");
-    // Each attempt reaches the host collector; never reuse a panel snapshot.
     readProfiles(api).then((items) => {
-      if (alive) {
-        setProfiles(items);
-        setProfilesStatus("");
-        setProfilesFeedback(profilesRetry ? "profilesReloaded" : "");
-      }
+      if (!alive) return;
+      setProfiles(items);
+      setProfilesStatus("");
+      setProfilesFeedback(profilesRetry ? "profilesReloaded" : "");
     }).catch(() => {
-      if (alive) { setProfiles([]); setProfilesStatus("profilesError"); }
-    }).finally(() => { if (alive) profilesLock.current = false; });
-    return () => { alive = false; };
+      if (!alive) return;
+      setProfiles([]);
+      setProfilesStatus("profilesError");
+    }).finally(() => {
+      if (alive) profilesLock.current = false;
+    });
+    return () => {
+      alive = false;
+    };
   }, [api, profilesRetry]);
   useEffect(() => {
     if (!loaded || profilesStatus || prefs.apiProfile || prefs.model) return;
-    const activeProfiles = profiles.filter((item) => item.isActive);
-    if (activeProfiles.length !== 1) return;
-    const active = activeProfiles[0];
-    if (!active.basicModel) return;
-    // A default is an unsaved panel choice, never a migration or storage write.
-    setPrefs((previous) => previous.apiProfile || previous.model ? previous : {
-      ...previous, apiProfile: active.profileName, model: active.basicModel,
-    });
+    const active = profiles.filter((item) => item.isActive);
+    if (active.length !== 1) return;
+    const candidate = active[0];
+    if (!candidate || !candidate.basicModel) return;
+    setPrefs(
+      (previous) => previous.apiProfile || previous.model ? previous : { ...previous, apiProfile: candidate.profileName, model: candidate.basicModel }
+    );
     setDirty(true);
     setStatus("unsaved");
   }, [loaded, profilesStatus, profiles, prefs.apiProfile, prefs.model]);
+  const change = (patch) => {
+    setPrefs((previous) => ({ ...previous, ...patch }));
+    setDirty(true);
+    setStatus("unsaved");
+  };
+  const toggleSettings = async (visible) => {
+    if (!settingsLoaded || settingsLock.current) return;
+    settingsLock.current = true;
+    setSettingsSaving(true);
+    try {
+      await api.storage.setJson(INPUT_SETTINGS_KEY, visible);
+      if (mounted.current) {
+        setSettingsVisible(visible);
+        setSettingsStatus("inputSettingsSaved");
+      }
+    } catch {
+      if (mounted.current) setSettingsStatus("inputSettingsError");
+    } finally {
+      settingsLock.current = false;
+      if (mounted.current) setSettingsSaving(false);
+    }
+  };
   const refreshProfiles = () => {
     if (saveLock.current || profilesLock.current) return;
     profilesLock.current = true;
@@ -275,90 +431,236 @@ export default function PromptOptimizerSettings({ api }) {
     setProfilesFeedback("");
     setProfilesRetry((value) => value + 1);
   };
-  const profile = profiles.find((item) => item.profileName === prefs.apiProfile);
-  const models = profile?.models ?? [];
-  const modelStatus = profilesStatus || selectionError(profiles, prefs);
-  const change = (patch) => { setPrefs((previous) => ({ ...previous, ...patch })); setDirty(true); setStatus("unsaved"); };
   const save = async (value = prefs) => {
     if (!loaded || saveLock.current || profilesStatus) return;
     const invalidSelection = selectionError(profiles, value);
-    if (invalidSelection) { setStatus(invalidSelection); return; }
-    try { buildInstructions(api, value); }
-    catch { setStatus(!value.optimizationPrompt.trim() ? "promptRequired" : "settingsTooLong"); return; }
+    if (invalidSelection) {
+      setStatus(invalidSelection);
+      return;
+    }
+    try {
+      buildInstructions(value);
+    } catch (error) {
+      setStatus(
+        error instanceof InstructionBuildError && error.reason === "promptRequired" ? "promptRequired" : "settingsTooLong"
+      );
+      return;
+    }
     saveLock.current = true;
     setSaving(true);
     try {
-      await api.storage.setJson("preferences", value);
-      if (mounted.current) { setPrefs(value); setDirty(false); setStatus("saved"); setResetPending(false); }
-    } catch { if (mounted.current) setStatus("settingsError"); }
-    finally { saveLock.current = false; if (mounted.current) setSaving(false); }
+      await api.storage.setJson(PREFERENCES_KEY, value);
+      if (mounted.current) {
+        setPrefs(value);
+        setDirty(false);
+        setStatus("saved");
+        setResetPending(false);
+      }
+    } catch {
+      if (mounted.current) setStatus("settingsError");
+    } finally {
+      saveLock.current = false;
+      if (mounted.current) setSaving(false);
+    }
   };
-  const field = (key, node) => h("label", { className: "po-field" }, h("span", null, t(key)), node);
-  const select = (key, values) => h("select", {
-    value: prefs[key], disabled: !loaded || saving,
-    onChange: (event) => change({ [key]: event.target.value }),
-  }, ...values.map((value) => h("option", { key: value, value }, t(key + "." + value))));
-  const instructions = (() => { try { return buildInstructions(api, prefs); } catch { return t(!prefs.optimizationPrompt.trim() ? "promptRequired" : "settingsTooLong"); } })();
-  const count = Array.from(prefs.optimizationPrompt).length;
-  const details = (title, ...content) => h("details", { className: "po-details" }, h("summary", null, t(title)), ...content);
-  return h("section", { className: "snow-po-settings", "aria-label": t("title"), "aria-busy": saving || status === "loading" || profilesStatus === "profilesLoading" },
-    h("header", { className: "po-header" },
-      h("span", { className: "po-icon", "aria-hidden": true }, "✦"),
-      h("h2", null, t("title"))),
-    !supported(api) && h("div", { className: "po-status po-warning", role: "alert" }, t("unavailable")),
-    h("p", { className: "po-disclosure" }, t("privacy")),
-    h("div", { className: "po-card" },
-      h("label", { className: "po-check" }, h("input", { type: "checkbox", checked: settingsVisible,
+  const supported = isRuntimeSupported(api);
+  const profile = profiles.find((item) => item.profileName === prefs.apiProfile);
+  const models = profile?.models ?? [];
+  const modelStatus = profilesStatus || selectionError(profiles, prefs);
+  const busy = saving || !loaded || profilesStatus === "profilesLoading";
+  const count = countCodePoints(prefs.optimizationPrompt);
+  const overLimit = count > PROMPT_LIMIT;
+  const preview = previewInstructions(t, prefs);
+  const brandIcon = api.ui.icon("WandSparkles");
+  const renderableIcon = typeof brandIcon === "function" || typeof brandIcon === "object" && brandIcon !== null;
+  const contextHint = prefs.contextMode === "draft" ? { key: "contextHintDraft", warn: false } : !hasConversation ? { key: "contextHintNoSession", warn: true } : boundMessageCount === 0 ? { key: "contextHintEmptySession", warn: true } : {
+    key: "contextHintRecent",
+    values: {
+      rounds: prefs.contextRounds,
+      messages: boundMessageCount
+    },
+    warn: false
+  };
+  const select = (key, values) => /* @__PURE__ */ h(
+    "select",
+    {
+      value: String(prefs[key]),
+      disabled: !loaded || saving,
+      onChange: (event) => change({ [key]: event.target.value })
+    },
+    values.map((value) => /* @__PURE__ */ h("option", { key: value, value }, t(`${String(key)}.${value}`)))
+  );
+  const footerStatus = saving ? t("saving") : modelStatus ? t(modelStatus) : t(status);
+  return /* @__PURE__ */ h(
+    "section",
+    {
+      className: "snow-po-settings",
+      "aria-label": t("title"),
+      "aria-busy": busy
+    },
+    /* @__PURE__ */ h("header", { className: "po-header" }, /* @__PURE__ */ h("span", { className: "po-icon", "aria-hidden": "true" }, renderableIcon ? h(brandIcon, { size: 20 }) : "✦"), /* @__PURE__ */ h("div", { className: "po-header-text" }, /* @__PURE__ */ h("h2", null, t("title")), /* @__PURE__ */ h("p", { className: "po-muted" }, t("ready")))),
+    !supported && /* @__PURE__ */ h("div", { className: "po-status po-warning", role: "alert" }, t("unavailable")),
+    /* @__PURE__ */ h("p", { className: "po-disclosure" }, t("privacy")),
+    /* @__PURE__ */ h("div", { className: "po-card" }, /* @__PURE__ */ h("div", { className: "po-card-head" }, /* @__PURE__ */ h("h3", null, t("rulesTitle")), /* @__PURE__ */ h("p", { className: "po-muted" }, t("strategyHelp"))), /* @__PURE__ */ h("label", { className: "po-field" }, /* @__PURE__ */ h("span", null, t("strategy")), select("strategy", Object.keys(STRATEGIES))), /* @__PURE__ */ h("label", { className: "po-field" }, /* @__PURE__ */ h("span", { className: "po-label" }, /* @__PURE__ */ h("span", null, t("optimizationPrompt")), /* @__PURE__ */ h("span", { className: "po-counter" + (overLimit ? " po-over-limit" : "") }, count, " / ", PROMPT_LIMIT, " · ", t("codePoints"))), /* @__PURE__ */ h(
+      "textarea",
+      {
+        value: prefs.optimizationPrompt,
+        disabled: !loaded || saving,
+        maxLength: PROMPT_INPUT_MAX,
+        rows: 7,
+        spellCheck: false,
+        "aria-invalid": overLimit,
+        onChange: (event) => change({ optimizationPrompt: event.target.value })
+      }
+    )), /* @__PURE__ */ h("p", { className: "po-muted" }, t("promptHelp")), /* @__PURE__ */ h("div", { className: "po-grid" }, /* @__PURE__ */ h("label", { className: "po-field" }, /* @__PURE__ */ h("span", null, t("length")), select("length", Object.keys(LENGTHS))), /* @__PURE__ */ h("label", { className: "po-field" }, /* @__PURE__ */ h("span", null, t("structure")), select("structure", Object.keys(STRUCTURES))))),
+    /* @__PURE__ */ h("div", { className: "po-card" }, /* @__PURE__ */ h("div", { className: "po-card-head" }, /* @__PURE__ */ h("h3", null, t("contextTitle"))), /* @__PURE__ */ h("div", { className: "po-grid" }, /* @__PURE__ */ h("label", { className: "po-field" }, /* @__PURE__ */ h("span", null, t("contextMode")), select("contextMode", CONTEXT_MODES)), prefs.contextMode === "recent" && /* @__PURE__ */ h("label", { className: "po-field" }, /* @__PURE__ */ h("span", null, t("rounds")), /* @__PURE__ */ h(
+      "input",
+      {
+        type: "number",
+        min: 1,
+        max: 10,
+        step: 1,
+        value: prefs.contextRounds,
+        disabled: !loaded || saving,
+        onChange: (event) => change({
+          contextRounds: Math.max(
+            1,
+            Math.min(10, Math.trunc(Number(event.target.value) || 1))
+          )
+        })
+      }
+    ))), /* @__PURE__ */ h(
+      "p",
+      {
+        className: "po-hint" + (contextHint.warn ? " po-hint-warn" : ""),
+        role: "status",
+        "aria-live": "polite"
+      },
+      /* @__PURE__ */ h("span", { className: "po-hint-dot", "aria-hidden": "true" }),
+      /* @__PURE__ */ h("span", null, t(contextHint.key, { values: contextHint.values }))
+    ), /* @__PURE__ */ h("div", { className: "po-grid" }, /* @__PURE__ */ h("label", { className: "po-field" }, /* @__PURE__ */ h("span", null, t("apiProfile")), /* @__PURE__ */ h(
+      "select",
+      {
+        value: profile ? prefs.apiProfile : "",
+        disabled: !loaded || saving || Boolean(profilesStatus) || !profiles.length,
+        onChange: (event) => {
+          const selected = profiles.find(
+            (item) => item.profileName === event.target.value
+          );
+          if (selected) {
+            change({
+              apiProfile: selected.profileName,
+              model: selected.basicModel
+            });
+          }
+        }
+      },
+      /* @__PURE__ */ h("option", { value: "", disabled: true }, t("profileRequired")),
+      profiles.map((item) => /* @__PURE__ */ h("option", { key: item.profileName, value: item.profileName }, item.displayName))
+    )), /* @__PURE__ */ h("label", { className: "po-field" }, /* @__PURE__ */ h("span", null, t("model")), /* @__PURE__ */ h(
+      "select",
+      {
+        value: models.includes(prefs.model) ? prefs.model : "",
+        disabled: !loaded || saving || Boolean(profilesStatus) || !models.length,
+        onChange: (event) => {
+          if (models.includes(event.target.value)) {
+            change({ model: event.target.value });
+          }
+        }
+      },
+      /* @__PURE__ */ h("option", { value: "", disabled: true }, t("modelRequired")),
+      models.map((model) => /* @__PURE__ */ h("option", { key: model, value: model }, model))
+    ))), (profilesFeedback || modelStatus) && /* @__PURE__ */ h("div", { className: "po-status po-inline", role: "status", "aria-live": "polite" }, profilesFeedback && /* @__PURE__ */ h("p", null, t(profilesFeedback)), modelStatus && /* @__PURE__ */ h("p", null, t(modelStatus))), /* @__PURE__ */ h(
+      "button",
+      {
+        type: "button",
+        className: "po-ghost",
+        disabled: saving || profilesStatus === "profilesLoading",
+        onClick: refreshProfiles
+      },
+      t(
+        profilesStatus === "profilesLoading" ? "profilesLoading" : "profilesRetry"
+      )
+    )),
+    /* @__PURE__ */ h("div", { className: "po-card" }, /* @__PURE__ */ h("div", { className: "po-card-head" }, /* @__PURE__ */ h("h3", null, t("fillTitle"))), /* @__PURE__ */ h("label", { className: "po-check" }, /* @__PURE__ */ h(
+      "input",
+      {
+        type: "checkbox",
+        checked: prefs.autoApply,
+        disabled: !loaded || saving,
+        onChange: (event) => change({ autoApply: event.target.checked })
+      }
+    ), /* @__PURE__ */ h("span", null, t("autoApply"))), /* @__PURE__ */ h("p", { className: "po-muted" }, t("autoApplyHelp"))),
+    /* @__PURE__ */ h("details", { className: "po-details" }, /* @__PURE__ */ h("summary", null, t("workflowTitle")), /* @__PURE__ */ h("div", { className: "po-details-body" }, /* @__PURE__ */ h("p", null, t("workflow")), /* @__PURE__ */ h("p", null, t("autoApplyHelp")), /* @__PURE__ */ h("p", null, t("safety")))),
+    /* @__PURE__ */ h("details", { className: "po-details" }, /* @__PURE__ */ h("summary", null, t("effectiveInstructions")), /* @__PURE__ */ h("div", { className: "po-details-body" }, /* @__PURE__ */ h("pre", { className: "po-preview" }, preview.text))),
+    /* @__PURE__ */ h("div", { className: "po-card po-card-soft" }, /* @__PURE__ */ h("label", { className: "po-check" }, /* @__PURE__ */ h(
+      "input",
+      {
+        type: "checkbox",
+        checked: settingsVisible,
         disabled: !settingsLoaded || settingsSaving,
-        onChange: (event) => { void toggleSettings(event.target.checked); } }), t("inputSettingsVisible")),
-      h("p", { className: "po-muted" }, t("inputSettingsHelp")),
-      settingsStatus && h("div", { className: "po-status", role: "status" }, t(settingsStatus)),
-      !settingsLoaded && settingsStatus === "inputSettingsError" && h("button", { type: "button", onClick: () => setSettingsRetry((value) => value + 1) }, t("retry"))),
-    h("div", { className: "po-card" },
-      h("h3", null, t("rulesTitle")),
-      field("strategy", select("strategy", Object.keys(STRATEGIES))),
-      field("optimizationPrompt", h("textarea", { value: prefs.optimizationPrompt, disabled: !loaded || saving,
-        maxLength: 14000, rows: 6, spellCheck: false, "aria-invalid": count > 7000,
-        onChange: (event) => change({ optimizationPrompt: event.target.value }) })),
-      h("div", { className: "po-counter" + (count > 7000 ? " po-over-limit" : "") }, count + " / 7000 · " + t("codePoints")),
-      h("div", { className: "po-grid" }, field("length", select("length", Object.keys(LENGTHS))), field("structure", select("structure", Object.keys(STRUCTURES))))),
-    h("div", { className: "po-card" },
-      h("h3", null, t("contextTitle")),
-      h("div", { className: "po-grid" },
-        field("contextMode", select("contextMode", ["recent", "draft"])),
-        prefs.contextMode === "recent" && field("rounds", h("input", { type: "number", min: 1, max: 10, step: 1, value: prefs.contextRounds,
-          disabled: !loaded || saving, onChange: (event) => change({ contextRounds: Math.max(1, Math.min(10, Math.trunc(Number(event.target.value) || 1))) }) }))),
-      h("div", { className: "po-grid" },
-        field("apiProfile", h("select", { value: profile ? prefs.apiProfile : "", disabled: !loaded || saving || Boolean(profilesStatus) || !profiles.length,
-          onChange: (event) => {
-            const selected = profiles.find((item) => item.profileName === event.target.value);
-            if (selected) change({ apiProfile: selected.profileName, model: selected.basicModel });
-          } },
-          h("option", { value: "", disabled: true }, t("profileRequired")),
-          ...profiles.map((item) => h("option", { key: item.profileName, value: item.profileName }, item.displayName)))),
-        field("model", h("select", { value: models.includes(prefs.model) ? prefs.model : "", disabled: !loaded || saving || Boolean(profilesStatus) || !models.length,
-          onChange: (event) => { if (models.includes(event.target.value)) change({ model: event.target.value }); } },
-          h("option", { value: "", disabled: true }, t("modelRequired")),
-          ...models.map((model) => h("option", { key: model, value: model }, model))))),
-      (profilesFeedback || modelStatus) && h("div", { className: "po-status", role: "status", "aria-live": "polite", "aria-atomic": true },
-        profilesFeedback && h("p", null, t(profilesFeedback)),
-        modelStatus && h("p", null, t(modelStatus))),
-      h("button", { type: "button", disabled: saving || profilesStatus === "profilesLoading", onClick: refreshProfiles },
-        t(profilesStatus === "profilesLoading" ? "profilesLoading" : "profilesRetry"))),
-    h("div", { className: "po-card" }, h("h3", null, t("fillTitle")),
-      h("label", { className: "po-check" }, h("input", { type: "checkbox", checked: prefs.autoApply, disabled: !loaded || saving,
-        onChange: (event) => change({ autoApply: event.target.checked }) }), t("autoApply"))),
-    details("workflowTitle", h("p", null, t("workflow")), h("p", null, t("strategyHelp")),
-      h("p", null, t("promptHelp")), h("p", null, t("autoApplyHelp")), h("p", null, t("safety"))),
-    details("effectiveInstructions", h("pre", { className: "po-preview" }, instructions)),
-    resetPending && h("div", { className: "po-card" }, h("p", null, t("resetWarning")), h("div", { className: "po-actions" },
-      h("button", { type: "button", disabled: saving || Boolean(modelStatus), onClick: () => save({ ...defaults(api), apiProfile: prefs.apiProfile, model: prefs.model }) }, t("confirmReset")),
-      h("button", { type: "button", disabled: saving, onClick: () => setResetPending(false) }, t("cancel")))),
-    h("footer", { className: "po-footer" },
-      h("div", { className: "po-status", role: "status", "aria-live": "polite" }, t(saving ? "saving" : status),
-        dirty && status !== "unsaved" && h("p", { className: "po-muted" }, t("unsaved"))),
-      h("div", { className: "po-actions" },
-        !loaded && status === "settingsError" && h("button", { type: "button", onClick: () => setRetry((value) => value + 1) }, t("retry")),
-        h("button", { type: "button", className: "po-primary", disabled: !loaded || saving || Boolean(modelStatus), onClick: () => save() }, t(saving ? "saving" : "save")),
-        h("button", { type: "button", disabled: !loaded || saving, onClick: () => setResetPending(true) }, t("reset")))));
+        onChange: (event) => {
+          void toggleSettings(event.target.checked);
+        }
+      }
+    ), /* @__PURE__ */ h("span", null, t("inputSettingsVisible"))), /* @__PURE__ */ h("p", { className: "po-muted" }, t("inputSettingsHelp")), settingsStatus && /* @__PURE__ */ h("div", { className: "po-status po-inline", role: "status" }, t(settingsStatus)), !settingsLoaded && settingsStatus === "inputSettingsError" && /* @__PURE__ */ h(
+      "button",
+      {
+        type: "button",
+        className: "po-ghost",
+        onClick: () => setSettingsRetry((value) => value + 1)
+      },
+      t("retry")
+    )),
+    /* @__PURE__ */ h("footer", { className: "po-savebar" }, resetPending ? /* @__PURE__ */ h("div", { className: "po-confirm", role: "alert" }, /* @__PURE__ */ h("p", null, t("resetWarning")), /* @__PURE__ */ h("div", { className: "po-actions" }, /* @__PURE__ */ h(
+      "button",
+      {
+        type: "button",
+        className: "po-primary",
+        disabled: saving || Boolean(modelStatus),
+        onClick: () => void save({
+          ...createDefaults(t),
+          apiProfile: prefs.apiProfile,
+          model: prefs.model
+        })
+      },
+      t("confirmReset")
+    ), /* @__PURE__ */ h(
+      "button",
+      {
+        type: "button",
+        disabled: saving,
+        onClick: () => setResetPending(false)
+      },
+      t("cancel")
+    ))) : /* @__PURE__ */ h("div", { className: "po-savebar-body" }, /* @__PURE__ */ h("div", { className: "po-savebar-status", role: "status", "aria-live": "polite" }, /* @__PURE__ */ h("span", { className: dirty ? "po-dot po-dot-dirty" : "po-dot" }), /* @__PURE__ */ h("span", { className: "po-savebar-text" }, footerStatus, dirty && status !== "unsaved" ? ` · ${t("unsaved")}` : "")), /* @__PURE__ */ h("div", { className: "po-savebar-meta" }, /* @__PURE__ */ h("span", null, t("apiProfile"), "：", profile?.displayName ?? "—"), /* @__PURE__ */ h("span", null, t("model"), "：", models.includes(prefs.model) ? prefs.model : "—")), /* @__PURE__ */ h("div", { className: "po-actions" }, !loaded && status === "settingsError" && /* @__PURE__ */ h(
+      "button",
+      {
+        type: "button",
+        onClick: () => setRetry((value) => value + 1)
+      },
+      t("retry")
+    ), /* @__PURE__ */ h(
+      "button",
+      {
+        type: "button",
+        className: "po-primary",
+        disabled: !loaded || saving || Boolean(modelStatus),
+        onClick: () => void save()
+      },
+      t(saving ? "saving" : "save")
+    ), /* @__PURE__ */ h(
+      "button",
+      {
+        type: "button",
+        disabled: !loaded || saving,
+        onClick: () => setResetPending(true)
+      },
+      t("reset")
+    ))))
+  );
 }
+export {
+  PromptOptimizerSettings as default,
+  optimizeDraft
+};

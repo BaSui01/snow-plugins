@@ -1,3 +1,6 @@
+/* Prompt Optimizer panel.
+   Selectors stay inside .snow-po-settings and reuse host theme variables so the
+   panel follows the active theme without overriding application styles. */
 .snow-po-settings {
   --po-accent: var(--accent-blue, var(--accent-color, #0f766e));
   color: var(--text-primary, inherit);
@@ -12,43 +15,376 @@
   container-type: inline-size;
   box-sizing: border-box;
 }
-.snow-po-settings * { box-sizing: border-box; }
-.snow-po-settings h2 { margin: 0; font-size: 18px; }
-.snow-po-settings p { margin: 4px 0 0; line-height: 1.6; }
-.snow-po-settings .po-muted { color: var(--text-secondary, #888); font-size: 12px; }
-.snow-po-settings .po-card { border: 1px solid var(--border-color, #8885); border-radius: 14px; padding: 16px; background: var(--bg-secondary, transparent); display: flex; flex-direction: column; gap: 10px; box-shadow: 0 3px 12px #0000000a; }
-.snow-po-settings label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
-.snow-po-settings .po-check { flex-direction: row; align-items: flex-start; gap: 9px; line-height: 1.5; }
-.snow-po-settings input[type="checkbox"] { accent-color: var(--po-accent); margin-top: 3px; }
-.snow-po-settings :is(input[type="text"], input[type="number"], textarea, select) {
-  font: inherit; color: inherit; background: var(--bg-secondary, transparent); border: 1px solid var(--border-color, #8885); border-radius: 8px; padding: 9px; width: 100%;
-}
-.snow-po-settings select option { color: var(--text-primary, #222); background: var(--bg-secondary, #fff); }
-.snow-po-settings textarea { min-height: 128px; resize: vertical; line-height: 1.6; }
-.snow-po-settings .po-preview { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 260px; overflow: auto; margin: 8px 0; font: inherit; line-height: 1.6; }
-.snow-po-settings .po-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.snow-po-settings button { font: inherit; border: 1px solid var(--border-color, #8885); background: var(--bg-secondary, transparent); color: inherit; border-radius: 8px; padding: 9px 12px; cursor: pointer; }
-.snow-po-settings button.po-primary { background: var(--po-accent); color: #fff; border-color: transparent; }
-.snow-po-settings :is(button, input, select, textarea):disabled { opacity: .45; cursor: not-allowed; }
-.snow-po-settings :is(button, input, select, textarea):focus-visible { outline: 2px solid var(--po-accent); outline-offset: 2px; }
-.snow-po-settings .po-status { font-size: 13px; padding: 10px 12px; border-radius: 8px; background: var(--bg-tertiary, #8881); line-height: 1.6; }
-.snow-po-settings .po-warning { border-left: 3px solid #d97706; }
 
-.snow-po-settings > * { flex-shrink: 0; min-width: 0; }
-.snow-po-settings .po-header { display: flex; align-items: center; gap: 10px; }
-.snow-po-settings .po-icon { display: grid; place-items: center; width: 36px; height: 36px; flex: 0 0 36px; border-radius: 10px; color: var(--po-accent); background: var(--bg-tertiary, #8881); font-size: 24px; }
-.snow-po-settings h3 { margin: 0; font-size: 13px; font-weight: 650; }
-.snow-po-settings .po-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.snow-po-settings .po-field { min-width: 0; }
-.snow-po-settings .po-field > span { overflow-wrap: anywhere; }
-.snow-po-settings .po-counter { text-align: right; color: var(--text-secondary, #888); font-size: 11px; font-variant-numeric: tabular-nums; }
-.snow-po-settings .po-over-limit { color: var(--text-error, #b45309); }
-.snow-po-settings .po-disclosure { font-size: 12px; line-height: 1.6; border-left: 3px solid var(--po-accent); padding: 4px 10px; background: var(--bg-tertiary, #8881); border-radius: 4px; }
-.snow-po-settings .po-details { border: 1px solid var(--border-color, #8885); border-radius: 8px; padding: 10px 12px; font-size: 12px; }
-.snow-po-settings summary { cursor: pointer; line-height: 1.5; }
-.snow-po-settings summary:focus-visible { outline: 2px solid var(--po-accent); outline-offset: 3px; }
-.snow-po-settings .po-footer { position: sticky; bottom: -14px; z-index: 1; margin: auto -14px -14px; padding: 10px 14px 14px; border-top: 1px solid var(--border-color, #8885); background: var(--bg-primary, #fff); display: flex; flex-direction: column; gap: 8px; box-shadow: 0 -4px 12px #00000008; }
-.snow-po-settings .po-footer .po-status { padding: 0; background: transparent; font-size: 12px; }
-.snow-po-settings .po-footer button { flex: 1 1 auto; }
-@container (max-width: 340px) { .snow-po-settings .po-grid { grid-template-columns: minmax(0, 1fr); } }
-@media (max-width: 380px) { .snow-po-settings .po-grid { grid-template-columns: minmax(0, 1fr); } }
+.snow-po-settings * {
+  box-sizing: border-box;
+}
+
+.snow-po-settings > * {
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.snow-po-settings h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.snow-po-settings h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.snow-po-settings p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.snow-po-settings .po-muted {
+  color: var(--text-secondary, #888);
+  font-size: 12px;
+}
+
+/* Header */
+.snow-po-settings .po-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.snow-po-settings .po-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.snow-po-settings .po-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 10px;
+  color: var(--po-accent);
+  background: var(--bg-tertiary, #8881);
+  font-size: 20px;
+}
+
+/* Cards share one level: the save bar is the only elevated surface. */
+.snow-po-settings .po-card {
+  border: 1px solid var(--border-color, #8885);
+  border-radius: 12px;
+  padding: 14px;
+  background: var(--bg-secondary, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.snow-po-settings .po-card-soft {
+  background: transparent;
+  border-style: dashed;
+}
+
+.snow-po-settings .po-card-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Fields */
+.snow-po-settings label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.snow-po-settings .po-field {
+  min-width: 0;
+}
+
+.snow-po-settings .po-field > span {
+  overflow-wrap: anywhere;
+}
+
+.snow-po-settings .po-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.snow-po-settings .po-check {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 9px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.snow-po-settings input[type="checkbox"] {
+  accent-color: var(--po-accent);
+  margin-top: 3px;
+  flex: 0 0 auto;
+}
+
+.snow-po-settings :is(input[type="number"], textarea, select) {
+  font: inherit;
+  color: inherit;
+  background: var(--bg-secondary, transparent);
+  border: 1px solid var(--border-color, #8885);
+  border-radius: 8px;
+  padding: 9px;
+  width: 100%;
+}
+
+.snow-po-settings select option {
+  color: var(--text-primary, #222);
+  background: var(--bg-secondary, #fff);
+}
+
+.snow-po-settings textarea {
+  min-height: 140px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.snow-po-settings .po-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.snow-po-settings .po-counter {
+  color: var(--text-secondary, #888);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.snow-po-settings .po-over-limit {
+  color: var(--text-error, #b45309);
+}
+
+/* Buttons */
+.snow-po-settings button {
+  font: inherit;
+  border: 1px solid var(--border-color, #8885);
+  background: var(--bg-secondary, transparent);
+  color: inherit;
+  border-radius: 8px;
+  padding: 9px 12px;
+  cursor: pointer;
+}
+
+.snow-po-settings button.po-primary {
+  background: var(--po-accent);
+  color: #fff;
+  border-color: transparent;
+  font-weight: 600;
+}
+
+.snow-po-settings button.po-ghost {
+  align-self: flex-start;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--text-secondary, #888);
+}
+
+.snow-po-settings :is(button, input, select, textarea):disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Focus rings sit inside the control so they never overlay neighbouring rows. */
+.snow-po-settings :is(button, input, select, textarea):focus-visible {
+  outline: 2px solid var(--po-accent);
+  outline-offset: -2px;
+}
+
+.snow-po-settings input[type="checkbox"]:focus-visible {
+  outline-offset: 1px;
+}
+
+.snow-po-settings .po-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Status blocks */
+.snow-po-settings .po-status {
+  font-size: 13px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--bg-tertiary, #8881);
+  line-height: 1.6;
+}
+
+.snow-po-settings .po-status.po-inline {
+  font-size: 12px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.snow-po-settings .po-status.po-warning {
+  border-left: 3px solid #d97706;
+}
+
+/* Collapsible reference blocks */
+.snow-po-settings .po-details {
+  border: 1px solid var(--border-color, #8885);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 12px;
+}
+
+.snow-po-settings summary {
+  cursor: pointer;
+  line-height: 1.5;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.snow-po-settings summary:focus-visible {
+  outline: 2px solid var(--po-accent);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+
+.snow-po-settings .po-details-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+}
+
+.snow-po-settings .po-preview {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 260px;
+  overflow: auto;
+  margin: 0;
+  font: inherit;
+  line-height: 1.6;
+}
+
+/* Disclosure that running the action sends the draft to the chosen service. */
+.snow-po-settings .po-disclosure {
+  font-size: 12px;
+  line-height: 1.6;
+  border-left: 3px solid var(--po-accent);
+  padding: 6px 10px;
+  background: var(--bg-tertiary, #8881);
+  border-radius: 4px;
+}
+
+/* Live hint explaining whether history will actually be included. */
+.snow-po-settings .po-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary, #888);
+}
+
+.snow-po-settings .po-hint-warn {
+  color: var(--text-warning, #d97706);
+}
+
+.snow-po-settings .po-hint-dot {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 50%;
+  margin-top: 6px;
+  background: currentColor;
+  opacity: 0.6;
+}
+
+/* Save bar: a regular card at the end of the flow.
+   It deliberately avoids sticky/z-index/negative margins/shadow: a floating bar
+   covered the cards above it and broke the panel's single visual level. */
+.snow-po-settings .po-savebar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--border-color, #8885);
+  border-radius: 12px;
+  background: var(--bg-secondary, transparent);
+}
+
+.snow-po-settings .po-savebar-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.snow-po-settings .po-savebar-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary, #888);
+}
+
+.snow-po-settings .po-savebar-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.snow-po-settings .po-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  background: var(--border-color, #8888);
+}
+
+.snow-po-settings .po-dot-dirty {
+  background: var(--po-accent);
+}
+
+.snow-po-settings .po-savebar-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 11px;
+  color: var(--text-secondary, #888);
+}
+
+.snow-po-settings .po-savebar .po-actions button {
+  flex: 1 1 auto;
+}
+
+.snow-po-settings .po-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.snow-po-settings .po-confirm .po-actions button {
+  flex: 0 1 auto;
+}
+
+@container (max-width: 340px) {
+  .snow-po-settings .po-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 380px) {
+  .snow-po-settings .po-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
