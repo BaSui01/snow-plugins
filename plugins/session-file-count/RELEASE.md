@@ -1,3 +1,14 @@
+# 会话文件统计 1.1.6
+
+源码迁移到 TypeScript，运行行为与 1.1.5 一致；需配套宿主构建，UI/重启未验收。历史最低宿主 0.4.16 不代表本版完整任务历史兼容；尚无已确认支持新增任务历史能力的正式宿主版本，不猜改市场 `minAppVersion`。按对应专属标签下载安装包。
+
+- **源码迁移到 TypeScript**：`footer.js` 拆分为 `src/` 下的模块（宿主契约类型、DOM 与图标工厂、记录规范化与行数统计、内联 diff 渲染、回复插槽挂载），经 `scripts/build.mjs`（esbuild）打包为单个 `footer.js`；宿主仍以 ESM 动态导入该入口，相对导入不参与运行时解析，安装包结构与加载方式不变。
+- **移除未引用的死代码**：`index.js` 与 `style.css` 自初始提交起就未被 `plugin.json` 引用（`entry` 为 `footer.js`、`panels` 为空），本次一并删除；`footer.css` 与语言包不受影响。
+- **构建校验契约对齐**：新增 `package.json`、`tsconfig.json`、`scripts/build.mjs` 与锁文件，`npm run check` 执行 `tsc --noEmit` 并校验 `footer.js` 与 `src/` 一致；CI 增加对应步骤。
+- **换行符与打包一致性**：新增仓库级 `.gitattributes`（`eol=lf`），构建校验比对同时兼容 CRLF，避免 Windows 检出时误报产物过期、并防止本地打包字节与云端 Release 不一致导致的市场哈希不符。
+- 运行行为、隐私边界与宿主兼容要求与 1.1.5 相同：仍只展示宿主 `context.task` 冻结快照，不读取聊天正文、不扫描 Git、不联网、不持久化路径或差异。
+- 本次版本与说明更新已通过现有 `python scripts/release.py validate`、插件内 `npm run check`（`tsc --noEmit` + 产物一致性）、构建确定性核对（连续三次 SHA-256 一致）及打包内容核对；不代表安装或交互验收。
+
 # 会话文件统计 1.1.5
 
 需配套宿主构建，UI/重启未验收。历史最低宿主 0.4.16 不代表本版完整任务历史兼容；尚无已确认支持新增任务历史能力的正式宿主版本，不猜改市场 `minAppVersion`。按对应专属标签下载安装包。

@@ -1,0 +1,48 @@
+// Bundles src/ into the single ESM entry declared by plugin.json.
+// The host imports the entry from a Blob URL, so relative imports cannot
+// resolve at runtime: everything must be inlined into footer.js.
+//
+// `--check` rebuilds into memory and fails when the committed footer.js differs,
+// which keeps CI honest when someone edits the TypeScript sources only. The
+// comparison normalizes CRLF so a Windows checkout with core.autocrlf=true
+// cannot report a false mismatch; the repository ships LF through .gitattributes.
+import { build } from "esbuild";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const outfile = path.join(root, "footer.js");
+const check = process.argv.includes("--check");
+
+const options = {
+  entryPoints: [path.join(root, "src/footer.ts")],
+  bundle: true,
+  format: "esm",
+  platform: "browser",
+  target: "es2022",
+  legalComments: "none",
+  charset: "utf8",
+  logLevel: "warning",
+  banner: {
+    js: "// Generated from src/ by scripts/build.mjs — edit the TypeScript sources, not this file.",
+  },
+};
+
+const normalize = (text) => text.replaceAll("\r\n", "\n");
+
+if (check) {
+  const result = await build({ ...options, write: false });
+  const built = normalize(result.outputFiles[0].text);
+  const current = normalize(await readFile(outfile, "utf8"));
+  if (built !== current) {
+    console.error(
+      "footer.js is out of date with src/: run `npm run build` and commit the result.",
+    );
+    process.exit(1);
+  }
+  console.log("footer.js matches the TypeScript sources.");
+} else {
+  await build({ ...options, outfile });
+  console.log("Built footer.js from src/.");
+}

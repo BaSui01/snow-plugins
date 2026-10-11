@@ -33,3 +33,8 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           npm run check
+      - name: Verify the session-file-count entry matches its sources
+        working-directory: plugins/session-file-count
+        run: |
+          npm ci --no-audit --no-fund
+          npm run check

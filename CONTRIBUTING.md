@@ -27,15 +27,15 @@ python scripts/release.py validate
 
 该入口静态检查插件清单、资源、JSON 和 JavaScript；需要本机提供 Python 和 Node.js。静态通过不代表实际宿主行为验收通过。
 
-使用 TypeScript 的插件（当前为 `plugins/prompt-optimizer`）另需校验构建产物与源码一致：
+使用 TypeScript 的插件（`plugins/prompt-optimizer` 与 `plugins/session-file-count`）另需校验构建产物与源码一致：
 
 ```sh
-cd plugins/prompt-optimizer
+cd plugins/prompt-optimizer   # 或 plugins/session-file-count
 npm ci
 npm run check
 ```
 
-`index.js` 是 `src/` 的构建产物，不直接编辑；`src/`、`scripts/`、`package.json` 等开发文件不会进入发布安装包。
+`index.js` / `footer.js` 是各自 `src/` 的构建产物，不直接编辑；`src/`、`scripts/`、`package.json` 等开发文件不会进入发布安装包。
 
 **禁止新增测试文件、测试函数、测试用例（包括表驱动条目）、测试专用辅助代码、mock、fixture、快照或临时测试脚本。** 不以重构、生成器或不落盘执行绕过此规则。可运行已有相关验证、静态检查和实际生产打包；如缺少覆盖，明确记录缺口，不擅自补写测试。
 

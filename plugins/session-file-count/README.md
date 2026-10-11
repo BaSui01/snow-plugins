@@ -22,7 +22,7 @@
 
 无需打开插件面板或配置。禁用或卸载会移除插件卡片，宿主已有的采集与历史记录不因此删除。重复安装同一标识会更新已安装副本；修改源码目录不会自动更新已安装副本。
 
-插件标识为 `com.snow.session-file-count`，清单版本为 `1.1.5`。本版变更与宿主兼容说明见 [发布说明](RELEASE.md)。
+插件标识为 `com.snow.session-file-count`，清单版本为 `1.1.6`。本版变更与宿主兼容说明见 [发布说明](RELEASE.md)。
 
 ## 任务边界与历史恢复
 
@@ -52,7 +52,7 @@
 
 ## 宿主要求与采集边界
 
-**1.1.5 版本：左右双栏对比、断流/未完成任务静默隐藏与独立任务历史需配套本次宿主源代码改动与原生模块构建，UI/重启未验收。尚无已确认正式发行版本支持 `taskHistory` / `context.task`。旧宿主仅显示兼容提示，不再用累计统计替代独立任务。以下 v0.4.16 基础能力说明属于已发布版本历史，不代表 1.1.5 的完整任务历史兼容。**
+**1.1.6 版本：源码迁移到 TypeScript，运行行为与 1.1.5 一致；左右双栏对比、断流/未完成任务静默隐藏与独立任务历史需配套本次宿主源代码改动与原生模块构建，UI/重启未验收。尚无已确认正式发行版本支持 `taskHistory` / `context.task`。旧宿主仅显示兼容提示，不再用累计统计替代独立任务。以下 v0.4.16 基础能力说明属于已发布版本历史，不代表 1.1.6 的完整任务历史兼容。**
 
 基础统计最低要求 **Snow App v0.4.16**，它已包含通用回复插槽和增强文件追踪元数据。配套改动通过 [PR #179](https://github.com/MayDay-wpf/snow-app/pull/179 "会话文件统计所需回复插槽及文件追踪增强已合并") 合并并进入 v0.4.16；v0.4.15 不包含这些能力。安装插件不会更新宿主。
 
@@ -75,6 +75,17 @@
 插件只读取宿主传入 `context.task` 的只读任务文件记录和覆盖快照，不读取消息正文，不扫描 Git、不执行命令、不联网、不修改项目文件，也不持久化路径或差异。卡片会显示宿主提供的文件路径；分享截图时请留意路径中可能包含的敏感信息。
 
 运行入口是 `footer.js`，清单仅声明 `contributions.messageFooters`，`panels` 为空。宿主契约使用 `messageFooterVersion === 1`，清单显式声明 `taskHistory: true`，通过冻结的 `context.task: { id, records, coverage }` 读取本次任务证据；不再订阅累计 `runtime.fileChangeStats`。接口与生命周期详情请查阅 Snow App 内置文档「插件开发与安装」及「插件元数据域参考」。
+
+源码使用 TypeScript，目录 `src/` 为唯一可编辑来源：`types.ts`（宿主契约最小类型）、`dom.ts`（元素与 Lucide 图标工厂）、`files.ts`（记录规范化与行数统计）、`diff.ts`（内联左右双栏 diff 渲染）、`footer.ts`（回复插槽挂载与生命周期）。宿主以 ESM 动态导入 `plugin.json` 的 `entry`，运行时无法解析相对导入，因此必须打包成单个 `footer.js`：
+
+```sh
+cd plugins/session-file-count
+npm ci
+npm run check   # tsc --noEmit + 校验 footer.js 与 src/ 一致
+npm run build   # 重新生成 footer.js
+```
+
+**不要直接编辑 `footer.js`**：它是构建产物，CI 会运行 `npm run check` 校验其与 `src/` 一致。`src/`、`scripts/`、`package.json` 等开发文件不会进入发布安装包。
 
 ## 来源与许可证
 
