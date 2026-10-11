@@ -1,0 +1,6 @@
+# Keep every checkout byte-identical to the repository content.
+# The committed build outputs (plugins/*/index.js, plugins/*/footer.js) are
+# compared byte-for-byte by `npm run check` and hashed by the release packaging,
+# so a Windows checkout with core.autocrlf=true must not rewrite their line
+# endings into CRLF.
+* text=auto eol=lf

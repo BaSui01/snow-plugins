@@ -16,6 +16,14 @@ TAG = re.compile(rf"(?P<plugin>{SLUG})/v(?P<version>{VERSION})(?P<preview>-[0-9A
 EXCLUDED = {".git", "node_modules", "__pycache__"}
 # Build-time only: validated in CI, but never shipped inside an install package.
 DEV_ONLY = {"src", "scripts", "tsconfig.json", "package.json", "package-lock.json"}
+# The repository ships LF (see .gitattributes). A Windows checkout with
+# core.autocrlf=true may still hold CRLF in the working tree, and packaging those
+# bytes would produce a different archive than the CI build of the same tag,
+# breaking the market sha256 comparison. Text resources are therefore packed
+# with LF line endings regardless of how the working tree was checked out.
+TEXT_SUFFIXES = {".css", ".js", ".json", ".md", ".mjs", ".svg", ".txt"}
+TEXT_NAMES = {"LICENSE", "NOTICE"}
+LINE_ENDINGS = re.compile(rb"\r\n|\r")
 
 
 def discover():
@@ -50,6 +58,14 @@ def files(directory, include_dev=True):
             raise ValueError(f"Symlinks are not allowed: {path}")
         if path.is_file():
             yield path
+
+
+def packaged_bytes(path):
+    """Normalize text resources to LF so the archive is checkout-independent."""
+    data = path.read_bytes()
+    if path.suffix.lower() in TEXT_SUFFIXES or path.name in TEXT_NAMES:
+        return LINE_ENDINGS.sub(b"\n", data)
+    return data
 
 
 def validate_market_metadata(metadata):
@@ -122,9 +138,13 @@ def main():
             raise FileExistsError(archive)
         with ZipFile(archive, "w", ZIP_DEFLATED) as bundle:
             for path in files(directory, include_dev=False):
-                bundle.write(path, path.relative_to(directory).as_posix())
+                bundle.writestr(
+                    path.relative_to(directory).as_posix(),
+                    packaged_bytes(path),
+                    compress_type=ZIP_DEFLATED,
+                )
             if not (directory / "LICENSE").exists():
-                bundle.write(ROOT / "LICENSE", "LICENSE")
+                bundle.writestr("LICENSE", packaged_bytes(ROOT / "LICENSE"), compress_type=ZIP_DEFLATED)
         checksum = hashlib.sha256(archive.read_bytes()).hexdigest()
         (output / "SHA256SUMS.txt").write_text(f"{checksum}  {asset}\n", encoding="utf-8", newline="\n")
         print(f"Packaged only {name}: {archive}")

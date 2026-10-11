@@ -3,7 +3,9 @@
 // resolve at runtime: everything must be inlined into index.js.
 //
 // `--check` rebuilds into memory and fails when the committed index.js differs,
-// which keeps CI honest when someone edits the TypeScript sources only.
+// which keeps CI honest when someone edits the TypeScript sources only. The
+// comparison normalizes CRLF so a Windows checkout with core.autocrlf=true
+// cannot report a false mismatch; the repository ships LF through .gitattributes.
 import { build } from "esbuild";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -29,10 +31,12 @@ const options = {
   },
 };
 
+const normalize = (text) => text.replaceAll("\r\n", "\n");
+
 if (check) {
   const result = await build({ ...options, write: false });
-  const built = result.outputFiles[0].text;
-  const current = await readFile(outfile, "utf8");
+  const built = normalize(result.outputFiles[0].text);
+  const current = normalize(await readFile(outfile, "utf8"));
   if (built !== current) {
     console.error(
       "index.js is out of date with src/: run `npm run build` and commit the result.",
