@@ -130,7 +130,36 @@ var readProfiles = async (api) => {
     };
   });
 };
-var selectionError = (profiles, selection) => {
+var readChannelModels = async (api, profileName) => {
+  let response;
+  try {
+    response = await api.metadata.get("apiModels", {
+      params: { profileName }
+    });
+  } catch {
+    return { supported: false, models: null };
+  }
+  if (response?.unknown?.includes("apiModels") || response?.denied?.apiModels !== void 0) {
+    return { supported: false, models: null };
+  }
+  const data = response?.domains?.apiModels;
+  if (!data || typeof data !== "object" || !Array.isArray(data.models)) {
+    return { supported: true, models: null };
+  }
+  return {
+    supported: true,
+    models: data.models.filter(
+      (model) => typeof model === "string" && !!model.trim()
+    )
+  };
+};
+var mergeModelOptions = (configured, channel) => {
+  const merged = [...configured, ...channel?.models ?? []].filter(
+    (model) => !!model.trim()
+  );
+  return [...new Set(merged)];
+};
+var selectionError = (profiles, selection, channel) => {
   if (!profiles.length) return "profilesEmpty";
   if (!selection.apiProfile && !selection.model) {
     const active = profiles.filter((item) => item.isActive);
@@ -142,9 +171,12 @@ var selectionError = (profiles, selection) => {
     (item) => item.profileName === selection.apiProfile
   );
   if (!profile) return selection.apiProfile ? "profileInvalid" : "profileRequired";
-  if (!profile.models.length) return "modelsEmpty";
-  if (!profile.models.includes(selection.model)) {
-    return selection.model ? "modelInvalid" : "modelRequired";
+  const options = mergeModelOptions(profile.models, channel);
+  if (!options.length) return "modelsEmpty";
+  if (!options.includes(selection.model)) {
+    if (!selection.model) return "modelRequired";
+    if (!channel?.models?.length) return "";
+    return "modelInvalid";
   }
   return "";
 };
@@ -194,7 +226,13 @@ async function runOptimization({
   }
   const profiles = await readProfiles(api);
   checkActive(signal);
-  const invalidSelection = selectionError(profiles, prefs);
+  const profile = profiles.find((item) => item.profileName === prefs.apiProfile);
+  let channel = null;
+  if (profile && (!profile.models.length || Boolean(prefs.model) && !profile.models.includes(prefs.model))) {
+    channel = await readChannelModels(api, profile.profileName);
+    checkActive(signal);
+  }
+  const invalidSelection = selectionError(profiles, prefs, channel);
   if (invalidSelection) throw new Error(api.t(invalidSelection));
   checkActive(signal);
   const write = api.write;
@@ -300,6 +338,8 @@ function PromptOptimizerSettings({ api }) {
   const [profilesStatus, setProfilesStatus] = useState("profilesLoading");
   const [profilesFeedback, setProfilesFeedback] = useState("");
   const [profilesRetry, setProfilesRetry] = useState(0);
+  const [channel, setChannel] = useState(null);
+  const [channelStatus, setChannelStatus] = useState("idle");
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [settingsSaving, setSettingsSaving] = useState(false);
@@ -391,6 +431,31 @@ function PromptOptimizerSettings({ api }) {
     };
   }, [api, profilesRetry]);
   useEffect(() => {
+    const selected = profiles.find((item) => item.profileName === prefs.apiProfile);
+    if (profilesStatus || !selected) {
+      setChannel(null);
+      setChannelStatus("idle");
+      return;
+    }
+    let alive = true;
+    setChannel(null);
+    setChannelStatus("loading");
+    readChannelModels(api, prefs.apiProfile).then((value) => {
+      if (!alive) return;
+      setChannel(value);
+      setChannelStatus(
+        !value.supported ? "unsupported" : value.models === null ? "failed" : value.models.length ? "ready" : "empty"
+      );
+    }).catch(() => {
+      if (!alive) return;
+      setChannel({ supported: true, models: null });
+      setChannelStatus("failed");
+    });
+    return () => {
+      alive = false;
+    };
+  }, [api, profiles, prefs.apiProfile, profilesStatus, profilesRetry]);
+  useEffect(() => {
     if (!loaded || profilesStatus || prefs.apiProfile || prefs.model) return;
     const active = profiles.filter((item) => item.isActive);
     if (active.length !== 1) return;
@@ -433,7 +498,7 @@ function PromptOptimizerSettings({ api }) {
   };
   const save = async (value = prefs) => {
     if (!loaded || saveLock.current || profilesStatus) return;
-    const invalidSelection = selectionError(profiles, value);
+    const invalidSelection = selectionError(profiles, value, channel);
     if (invalidSelection) {
       setStatus(invalidSelection);
       return;
@@ -465,8 +530,9 @@ function PromptOptimizerSettings({ api }) {
   };
   const supported = isRuntimeSupported(api);
   const profile = profiles.find((item) => item.profileName === prefs.apiProfile);
-  const models = profile?.models ?? [];
-  const modelStatus = profilesStatus || selectionError(profiles, prefs);
+  const models = mergeModelOptions(profile?.models ?? [], channel);
+  const modelStatus = profilesStatus || selectionError(profiles, prefs, channel);
+  const channelFeedback = channelStatus === "loading" ? "channelLoading" : channelStatus === "failed" ? "channelFailed" : channelStatus === "empty" ? "channelEmpty" : channelStatus === "unsupported" ? "channelUnsupported" : "";
   const busy = saving || !loaded || profilesStatus === "profilesLoading";
   const count = countCodePoints(prefs.optimizationPrompt);
   const overLimit = count > PROMPT_LIMIT;
@@ -570,7 +636,7 @@ function PromptOptimizerSettings({ api }) {
       },
       /* @__PURE__ */ h("option", { value: "", disabled: true }, t("modelRequired")),
       models.map((model) => /* @__PURE__ */ h("option", { key: model, value: model }, model))
-    ))), (profilesFeedback || modelStatus) && /* @__PURE__ */ h("div", { className: "po-status po-inline", role: "status", "aria-live": "polite" }, profilesFeedback && /* @__PURE__ */ h("p", null, t(profilesFeedback)), modelStatus && /* @__PURE__ */ h("p", null, t(modelStatus))), /* @__PURE__ */ h(
+    ))), (profilesFeedback || channelFeedback || modelStatus) && /* @__PURE__ */ h("div", { className: "po-status po-inline", role: "status", "aria-live": "polite" }, profilesFeedback && /* @__PURE__ */ h("p", null, t(profilesFeedback)), channelFeedback && /* @__PURE__ */ h("p", null, t(channelFeedback)), modelStatus && /* @__PURE__ */ h("p", null, t(modelStatus))), /* @__PURE__ */ h(
       "button",
       {
         type: "button",

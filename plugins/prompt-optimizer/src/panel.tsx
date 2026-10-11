@@ -26,8 +26,11 @@ import {
 } from "./preferences";
 import {
   isRuntimeSupported,
+  mergeModelOptions,
+  readChannelModels,
   readProfiles,
   selectionError,
+  type ChannelModels,
   type ProfileOption,
 } from "./profiles";
 import type { PanelProps } from "./types";
@@ -51,6 +54,11 @@ export default function PromptOptimizerSettings({ api }: PanelProps) {
   const [profilesStatus, setProfilesStatus] = useState("profilesLoading");
   const [profilesFeedback, setProfilesFeedback] = useState("");
   const [profilesRetry, setProfilesRetry] = useState(0);
+  // Live channel model list of the selected service; `null` until it arrives.
+  const [channel, setChannel] = useState<ChannelModels | null>(null);
+  const [channelStatus, setChannelStatus] = useState<
+    "idle" | "loading" | "ready" | "empty" | "failed" | "unsupported"
+  >("idle");
 
   // Gear visibility is an independent preference: it saves on its own and never
   // touches the optimization rules being edited.
@@ -182,6 +190,42 @@ export default function PromptOptimizerSettings({ api }: PanelProps) {
   }, [api, profilesRetry]);
 
   useEffect(() => {
+    const selected = profiles.find((item) => item.profileName === prefs.apiProfile);
+    if (profilesStatus || !selected) {
+      setChannel(null);
+      setChannelStatus("idle");
+      return;
+    }
+    let alive = true;
+    setChannel(null);
+    setChannelStatus("loading");
+    // The host performs the provider request with the service's stored
+    // credentials and returns model ids only; this panel never sees a key.
+    readChannelModels(api, prefs.apiProfile)
+      .then((value) => {
+        if (!alive) return;
+        setChannel(value);
+        setChannelStatus(
+          !value.supported
+            ? "unsupported"
+            : value.models === null
+              ? "failed"
+              : value.models.length
+                ? "ready"
+                : "empty",
+        );
+      })
+      .catch(() => {
+        if (!alive) return;
+        setChannel({ supported: true, models: null });
+        setChannelStatus("failed");
+      });
+    return () => {
+      alive = false;
+    };
+  }, [api, profiles, prefs.apiProfile, profilesStatus, profilesRetry]);
+
+  useEffect(() => {
     if (!loaded || profilesStatus || prefs.apiProfile || prefs.model) return;
     const active = profiles.filter((item) => item.isActive);
     if (active.length !== 1) return;
@@ -231,7 +275,7 @@ export default function PromptOptimizerSettings({ api }: PanelProps) {
 
   const save = async (value: Preferences = prefs): Promise<void> => {
     if (!loaded || saveLock.current || profilesStatus) return;
-    const invalidSelection = selectionError(profiles, value);
+    const invalidSelection = selectionError(profiles, value, channel);
     if (invalidSelection) {
       setStatus(invalidSelection);
       return;
@@ -266,8 +310,18 @@ export default function PromptOptimizerSettings({ api }: PanelProps) {
 
   const supported = isRuntimeSupported(api);
   const profile = profiles.find((item) => item.profileName === prefs.apiProfile);
-  const models = profile?.models ?? [];
-  const modelStatus = profilesStatus || selectionError(profiles, prefs);
+  const models = mergeModelOptions(profile?.models ?? [], channel);
+  const modelStatus = profilesStatus || selectionError(profiles, prefs, channel);
+  const channelFeedback =
+    channelStatus === "loading"
+      ? "channelLoading"
+      : channelStatus === "failed"
+        ? "channelFailed"
+        : channelStatus === "empty"
+          ? "channelEmpty"
+          : channelStatus === "unsupported"
+            ? "channelUnsupported"
+            : "";
   const busy = saving || !loaded || profilesStatus === "profilesLoading";
   const count = countCodePoints(prefs.optimizationPrompt);
   const overLimit = count > PROMPT_LIMIT;
@@ -483,9 +537,10 @@ export default function PromptOptimizerSettings({ api }: PanelProps) {
             </select>
           </label>
         </div>
-        {(profilesFeedback || modelStatus) && (
+        {(profilesFeedback || channelFeedback || modelStatus) && (
           <div className="po-status po-inline" role="status" aria-live="polite">
             {profilesFeedback && <p>{t(profilesFeedback)}</p>}
+            {channelFeedback && <p>{t(channelFeedback)}</p>}
             {modelStatus && <p>{t(modelStatus)}</p>}
           </div>
         )}

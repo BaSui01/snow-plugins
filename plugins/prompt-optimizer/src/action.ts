@@ -11,7 +11,13 @@ import {
   normalizePreferences,
   PREFERENCES_KEY,
 } from "./preferences";
-import { isRuntimeSupported, readProfiles, selectionError } from "./profiles";
+import {
+  isRuntimeSupported,
+  readChannelModels,
+  readProfiles,
+  selectionError,
+  type ChannelModels,
+} from "./profiles";
 import type { ChatInputActionContext, ChatInputActionResult } from "./types";
 
 const cancelled = (): DOMException =>
@@ -83,7 +89,21 @@ async function runOptimization({
   const profiles = await readProfiles(api);
   checkActive(signal);
 
-  const invalidSelection = selectionError(profiles, prefs);
+  // Models outside the profile's own basic/advanced fields can only be checked
+  // against the live channel list, so it is fetched only when it can change the
+  // answer. A failed fetch leaves the decision to the host backend.
+  const profile = profiles.find((item) => item.profileName === prefs.apiProfile);
+  let channel: ChannelModels | null = null;
+  if (
+    profile &&
+    (!profile.models.length ||
+      (Boolean(prefs.model) && !profile.models.includes(prefs.model)))
+  ) {
+    channel = await readChannelModels(api, profile.profileName);
+    checkActive(signal);
+  }
+
+  const invalidSelection = selectionError(profiles, prefs, channel);
   if (invalidSelection) throw new Error(api.t(invalidSelection));
   checkActive(signal);
 

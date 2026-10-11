@@ -8,7 +8,7 @@
 
 | 插件 | 正式版标签示例 | 预发行标签示例 |
 | --- | --- | --- |
-| 提示词优化 | `prompt-optimizer/v1.2.0` | `prompt-optimizer/v1.2.0-preview.1` |
+| 提示词优化 | `prompt-optimizer/v1.3.0` | `prompt-optimizer/v1.3.0-preview.1` |
 | 会话文件统计 | `session-file-count/v1.1.1` | `session-file-count/v1.1.1-preview.1` |
 
 示例不是已发布版本。另一个插件无需同步升版。历史统一标签 `v1.1.0-preview.1` 保留，但新工作流不再接受统一标签。
