@@ -3,5 +3,5 @@
  * panel and the input-toolbar action, and resolves each export by name.
  */
 
-export { optimizeDraft } from "./action";
+export { optimizeDraft, optimizeDraftWithProjectContext } from "./action";
 export { default } from "./panel";

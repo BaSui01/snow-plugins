@@ -1,3 +1,23 @@
+# 提示词优化 1.4.0 项目代码库增强（未发布）
+
+本次明确升至 1.4.0，用于本地提交与安装；不创建标签、不推送、不发布，不生成发布安装包、不更新市场、其他插件或宿主。提交与安装结果需另行确认，本文不声明已完成安装或验收。新增全局默认与项目代码库覆盖、off/auto/always（默认 off）、fast/balanced、local/model planner、独立 rerank、默认来源复核、同项目相对包含/排除路径、只读宿主状态和撤回授权。新增输入栏 Search Action 仅对本次强制检索，不自动发送。
+
+Action 按统一宿主契约接入 reviewRequired/sourceSelection：首次候选不发优化模型，后续保持同一 draftToken、signal、服务与偏好，选空来源允许不带代码继续。所有正常结果及回填成功均保留 preview + originalText/contextReport/warnings，供宿主通用来源/预览/diff/回执 UI 展示；安全 chip、apply/undo 不变，不重新捕获覆盖旧结果。回执绝不混进提示词，代码注释不作为系统指令，自定义规则保真。
+
+## 新宿主构建与降级
+
+完整能力须配套 Snow App 的 projectContext/sourceReview/diff/queryPlanner capability、只读项目绑定状态与撤权接口、captureDraft.projectId、两阶段优化后端、项目/服务知情授权与通用 Action UI。配套宿主改动仅在本地提交 `b75d1688`，尚未推送；**尚无已确认正式发行宿主版本，也未更改 v0.4.16 的历史基础最低要求**。当前已核实的运行宿主缺少所需原生接口，不能使用新代码增强，本次仅更新插件并接受降级，不更新宿主。是否支持以实际 capability 与接口为准，不仅凭版本号判断。旧宿主明确 unsupported，按原草稿/历史逻辑降级，不声称项目检索成功；安装或更新插件不会更新宿主。
+
+## 数据去向与持久化
+
+新增 privacy scope `projectContext`，保留 `messages`。query 可能外发 embedding，选中片段发送明确选择的 optimization；可选模型 planner/reranking 各自另有外发服务及费用。授权由宿主持有和撤回；插件不保存 authorized。草稿、code、handle、report 只留本次内存，不存插件 storage/日志；只保存普通偏好和项目配置覆盖。面板项目 getter 不联网、不索引/检索/规划；历史模型清单请求仍保持原有披露。
+
+## 实际验证边界
+
+本次 1.4.0 已运行本插件 `npm run build`、`npm run check`（TypeScript + 构建一致性）及仓库现有 `python scripts/release.py validate`，均通过；与下方历史章节的验证记录区分。没有新增任何测试或安装依赖。尚未真实 UI 验收项目切换/异步竞态、授权/撤权、取消费用、来源预览/diff、回填/还原与重启持久化；静态通过不代表安装或验收通过。原始 code 不通过插件 API 返回，只在宿主专用来源预览中展示；ESM 插件不构成恶意插件沙箱。
+
+---
+
 # 提示词优化 1.3.0
 
 模型下拉改为读取渠道全量模型清单。需配套宿主构建（`apiModels` 元数据域），UI/重启未验收。按对应专属标签下载安装包。

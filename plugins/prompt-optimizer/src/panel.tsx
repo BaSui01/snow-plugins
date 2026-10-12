@@ -7,6 +7,7 @@
  */
 
 import { h, bindReact } from "./jsx";
+import CodebaseSettings from "./codebase-settings";
 import {
   buildInstructions,
   CONTEXT_MODES,
@@ -46,6 +47,7 @@ export default function PromptOptimizerSettings({ api }: PanelProps) {
   const [loaded, setLoaded] = useState(false);
   const [status, setStatus] = useState("loading");
   const [dirty, setDirty] = useState(false);
+  const [codebasePathsValid, setCodebasePathsValid] = useState(true);
   const [retry, setRetry] = useState(0);
   const [saving, setSaving] = useState(false);
   const [resetPending, setResetPending] = useState(false);
@@ -101,7 +103,8 @@ export default function PromptOptimizerSettings({ api }: PanelProps) {
         // Only trust the count when it belongs to the bound conversation.
         const focused = runtime?.conversation;
         setBoundMessageCount(
-          bound && focused?.conversationId === runtime?.chatInput?.conversationId
+          bound &&
+            focused?.conversationId === runtime?.chatInput?.conversationId
             ? (focused?.messageCount ?? 0)
             : 0,
         );
@@ -190,7 +193,9 @@ export default function PromptOptimizerSettings({ api }: PanelProps) {
   }, [api, profilesRetry]);
 
   useEffect(() => {
-    const selected = profiles.find((item) => item.profileName === prefs.apiProfile);
+    const selected = profiles.find(
+      (item) => item.profileName === prefs.apiProfile,
+    );
     if (profilesStatus || !selected) {
       setChannel(null);
       setChannelStatus("idle");
@@ -235,7 +240,11 @@ export default function PromptOptimizerSettings({ api }: PanelProps) {
     setPrefs((previous) =>
       previous.apiProfile || previous.model
         ? previous
-        : { ...previous, apiProfile: candidate.profileName, model: candidate.basicModel },
+        : {
+            ...previous,
+            apiProfile: candidate.profileName,
+            model: candidate.basicModel,
+          },
     );
     setDirty(true);
     setStatus("unsaved");
@@ -274,7 +283,8 @@ export default function PromptOptimizerSettings({ api }: PanelProps) {
   };
 
   const save = async (value: Preferences = prefs): Promise<void> => {
-    if (!loaded || saveLock.current || profilesStatus) return;
+    if (!loaded || saveLock.current || profilesStatus || !codebasePathsValid)
+      return;
     const invalidSelection = selectionError(profiles, value, channel);
     if (invalidSelection) {
       setStatus(invalidSelection);
@@ -284,7 +294,8 @@ export default function PromptOptimizerSettings({ api }: PanelProps) {
       buildInstructions(value);
     } catch (error) {
       setStatus(
-        error instanceof InstructionBuildError && error.reason === "promptRequired"
+        error instanceof InstructionBuildError &&
+          error.reason === "promptRequired"
           ? "promptRequired"
           : "settingsTooLong",
       );
@@ -309,9 +320,12 @@ export default function PromptOptimizerSettings({ api }: PanelProps) {
   };
 
   const supported = isRuntimeSupported(api);
-  const profile = profiles.find((item) => item.profileName === prefs.apiProfile);
+  const profile = profiles.find(
+    (item) => item.profileName === prefs.apiProfile,
+  );
   const models = mergeModelOptions(profile?.models ?? [], channel);
-  const modelStatus = profilesStatus || selectionError(profiles, prefs, channel);
+  const modelStatus =
+    profilesStatus || selectionError(profiles, prefs, channel);
   const channelFeedback =
     channelStatus === "loading"
       ? "channelLoading"
@@ -415,7 +429,9 @@ export default function PromptOptimizerSettings({ api }: PanelProps) {
         <label className="po-field">
           <span className="po-label">
             <span>{t("optimizationPrompt")}</span>
-            <span className={"po-counter" + (overLimit ? " po-over-limit" : "")}>
+            <span
+              className={"po-counter" + (overLimit ? " po-over-limit" : "")}
+            >
               {count} / {PROMPT_LIMIT} · {t("codePoints")}
             </span>
           </span>
@@ -551,10 +567,22 @@ export default function PromptOptimizerSettings({ api }: PanelProps) {
           onClick={refreshProfiles}
         >
           {t(
-            profilesStatus === "profilesLoading" ? "profilesLoading" : "profilesRetry",
+            profilesStatus === "profilesLoading"
+              ? "profilesLoading"
+              : "profilesRetry",
           )}
         </button>
       </div>
+
+      <CodebaseSettings
+        api={api}
+        value={prefs.codebaseContext}
+        apiProfile={prefs.apiProfile}
+        model={prefs.model}
+        change={(codebaseContext) => change({ codebaseContext })}
+        validity={setCodebasePathsValid}
+        disabled={!loaded || saving}
+      />
 
       <div className="po-card">
         <div className="po-card-head">
@@ -676,7 +704,12 @@ export default function PromptOptimizerSettings({ api }: PanelProps) {
               <button
                 type="button"
                 className="po-primary"
-                disabled={!loaded || saving || Boolean(modelStatus)}
+                disabled={
+                  !loaded ||
+                  saving ||
+                  Boolean(modelStatus) ||
+                  !codebasePathsValid
+                }
                 onClick={() => void save()}
               >
                 {t(saving ? "saving" : "save")}

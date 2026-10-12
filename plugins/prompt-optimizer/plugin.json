@@ -1,22 +1,80 @@
 {
   "id": "com.snow.prompt-optimizer",
-  "name": { "default": "Prompt Optimizer", "en": "Prompt Optimizer", "zh-CN": "提示词优化", "zh-TW": "提示詞優化" },
-  "description": { "default": "Configure rewriting instructions and strategies; optimize from the input toolbar, auto-fill safely and undo. Never auto-send.", "zh-CN": "面板配置优化提示词与策略，输入栏一键优化、安全自动回填和还原，绝不自动发送。", "zh-TW": "面板設定優化提示詞與策略，輸入欄一鍵優化、安全自動回填與還原，絕不自動傳送。" },
-  "version": "1.3.0",
+  "name": {
+    "default": "Prompt Optimizer",
+    "en": "Prompt Optimizer",
+    "zh-CN": "提示词优化",
+    "zh-TW": "提示詞優化"
+  },
+  "description": {
+    "default": "Configure rewriting instructions and strategies; optimize from the input toolbar, auto-fill safely and undo. Never auto-send.",
+    "zh-CN": "面板配置优化提示词与策略，输入栏一键优化、安全自动回填和还原，绝不自动发送。",
+    "zh-TW": "面板設定優化提示詞與策略，輸入欄一鍵優化、安全自動回填與還原，絕不自動傳送。"
+  },
+  "version": "1.4.0",
   "license": "MIT",
   "icon": "assets/icon.svg",
   "renderMode": "esm",
   "entry": "index.js",
-  "panels": [{
-    "id": "optimizer",
-    "title": { "default": "Optimizer settings", "en": "Optimizer settings", "zh-CN": "优化提示词配置", "zh-TW": "優化提示詞設定" },
-    "icon": "lucide:WandSparkles",
-    "chatInput": true,
-    "chatInputAction": "optimizeDraft",
-    "chatInputSettings": { "defaultVisible": false, "storageKey": "inputSettingsVisible" },
-    "chatInputTitle": { "default": "Optimize prompt", "en": "Optimize prompt", "zh-CN": "优化提示词", "zh-TW": "優化提示詞" }
-  }],
-  "styles": ["style.css"],
-  "locales": { "en": "locales/en.json", "zh-CN": "locales/zh-CN.json", "zh-TW": "locales/zh-TW.json" },
-  "privacy": { "scopes": ["messages"], "note": "仅在用户点击输入栏优化时，按已保存配置将草稿及所选会话上下文发送给明确选择的模型服务，可能产生费用，不再弹出确认窗。右侧面板只配置策略与服务模型；打开面板或切换服务时，会经宿主向该服务拉取一次模型清单（只发送模型列表请求，不含草稿或上下文）。不读取密钥和附件；草稿及结果不持久化；不自动发送消息。" }
+  "panels": [
+    {
+      "id": "optimizer",
+      "title": {
+        "default": "Optimizer settings",
+        "en": "Optimizer settings",
+        "zh-CN": "优化提示词配置",
+        "zh-TW": "優化提示詞設定"
+      },
+      "icon": "lucide:WandSparkles",
+      "chatInput": true,
+      "chatInputAction": "optimizeDraft",
+      "chatInputSettings": {
+        "defaultVisible": false,
+        "storageKey": "inputSettingsVisible"
+      },
+      "chatInputTitle": {
+        "default": "Optimize prompt",
+        "en": "Optimize prompt",
+        "zh-CN": "优化提示词",
+        "zh-TW": "優化提示詞"
+      }
+    },
+    {
+      "id": "optimizer-project-context",
+      "title": {
+        "default": "Project context optimizer",
+        "en": "Project context optimizer",
+        "zh-CN": "项目检索优化",
+        "zh-TW": "專案檢索優化"
+      },
+      "icon": "lucide:Search",
+      "chatInput": true,
+      "chatInputAction": "optimizeDraftWithProjectContext",
+      "chatInputSettings": {
+        "defaultVisible": false,
+        "storageKey": "inputSettingsVisible"
+      },
+      "chatInputTitle": {
+        "default": "Optimize with project code (this run)",
+        "en": "Optimize with project code (this run)",
+        "zh-CN": "本次检索项目代码并优化",
+        "zh-TW": "本次檢索專案程式碼並優化"
+      }
+    }
+  ],
+  "styles": [
+    "style.css"
+  ],
+  "locales": {
+    "en": "locales/en.json",
+    "zh-CN": "locales/zh-CN.json",
+    "zh-TW": "locales/zh-TW.json"
+  },
+  "privacy": {
+    "scopes": [
+      "messages",
+      "projectContext"
+    ],
+    "note": "仅主动点击输入栏动作才优化，不自动发送。代码库默认关闭；宿主按项目与服务确认授权，query可能外发embedding，选中片段发送所选optimization；可选model planner与reranking分别额外外发并收费。草稿、代码、来源句柄及回执仅本次内存不落库，只保存偏好，不读取附件或密钥。面板只读项目状态不索引或检索；原模型清单请求仍由宿主向所选服务请求且不含草稿。"
+  }
 }

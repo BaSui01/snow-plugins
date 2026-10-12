@@ -76,6 +76,61 @@ export type StorageApi = {
   setJson: (key: string, value: unknown) => Promise<void>;
 };
 
+export type PromptCodebaseContextOptions = {
+  mode: "off" | "auto" | "always";
+  budget: "fast" | "balanced";
+  planner: "local" | "model";
+  rerank: boolean;
+  reviewSources: boolean;
+  includePaths?: string[];
+  excludePaths?: string[];
+};
+export type PromptContextSource = {
+  id: string;
+  path: string;
+  startLine: number;
+  endLine: number;
+  matchKind: "exact" | "semantic" | "mixed";
+  characters: number;
+  freshness: "fresh" | "unknown";
+  selected: boolean;
+};
+export type PromptContextReport = {
+  outcome: "used" | "skipped" | "degraded" | "review_required";
+  reason: string;
+  sources: PromptContextSource[];
+  warnings: string[];
+  indexState: "fresh" | "stale" | "indexing" | "unknown" | "unavailable";
+  queryKind: "exact" | "semantic" | "mixed" | "none";
+  characters: number;
+  elapsedMs: number;
+  cacheHit: boolean;
+  truncated: boolean;
+};
+export type PromptOptimizationResult = {
+  content: string;
+  contextReport?: PromptContextReport;
+  contextHandle?: string;
+  reviewRequired?: boolean;
+  warnings?: string[];
+};
+export type ProjectContextOptions = {
+  draftToken?: string;
+  apiProfile?: string;
+  model?: string;
+  codebaseContext?: PromptCodebaseContextOptions;
+};
+export type ProjectContextStatus = {
+  bindingHandle: string;
+  projectId: string;
+  projectName?: string;
+  status: string;
+  authorized: boolean;
+  services: {
+    kind: "embedding" | "optimization" | "reranking" | "planner";
+    label: string;
+  }[];
+};
 export type OptimizePromptOptions = {
   draft: string;
   conversationId?: string;
@@ -85,12 +140,31 @@ export type OptimizePromptOptions = {
   includeContext?: boolean;
   optimizationInstructions?: string;
   signal?: AbortSignal;
+  draftToken?: string;
+  codebaseContext?: PromptCodebaseContextOptions;
+  contextHandle?: string;
+  selectedSourceIds?: string[];
+  onProgress?: (phase: string) => void;
 };
 
 export type AiApi = {
   optimizePrompt?: (
     options: OptimizePromptOptions,
-  ) => Promise<{ content: string }>;
+  ) => Promise<PromptOptimizationResult>;
+  capabilities?: {
+    promptOptimization: {
+      projectContext: 1;
+      sourceReview: 1;
+      diff: 1;
+      queryPlanner: 1;
+    };
+  };
+  getProjectContext?: (
+    options: ProjectContextOptions,
+  ) => Promise<ProjectContextStatus>;
+  revokeProjectContextAccess?: (
+    options: ProjectContextOptions,
+  ) => Promise<boolean>;
 };
 
 export type PluginApi = {
@@ -98,7 +172,10 @@ export type PluginApi = {
   locale?: string;
   t: (
     key: string,
-    options?: { defaultValue?: string; values?: Record<string, string | number> },
+    options?: {
+      defaultValue?: string;
+      values?: Record<string, string | number>;
+    },
   ) => string;
   metadata: MetadataApi;
   write?: WriteApi;
@@ -113,6 +190,17 @@ export type ChatInputActionResult = {
   preview?: string;
   apply?: () => Promise<ChatInputActionResult>;
   undo?: () => Promise<void>;
+  details?: {
+    originalText: string;
+    contextReport?: PromptContextReport;
+    warnings?: string[];
+  };
+  sourceSelection?: {
+    sources: PromptContextSource[];
+    defaultSelectedIds: string[];
+    contextHandle: string;
+    apply: (sourceIds: string[]) => Promise<ChatInputActionResult>;
+  };
 };
 
 export type ChatInputActionContext = {
