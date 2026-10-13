@@ -37,29 +37,20 @@
         "en": "Optimize prompt",
         "zh-CN": "优化提示词",
         "zh-TW": "優化提示詞"
-      }
-    },
-    {
-      "id": "optimizer-project-context",
-      "title": {
-        "default": "Project context optimizer",
-        "en": "Project context optimizer",
-        "zh-CN": "项目检索优化",
-        "zh-TW": "專案檢索優化"
       },
-      "icon": "lucide:Search",
-      "chatInput": true,
-      "chatInputAction": "optimizeDraftWithProjectContext",
-      "chatInputSettings": {
-        "defaultVisible": false,
-        "storageKey": "inputSettingsVisible"
-      },
-      "chatInputTitle": {
-        "default": "Optimize with project code (this run)",
-        "en": "Optimize with project code (this run)",
-        "zh-CN": "本次检索项目代码并优化",
-        "zh-TW": "本次檢索專案程式碼並優化"
-      }
+      "chatInputMenuActions": [
+        {
+          "id": "project-context",
+          "action": "optimizeDraftWithProjectContext",
+          "title": {
+            "default": "Optimize with project code (this run)",
+            "en": "Optimize with project code (this run)",
+            "zh-CN": "本次检索项目代码并优化",
+            "zh-TW": "本次檢索專案程式碼並優化"
+          },
+          "icon": "lucide:Search"
+        }
+      ]
     }
   ],
   "styles": [

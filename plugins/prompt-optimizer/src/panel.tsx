@@ -415,7 +415,7 @@ export default function PromptOptimizerSettings({ api }: PanelProps) {
         </div>
       )}
 
-      <p className="po-disclosure">{t("privacy")}</p>
+      <p className="po-note">{t("privacy")}</p>
 
       <div className="po-card">
         <div className="po-card-head">
@@ -426,28 +426,34 @@ export default function PromptOptimizerSettings({ api }: PanelProps) {
           <span>{t("strategy")}</span>
           {select("strategy", Object.keys(STRATEGIES))}
         </label>
-        <label className="po-field">
-          <span className="po-label">
-            <span>{t("optimizationPrompt")}</span>
-            <span
-              className={"po-counter" + (overLimit ? " po-over-limit" : "")}
-            >
-              {count} / {PROMPT_LIMIT} · {t("codePoints")}
+        <details className="po-details">
+          <summary>
+            <span className="po-label">
+              <span>{t("promptDetailsTitle")}</span>
+              <span
+                className={"po-counter" + (overLimit ? " po-over-limit" : "")}
+              >
+                {count} / {PROMPT_LIMIT} · {t("codePoints")}
+              </span>
             </span>
-          </span>
-          <textarea
-            value={prefs.optimizationPrompt}
-            disabled={!loaded || saving}
-            maxLength={PROMPT_INPUT_MAX}
-            rows={7}
-            spellCheck={false}
-            aria-invalid={overLimit}
-            onChange={(event: { target: { value: string } }) =>
-              change({ optimizationPrompt: event.target.value })
-            }
-          />
-        </label>
-        <p className="po-muted">{t("promptHelp")}</p>
+          </summary>
+          <div className="po-details-body">
+            <p className="po-muted">{t("promptHelp")}</p>
+            <label className="po-field">
+              <textarea
+                value={prefs.optimizationPrompt}
+                disabled={!loaded || saving}
+                maxLength={PROMPT_INPUT_MAX}
+                rows={7}
+                spellCheck={false}
+                aria-invalid={overLimit}
+                onChange={(event: { target: { value: string } }) =>
+                  change({ optimizationPrompt: event.target.value })
+                }
+              />
+            </label>
+          </div>
+        </details>
         <div className="po-grid">
           <label className="po-field">
             <span>{t("length")}</span>
@@ -606,7 +612,6 @@ export default function PromptOptimizerSettings({ api }: PanelProps) {
         <summary>{t("workflowTitle")}</summary>
         <div className="po-details-body">
           <p>{t("workflow")}</p>
-          <p>{t("autoApplyHelp")}</p>
           <p>{t("safety")}</p>
         </div>
       </details>

@@ -269,7 +269,7 @@ export default function CodebaseSettings({
   return (
     <div className="po-card">
       <h3>{t("codebaseTitle")}</h3>
-      <p className="po-disclosure">{t("codebasePrivacy")}</p>
+      <p className="po-note">{t("codebasePrivacy")}</p>
       {!supported && (
         <p className="po-status po-warning">{t("codebaseUnsupported")}</p>
       )}
@@ -307,7 +307,7 @@ export default function CodebaseSettings({
       </label>
       <p className="po-muted">{t("codebaseScopeHelp")}</p>
       <div className="po-grid">
-        {(["mode", "budget", "planner"] as const).map((key) => (
+        {(["mode", "budget"] as const).map((key) => (
           <label className="po-field" key={key}>
             <span>{t(`codebase.${key}`)}</span>
             <select
@@ -321,9 +321,7 @@ export default function CodebaseSettings({
             >
               {(key === "mode"
                 ? ["off", "auto", "always"]
-                : key === "budget"
-                  ? ["fast", "balanced"]
-                  : ["local", "model"]
+                : ["fast", "balanced"]
               ).map((option) => (
                 <option key={option} value={option}>
                   {t(`codebase.${key}.${option}`)}
@@ -334,38 +332,61 @@ export default function CodebaseSettings({
         ))}
       </div>
       <p className="po-muted">{t("codebaseModeHelp")}</p>
-      {(["rerank", "reviewSources"] as const).map((key) => (
-        <label className="po-check" key={key}>
-          <input
-            type="checkbox"
-            checked={effective[key]}
-            disabled={unavailable}
-            onChange={(event: { target: { checked: boolean } }) =>
-              update({ [key]: event.target.checked })
-            }
-          />
-          <span>{t(`codebase.${key}`)}</span>
-        </label>
-      ))}
-      <p className="po-muted">{t("codebaseReviewHelp")}</p>
-      {(["include", "exclude"] as const).map((key) => (
-        <label className="po-field" key={key}>
-          <span>{t(`codebase.${key}Paths`)}</span>
-          <textarea
-            rows={3}
-            value={paths[key]}
-            disabled={unavailable}
-            spellCheck={false}
-            aria-invalid={!pathsValid}
-            onChange={(event: { target: { value: string } }) =>
-              updatePaths(key, event.target.value)
-            }
-          />
-        </label>
-      ))}
-      <p className={pathsValid ? "po-muted" : "po-status po-warning"}>
-        {t(pathsValid ? "codebasePathsHelp" : "codebasePathsInvalid")}
-      </p>
+      <details className="po-details">
+        <summary>{t("codebaseAdvanced")}</summary>
+        <div className="po-details-body">
+          <label className="po-field">
+            <span>{t("codebase.planner")}</span>
+            <select
+              value={effective.planner}
+              disabled={unavailable}
+              onChange={(event: { target: { value: string } }) =>
+                update({
+                  planner: event.target.value,
+                } as Partial<PromptCodebaseContextOptions>)
+              }
+            >
+              {["local", "model"].map((option) => (
+                <option key={option} value={option}>
+                  {t(`codebase.planner.${option}`)}
+                </option>
+              ))}
+            </select>
+          </label>
+          {(["rerank", "reviewSources"] as const).map((key) => (
+            <label className="po-check" key={key}>
+              <input
+                type="checkbox"
+                checked={effective[key]}
+                disabled={unavailable}
+                onChange={(event: { target: { checked: boolean } }) =>
+                  update({ [key]: event.target.checked })
+                }
+              />
+              <span>{t(`codebase.${key}`)}</span>
+            </label>
+          ))}
+          <p className="po-muted">{t("codebaseReviewHelp")}</p>
+          {(["include", "exclude"] as const).map((key) => (
+            <label className="po-field" key={key}>
+              <span>{t(`codebase.${key}Paths`)}</span>
+              <textarea
+                rows={3}
+                value={paths[key]}
+                disabled={unavailable}
+                spellCheck={false}
+                aria-invalid={!pathsValid}
+                onChange={(event: { target: { value: string } }) =>
+                  updatePaths(key, event.target.value)
+                }
+              />
+            </label>
+          ))}
+          <p className={pathsValid ? "po-muted" : "po-status po-warning"}>
+            {t(pathsValid ? "codebasePathsHelp" : "codebasePathsInvalid")}
+          </p>
+        </div>
+      </details>
       {projectScope && (
         <div className="po-actions">
           <button

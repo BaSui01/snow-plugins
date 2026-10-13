@@ -662,7 +662,7 @@ function CodebaseSettings({
     }
   };
   const unavailable = disabled || busy || projectScope && (!overrideLoaded || binding?.projectId !== projectId);
-  return /* @__PURE__ */ h("div", { className: "po-card" }, /* @__PURE__ */ h("h3", null, t("codebaseTitle")), /* @__PURE__ */ h("p", { className: "po-disclosure" }, t("codebasePrivacy")), !supported && /* @__PURE__ */ h("p", { className: "po-status po-warning" }, t("codebaseUnsupported")), /* @__PURE__ */ h("p", { className: "po-muted" }, binding ? `${binding.projectName ?? binding.projectId ?? "—"} · ${t(`contextReason.${binding.status}`)} · ${t(binding.authorized ? "codebaseAuthorized" : "codebaseUnauthorized")}` : t("codebaseStatusUnknown")), binding?.services.map((service) => /* @__PURE__ */ h("p", { className: "po-muted", key: service.kind }, t(`service.${service.kind}`), ": ", service.label)), /* @__PURE__ */ h("label", { className: "po-field" }, /* @__PURE__ */ h("span", null, t("codebaseScope")), /* @__PURE__ */ h(
+  return /* @__PURE__ */ h("div", { className: "po-card" }, /* @__PURE__ */ h("h3", null, t("codebaseTitle")), /* @__PURE__ */ h("p", { className: "po-note" }, t("codebasePrivacy")), !supported && /* @__PURE__ */ h("p", { className: "po-status po-warning" }, t("codebaseUnsupported")), /* @__PURE__ */ h("p", { className: "po-muted" }, binding ? `${binding.projectName ?? binding.projectId ?? "—"} · ${t(`contextReason.${binding.status}`)} · ${t(binding.authorized ? "codebaseAuthorized" : "codebaseUnauthorized")}` : t("codebaseStatusUnknown")), binding?.services.map((service) => /* @__PURE__ */ h("p", { className: "po-muted", key: service.kind }, t(`service.${service.kind}`), ": ", service.label)), /* @__PURE__ */ h("label", { className: "po-field" }, /* @__PURE__ */ h("span", null, t("codebaseScope")), /* @__PURE__ */ h(
     "select",
     {
       value: projectScope ? "project" : "global",
@@ -682,7 +682,7 @@ function CodebaseSettings({
       },
       t("codebaseProject")
     )
-  )), /* @__PURE__ */ h("p", { className: "po-muted" }, t("codebaseScopeHelp")), /* @__PURE__ */ h("div", { className: "po-grid" }, ["mode", "budget", "planner"].map((key) => /* @__PURE__ */ h("label", { className: "po-field", key }, /* @__PURE__ */ h("span", null, t(`codebase.${key}`)), /* @__PURE__ */ h(
+  )), /* @__PURE__ */ h("p", { className: "po-muted" }, t("codebaseScopeHelp")), /* @__PURE__ */ h("div", { className: "po-grid" }, ["mode", "budget"].map((key) => /* @__PURE__ */ h("label", { className: "po-field", key }, /* @__PURE__ */ h("span", null, t(`codebase.${key}`)), /* @__PURE__ */ h(
     "select",
     {
       value: effective[key],
@@ -691,8 +691,18 @@ function CodebaseSettings({
         [key]: event.target.value
       })
     },
-    (key === "mode" ? ["off", "auto", "always"] : key === "budget" ? ["fast", "balanced"] : ["local", "model"]).map((option) => /* @__PURE__ */ h("option", { key: option, value: option }, t(`codebase.${key}.${option}`)))
-  )))), /* @__PURE__ */ h("p", { className: "po-muted" }, t("codebaseModeHelp")), ["rerank", "reviewSources"].map((key) => /* @__PURE__ */ h("label", { className: "po-check", key }, /* @__PURE__ */ h(
+    (key === "mode" ? ["off", "auto", "always"] : ["fast", "balanced"]).map((option) => /* @__PURE__ */ h("option", { key: option, value: option }, t(`codebase.${key}.${option}`)))
+  )))), /* @__PURE__ */ h("p", { className: "po-muted" }, t("codebaseModeHelp")), /* @__PURE__ */ h("details", { className: "po-details" }, /* @__PURE__ */ h("summary", null, t("codebaseAdvanced")), /* @__PURE__ */ h("div", { className: "po-details-body" }, /* @__PURE__ */ h("label", { className: "po-field" }, /* @__PURE__ */ h("span", null, t("codebase.planner")), /* @__PURE__ */ h(
+    "select",
+    {
+      value: effective.planner,
+      disabled: unavailable,
+      onChange: (event) => update({
+        planner: event.target.value
+      })
+    },
+    ["local", "model"].map((option) => /* @__PURE__ */ h("option", { key: option, value: option }, t(`codebase.planner.${option}`)))
+  )), ["rerank", "reviewSources"].map((key) => /* @__PURE__ */ h("label", { className: "po-check", key }, /* @__PURE__ */ h(
     "input",
     {
       type: "checkbox",
@@ -710,7 +720,7 @@ function CodebaseSettings({
       "aria-invalid": !pathsValid,
       onChange: (event) => updatePaths(key, event.target.value)
     }
-  ))), /* @__PURE__ */ h("p", { className: pathsValid ? "po-muted" : "po-status po-warning" }, t(pathsValid ? "codebasePathsHelp" : "codebasePathsInvalid")), projectScope && /* @__PURE__ */ h("div", { className: "po-actions" }, /* @__PURE__ */ h(
+  ))), /* @__PURE__ */ h("p", { className: pathsValid ? "po-muted" : "po-status po-warning" }, t(pathsValid ? "codebasePathsHelp" : "codebasePathsInvalid")))), projectScope && /* @__PURE__ */ h("div", { className: "po-actions" }, /* @__PURE__ */ h(
     "button",
     {
       disabled: unavailable || !pathsValid,
@@ -989,8 +999,8 @@ function PromptOptimizerSettings({ api }) {
     },
     /* @__PURE__ */ h("header", { className: "po-header" }, /* @__PURE__ */ h("span", { className: "po-icon", "aria-hidden": "true" }, renderableIcon ? h(brandIcon, { size: 20 }) : "✦"), /* @__PURE__ */ h("div", { className: "po-header-text" }, /* @__PURE__ */ h("h2", null, t("title")), /* @__PURE__ */ h("p", { className: "po-muted" }, t("ready")))),
     !supported && /* @__PURE__ */ h("div", { className: "po-status po-warning", role: "alert" }, t("unavailable")),
-    /* @__PURE__ */ h("p", { className: "po-disclosure" }, t("privacy")),
-    /* @__PURE__ */ h("div", { className: "po-card" }, /* @__PURE__ */ h("div", { className: "po-card-head" }, /* @__PURE__ */ h("h3", null, t("rulesTitle")), /* @__PURE__ */ h("p", { className: "po-muted" }, t("strategyHelp"))), /* @__PURE__ */ h("label", { className: "po-field" }, /* @__PURE__ */ h("span", null, t("strategy")), select("strategy", Object.keys(STRATEGIES))), /* @__PURE__ */ h("label", { className: "po-field" }, /* @__PURE__ */ h("span", { className: "po-label" }, /* @__PURE__ */ h("span", null, t("optimizationPrompt")), /* @__PURE__ */ h(
+    /* @__PURE__ */ h("p", { className: "po-note" }, t("privacy")),
+    /* @__PURE__ */ h("div", { className: "po-card" }, /* @__PURE__ */ h("div", { className: "po-card-head" }, /* @__PURE__ */ h("h3", null, t("rulesTitle")), /* @__PURE__ */ h("p", { className: "po-muted" }, t("strategyHelp"))), /* @__PURE__ */ h("label", { className: "po-field" }, /* @__PURE__ */ h("span", null, t("strategy")), select("strategy", Object.keys(STRATEGIES))), /* @__PURE__ */ h("details", { className: "po-details" }, /* @__PURE__ */ h("summary", null, /* @__PURE__ */ h("span", { className: "po-label" }, /* @__PURE__ */ h("span", null, t("promptDetailsTitle")), /* @__PURE__ */ h(
       "span",
       {
         className: "po-counter" + (overLimit ? " po-over-limit" : "")
@@ -1000,7 +1010,7 @@ function PromptOptimizerSettings({ api }) {
       PROMPT_LIMIT,
       " · ",
       t("codePoints")
-    )), /* @__PURE__ */ h(
+    ))), /* @__PURE__ */ h("div", { className: "po-details-body" }, /* @__PURE__ */ h("p", { className: "po-muted" }, t("promptHelp")), /* @__PURE__ */ h("label", { className: "po-field" }, /* @__PURE__ */ h(
       "textarea",
       {
         value: prefs.optimizationPrompt,
@@ -1011,7 +1021,7 @@ function PromptOptimizerSettings({ api }) {
         "aria-invalid": overLimit,
         onChange: (event) => change({ optimizationPrompt: event.target.value })
       }
-    )), /* @__PURE__ */ h("p", { className: "po-muted" }, t("promptHelp")), /* @__PURE__ */ h("div", { className: "po-grid" }, /* @__PURE__ */ h("label", { className: "po-field" }, /* @__PURE__ */ h("span", null, t("length")), select("length", Object.keys(LENGTHS))), /* @__PURE__ */ h("label", { className: "po-field" }, /* @__PURE__ */ h("span", null, t("structure")), select("structure", Object.keys(STRUCTURES))))),
+    )))), /* @__PURE__ */ h("div", { className: "po-grid" }, /* @__PURE__ */ h("label", { className: "po-field" }, /* @__PURE__ */ h("span", null, t("length")), select("length", Object.keys(LENGTHS))), /* @__PURE__ */ h("label", { className: "po-field" }, /* @__PURE__ */ h("span", null, t("structure")), select("structure", Object.keys(STRUCTURES))))),
     /* @__PURE__ */ h("div", { className: "po-card" }, /* @__PURE__ */ h("div", { className: "po-card-head" }, /* @__PURE__ */ h("h3", null, t("contextTitle"))), /* @__PURE__ */ h("div", { className: "po-grid" }, /* @__PURE__ */ h("label", { className: "po-field" }, /* @__PURE__ */ h("span", null, t("contextMode")), select("contextMode", CONTEXT_MODES)), prefs.contextMode === "recent" && /* @__PURE__ */ h("label", { className: "po-field" }, /* @__PURE__ */ h("span", null, t("rounds")), /* @__PURE__ */ h(
       "input",
       {
@@ -1102,7 +1112,7 @@ function PromptOptimizerSettings({ api }) {
         onChange: (event) => change({ autoApply: event.target.checked })
       }
     ), /* @__PURE__ */ h("span", null, t("autoApply"))), /* @__PURE__ */ h("p", { className: "po-muted" }, t("autoApplyHelp"))),
-    /* @__PURE__ */ h("details", { className: "po-details" }, /* @__PURE__ */ h("summary", null, t("workflowTitle")), /* @__PURE__ */ h("div", { className: "po-details-body" }, /* @__PURE__ */ h("p", null, t("workflow")), /* @__PURE__ */ h("p", null, t("autoApplyHelp")), /* @__PURE__ */ h("p", null, t("safety")))),
+    /* @__PURE__ */ h("details", { className: "po-details" }, /* @__PURE__ */ h("summary", null, t("workflowTitle")), /* @__PURE__ */ h("div", { className: "po-details-body" }, /* @__PURE__ */ h("p", null, t("workflow")), /* @__PURE__ */ h("p", null, t("safety")))),
     /* @__PURE__ */ h("details", { className: "po-details" }, /* @__PURE__ */ h("summary", null, t("effectiveInstructions")), /* @__PURE__ */ h("div", { className: "po-details-body" }, /* @__PURE__ */ h("pre", { className: "po-preview" }, preview.text))),
     /* @__PURE__ */ h("div", { className: "po-card po-card-soft" }, /* @__PURE__ */ h("label", { className: "po-check" }, /* @__PURE__ */ h(
       "input",

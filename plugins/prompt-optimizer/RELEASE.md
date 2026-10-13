@@ -1,12 +1,14 @@
-# 提示词优化 1.4.0 项目代码库增强（未发布）
+# 提示词优化 1.4.0 项目代码库增强
 
-本次明确升至 1.4.0，用于本地提交与安装；不创建标签、不推送、不发布，不生成发布安装包、不更新市场、其他插件或宿主。提交与安装结果需另行确认，本文不声明已完成安装或验收。新增全局默认与项目代码库覆盖、off/auto/always（默认 off）、fast/balanced、local/model planner、独立 rerank、默认来源复核、同项目相对包含/排除路径、只读宿主状态和撤回授权。新增输入栏 Search Action 仅对本次强制检索，不自动发送。
+本版本已完成本地提交、创建专属标签并推送；推送标签会触发 CI 打包 Release 并自动创建市场 PR，最终发布与市场合并结果以 GitHub Actions 与市场仓库实际状态为准。本轮修正源码、清单、资源与相关文档，并按明确授权原地更新了单面板插件副本，保留已保存偏好与启用状态。新增全局默认与项目代码库覆盖、off/auto/always（默认 off）、fast/balanced、local/model planner、独立 rerank、默认来源复核、同项目相对包含/排除路径、只读宿主状态和撤回授权。
+
+**交互修正**：清单仅保留 `optimizer` 一个「优化提示词配置」面板；删除为一次性动作创建的 `optimizer-project-context` 第二面板，原 `optimizeDraft` 主 Action、面板标题和齿轮偏好保持不变。父面板 `chatInputMenuActions` 使用 `project-context` / `optimizeDraftWithProjectContext` 声明本次检索动作；不再有独立 Search 主按钮或第二配置标签。配套宿主构建通过魔杖右键或支持键盘操作的更多菜单提供「本次检索项目代码并优化」及打开配置。保存的模式用于常规魔杖，一次性动作仅使用本次 `always`、不保存配置、不自动发送。配置面板只配置与读取状态，不捕获草稿、不调用 AI、不执行优化；所有代码库设置及全局/项目覆盖仍在原卡片。旧「项目检索优化」标签若已打开，更新后可能需手动关闭一次，不修改面板存储或偏好。
 
 Action 按统一宿主契约接入 reviewRequired/sourceSelection：首次候选不发优化模型，后续保持同一 draftToken、signal、服务与偏好，选空来源允许不带代码继续。所有正常结果及回填成功均保留 preview + originalText/contextReport/warnings，供宿主通用来源/预览/diff/回执 UI 展示；安全 chip、apply/undo 不变，不重新捕获覆盖旧结果。回执绝不混进提示词，代码注释不作为系统指令，自定义规则保真。
 
 ## 新宿主构建与降级
 
-完整能力须配套 Snow App 的 projectContext/sourceReview/diff/queryPlanner capability、只读项目绑定状态与撤权接口、captureDraft.projectId、两阶段优化后端、项目/服务知情授权与通用 Action UI。配套宿主改动仅在本地提交 `b75d1688`，尚未推送；**尚无已确认正式发行宿主版本，也未更改 v0.4.16 的历史基础最低要求**。当前已核实的运行宿主缺少所需原生接口，不能使用新代码增强，本次仅更新插件并接受降级，不更新宿主。是否支持以实际 capability 与接口为准，不仅凭版本号判断。旧宿主明确 unsupported，按原草稿/历史逻辑降级，不声称项目检索成功；安装或更新插件不会更新宿主。
+完整能力须配套 Snow App 的 projectContext/sourceReview/diff/queryPlanner capability、只读项目绑定状态与撤权接口、captureDraft.projectId、两阶段优化后端、项目/服务知情授权与通用 Action UI；新菜单另需宿主支持父面板 `chatInputMenuActions`、右键及可发现且可键盘操作的更多入口。先前文档记录的宿主本地提交 `b75d1688` 不代表新菜单已发布；**尚无已确认正式发行宿主版本，也未更改 v0.4.16 的历史基础最低要求**。本次核查的 Snow App 安装包版本 `0.4.22` 缺少原生项目代码库接口及新菜单支持，仍为 `unsupported`；插件副本已按授权更新为单面板，但宿主能力未变。旧宿主忽略新菜单字段，但更新插件清单后仍只有一个父面板和原主 Action；项目代码库按原草稿/历史逻辑降级，不声称检索成功。安装或更新插件不会更新宿主，完整右键/更多菜单与代码库增强仍需后续部署配套宿主并单独验收；是否支持以实际 capability 与接口为准，不仅凭版本号判断。
 
 ## 数据去向与持久化
 
@@ -14,7 +16,7 @@ Action 按统一宿主契约接入 reviewRequired/sourceSelection：首次候选
 
 ## 实际验证边界
 
-本次 1.4.0 已运行本插件 `npm run build`、`npm run check`（TypeScript + 构建一致性）及仓库现有 `python scripts/release.py validate`，均通过；与下方历史章节的验证记录区分。没有新增任何测试或安装依赖。尚未真实 UI 验收项目切换/异步竞态、授权/撤权、取消费用、来源预览/diff、回填/还原与重启持久化；静态通过不代表安装或验收通过。原始 code 不通过插件 API 返回，只在宿主专用来源预览中展示；ESM 插件不构成恶意插件沙箱。
+本轮交互修正已实际通过插件 `npm run build`、`npm run check`（TypeScript + 构建一致性）及 `python ../../scripts/release.py validate`，不是沿用下方历史章节的验证结果；配套宿主完整构建 `CARGO_NET_OFFLINE=true npm run build` 也已通过。没有新增任何测试或安装依赖。尚未真实 UI 验收右键/更多菜单、键盘操作与焦点行为、项目切换/异步竞态、授权/撤权、取消费用、来源预览/diff、回填/还原与重启持久化；静态检查与构建通过不代表安装、部署或交互验收完成。源码已提交并推送专属标签；宿主未部署，完整右键/更多菜单与代码库增强仍需后续部署配套宿主并单独验收。原始 code 不通过插件 API 返回，只在宿主专用来源预览中展示；ESM 插件不构成恶意插件沙箱。
 
 ---
 

@@ -1,8 +1,14 @@
 /* Prompt Optimizer panel.
    Selectors stay inside .snow-po-settings and reuse host theme variables so the
-   panel follows the active theme without overriding application styles. */
+   panel follows the active theme (light or dark) without overriding application
+   styles. Nothing here hardcodes a light-only surface colour. */
 .snow-po-settings {
   --po-accent: var(--accent-blue, var(--accent-color, #0f766e));
+  --po-surface: var(--bg-secondary, transparent);
+  --po-surface-strong: var(--bg-tertiary, #8881);
+  --po-line: var(--border-color, #8885);
+  --po-soft: var(--text-secondary, #888);
+  --po-transition: 0.16s ease;
   color: var(--text-primary, inherit);
   font: inherit;
   padding: 14px;
@@ -28,12 +34,14 @@
 .snow-po-settings h2 {
   margin: 0;
   font-size: 16px;
+  line-height: 1.3;
 }
 
 .snow-po-settings h3 {
   margin: 0;
   font-size: 13px;
   font-weight: 650;
+  line-height: 1.4;
 }
 
 .snow-po-settings p {
@@ -42,7 +50,7 @@
 }
 
 .snow-po-settings .po-muted {
-  color: var(--text-secondary, #888);
+  color: var(--po-soft);
   font-size: 12px;
 }
 
@@ -68,16 +76,16 @@
   flex: 0 0 36px;
   border-radius: 10px;
   color: var(--po-accent);
-  background: var(--bg-tertiary, #8881);
+  background: var(--po-surface-strong);
   font-size: 20px;
 }
 
 /* Cards share one level: the save bar is the only elevated surface. */
 .snow-po-settings .po-card {
-  border: 1px solid var(--border-color, #8885);
-  border-radius: 12px;
-  padding: 14px;
-  background: var(--bg-secondary, transparent);
+  border: 1px solid var(--po-line);
+  border-radius: 14px;
+  padding: 14px 16px;
+  background: var(--po-surface);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -92,6 +100,22 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+/* A short accent bar marks every card title without adding an extra element. */
+.snow-po-settings .po-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.snow-po-settings .po-card h3::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 3px;
+  height: 13px;
+  border-radius: 2px;
+  background: var(--po-accent);
 }
 
 /* Fields */
@@ -134,11 +158,22 @@
 .snow-po-settings :is(input[type="number"], textarea, select) {
   font: inherit;
   color: inherit;
-  background: var(--bg-secondary, transparent);
-  border: 1px solid var(--border-color, #8885);
-  border-radius: 8px;
-  padding: 9px;
+  background: var(--po-surface);
+  border: 1px solid var(--po-line);
+  border-radius: 9px;
+  padding: 9px 10px;
   width: 100%;
+  transition:
+    border-color var(--po-transition),
+    background var(--po-transition);
+}
+
+.snow-po-settings :is(input[type="number"], textarea, select):hover:not(:disabled) {
+  border-color: var(--po-soft);
+}
+
+.snow-po-settings :is(input[type="number"], textarea, select):focus-visible {
+  border-color: var(--po-accent);
 }
 
 .snow-po-settings select option {
@@ -159,7 +194,7 @@
 }
 
 .snow-po-settings .po-counter {
-  color: var(--text-secondary, #888);
+  color: var(--po-soft);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -172,12 +207,23 @@
 /* Buttons */
 .snow-po-settings button {
   font: inherit;
-  border: 1px solid var(--border-color, #8885);
-  background: var(--bg-secondary, transparent);
+  font-size: 13px;
+  border: 1px solid var(--po-line);
+  background: var(--po-surface);
   color: inherit;
-  border-radius: 8px;
-  padding: 9px 12px;
+  border-radius: 9px;
+  padding: 8px 12px;
   cursor: pointer;
+  transition:
+    background var(--po-transition),
+    border-color var(--po-transition),
+    color var(--po-transition),
+    filter var(--po-transition);
+}
+
+.snow-po-settings button:not(.po-primary):not(.po-ghost):hover:not(:disabled) {
+  background: var(--po-surface-strong);
+  border-color: var(--po-soft);
 }
 
 .snow-po-settings button.po-primary {
@@ -187,11 +233,26 @@
   font-weight: 600;
 }
 
+.snow-po-settings button.po-primary:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.snow-po-settings button.po-primary:active:not(:disabled) {
+  filter: brightness(0.94);
+}
+
 .snow-po-settings button.po-ghost {
   align-self: flex-start;
-  padding: 6px 10px;
+  padding: 6px 11px;
   font-size: 12px;
-  color: var(--text-secondary, #888);
+  color: var(--po-soft);
+  background: transparent;
+}
+
+.snow-po-settings button.po-ghost:hover:not(:disabled) {
+  color: var(--text-primary, inherit);
+  border-color: var(--po-soft);
+  background: var(--po-surface-strong);
 }
 
 .snow-po-settings :is(button, input, select, textarea):disabled {
@@ -212,6 +273,7 @@
 .snow-po-settings .po-actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
 }
 
@@ -220,7 +282,7 @@
   font-size: 13px;
   padding: 10px 12px;
   border-radius: 8px;
-  background: var(--bg-tertiary, #8881);
+  background: var(--po-surface-strong);
   line-height: 1.6;
 }
 
@@ -233,22 +295,52 @@
 }
 
 .snow-po-settings .po-status.po-warning {
-  border-left: 3px solid #d97706;
+  border-left: 3px solid var(--text-warning, #d97706);
 }
 
-/* Collapsible reference blocks */
+/* Collapsible reference blocks: the whole summary row is the click target. */
 .snow-po-settings .po-details {
-  border: 1px solid var(--border-color, #8885);
+  border: 1px solid var(--po-line);
   border-radius: 12px;
-  padding: 12px 14px;
-  font-size: 12px;
+  background: var(--po-surface);
+  overflow: hidden;
 }
 
 .snow-po-settings summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
   cursor: pointer;
   line-height: 1.5;
   font-weight: 600;
   font-size: 13px;
+  list-style: none;
+  transition: background var(--po-transition);
+}
+
+.snow-po-settings summary::-webkit-details-marker {
+  display: none;
+}
+
+.snow-po-settings summary::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 0;
+  height: 0;
+  border-left: 5px solid currentColor;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  opacity: 0.55;
+  transition: transform var(--po-transition);
+}
+
+.snow-po-settings details[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.snow-po-settings summary:hover {
+  background: var(--po-surface-strong);
 }
 
 .snow-po-settings summary:focus-visible {
@@ -257,11 +349,18 @@
   border-radius: 6px;
 }
 
+/* A label inside a summary keeps the title left and the counter right. */
+.snow-po-settings summary .po-label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .snow-po-settings .po-details-body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding-top: 10px;
+  padding: 0 12px 12px;
+  font-size: 12px;
 }
 
 .snow-po-settings .po-preview {
@@ -274,13 +373,26 @@
   line-height: 1.6;
 }
 
-/* Disclosure that running the action sends the draft to the chosen service. */
+/* Compact note: the top-level disclosure and the code-context disclosure both
+   use it, so the repeated privacy wording stays a short readable line instead of
+   a full paragraph block. */
+.snow-po-settings .po-note {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-primary, inherit);
+  background: var(--po-surface-strong);
+  border-left: 2px solid var(--po-accent);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+/* Kept for hosts that still render the older disclosure class. */
 .snow-po-settings .po-disclosure {
   font-size: 12px;
   line-height: 1.6;
   border-left: 3px solid var(--po-accent);
   padding: 6px 10px;
-  background: var(--bg-tertiary, #8881);
+  background: var(--po-surface-strong);
   border-radius: 4px;
 }
 
@@ -291,7 +403,7 @@
   gap: 7px;
   font-size: 12px;
   line-height: 1.5;
-  color: var(--text-secondary, #888);
+  color: var(--po-soft);
 }
 
 .snow-po-settings .po-hint-warn {
@@ -315,16 +427,16 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 14px;
-  border: 1px solid var(--border-color, #8885);
-  border-radius: 12px;
-  background: var(--bg-secondary, transparent);
+  padding: 14px 16px;
+  border: 1px solid var(--po-line);
+  border-radius: 14px;
+  background: var(--po-surface);
 }
 
 .snow-po-settings .po-savebar-body {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .snow-po-settings .po-savebar-status {
@@ -333,7 +445,7 @@
   gap: 8px;
   font-size: 12px;
   line-height: 1.5;
-  color: var(--text-secondary, #888);
+  color: var(--po-soft);
 }
 
 .snow-po-settings .po-savebar-text {
@@ -346,7 +458,7 @@
   height: 7px;
   flex: 0 0 7px;
   border-radius: 50%;
-  background: var(--border-color, #8888);
+  background: var(--po-line);
 }
 
 .snow-po-settings .po-dot-dirty {
@@ -358,7 +470,7 @@
   flex-wrap: wrap;
   gap: 4px 14px;
   font-size: 11px;
-  color: var(--text-secondary, #888);
+  color: var(--po-soft);
 }
 
 .snow-po-settings .po-savebar .po-actions button {
