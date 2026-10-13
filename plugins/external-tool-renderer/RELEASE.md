@@ -1,6 +1,6 @@
-# 0.1.0 — 桌面外部 MCP 卡片（开发扩展，未发布）
+# 0.2.0 — 桌面外部 MCP 卡片（开发扩展）
 
-独立插件 `com.snow.external-tool-renderer`，本轮保持 `0.1.0`，不是宿主更新；不自动安装。
+独立插件 `com.snow.external-tool-renderer` 版本升至 `0.2.0`，作者统一为 BaSui。不是宿主更新；不自动安装。
 
 ## 原迁移保持不变
 

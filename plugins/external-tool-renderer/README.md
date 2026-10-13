@@ -1,7 +1,7 @@
 # 外部工具渲染（桌面 MCP 扩展，开发版本）
 
 - ID：`com.snow.external-tool-renderer`
-- 独立版本：`0.1.0`
+- 独立版本：`0.2.0`
 - 作者：`BaSui`
 - 安装目录：`plugins/external-tool-renderer`（直接包含 `plugin.json`），不能安装仓库根目录。
 
