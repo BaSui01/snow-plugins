@@ -40,9 +40,20 @@ while read -r pr_num; do
 done < <(gh pr list --repo "$upstream" --state open --limit 1000 \
   --json number,headRefName,headRepositoryOwner \
   --jq '.[] | select(.headRepositoryOwner.login == "BaSui01" and (.headRefName | startswith("release/'"$PLUGIN"'/v"))) | "\(.number)"')
-if git diff --quiet -- "$entry"; then
+if [[ -z "$(git status --porcelain -- "$entry")" ]]; then
   echo 'Market already points to this release asset.'
   exit 0
+fi
+is_new_entry="false"
+if ! git cat-file -e "HEAD:$entry" 2>/dev/null; then
+  is_new_entry="true"
+fi
+if [[ "$is_new_entry" == "true" ]]; then
+  pr_verb="add"
+  pr_desc="Adds"
+else
+  pr_verb="update"
+  pr_desc="Updates only"
 fi
 git remote add author-fork "https://github.com/$fork.git"
 gh auth setup-git
@@ -63,9 +74,9 @@ else
   git switch -c "$branch"
   git add "$entry"
   [[ "$(git diff --cached --name-only)" == "$entry" ]] || { echo '::error::Unexpected staged files'; exit 1; }
-  git commit -m "chore(market): update $RELEASE_TAG"
+  git commit -m "chore(market): $pr_verb $RELEASE_TAG"
   git push author-fork "HEAD:refs/heads/$branch"
 fi
 gh pr create --repo "$upstream" --base main --head "$head" \
-  --title "chore(market): update $RELEASE_TAG" \
-  --body "Updates only $PLUGIN_ID to $RELEASE_TAG. SHA-256 comes from verified published bytes. Explicit market.json host requirements are applied, never lowered automatically. See https://github.com/BaSui01/snow-plugins/releases/tag/$RELEASE_TAG for changes and optional feature limits. Maintainer review required; never auto-merged."
+  --title "chore(market): $pr_verb $RELEASE_TAG" \
+  --body "$pr_desc $PLUGIN_ID to $RELEASE_TAG. SHA-256 comes from verified published bytes. Explicit market.json host requirements are applied, never lowered automatically. See https://github.com/BaSui01/snow-plugins/releases/tag/$RELEASE_TAG for changes and optional feature limits. Maintainer review required; never auto-merged."
