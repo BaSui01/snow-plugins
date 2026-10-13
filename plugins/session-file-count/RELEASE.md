@@ -1,7 +1,12 @@
+# 会话文件统计 1.1.7
+
+新增文件类型专属图标（Simple Icons 编程语言/工具 + Lucide 通用格式）与 Diff 展开收起平滑过渡动画；需配套宿主构建，UI/重启未验收。历史最低宿主 0.4.16 不代表本版完整任务历史兼容；尚无已确认支持新增任务历史能力的正式宿主版本，不猜改市场 `minAppVersion`。按对应专属标签下载安装包。
+
+- **深度对齐 Snow App 文件类型图标**：列表文件项左侧新增类型专属矢量图标（`createFileIcon`），内置 68 个 Simple Icons 开源矢量路径，精准匹配 155+ 文件扩展名与 108+ 专属配置文件（如 TypeScript、JavaScript、Python、Rust、Go、Vue、React、HTML/CSS、Shell、Docker、Git、Markdown 等），配色严格对齐 Snow App 宿主文件图标规范；纯 DOM 节点安全构建，零 `innerHTML`。
+- **Diff 展开与收起过渡动画**：双向高度动画采用 CSS Grid `grid-template-rows: 0fr <-> 1fr` 插值，动画曲线 `cubic-bezier(0.33, 0, 0.2, 1)`（0.24s）与透明度过渡（0.2s）完全对齐 Snow App 设计规范；收起态内容离散隐藏、展开态内容按需渲染，切换丝滑无跳变；列表最大高度与无障碍属性（`aria-expanded`/`aria-controls`）同步平滑过渡，并兼容 `prefers-reduced-motion` 减弱动画偏好。
+- 本次版本与说明更新已通过现有 `python scripts/release.py validate`、插件内 `npm run check`（`tsc --noEmit` + 产物一致性）；不代表安装或交互验收。
+
 # 会话文件统计 1.1.6
-
-源码迁移到 TypeScript，运行行为与 1.1.5 一致；需配套宿主构建，UI/重启未验收。历史最低宿主 0.4.16 不代表本版完整任务历史兼容；尚无已确认支持新增任务历史能力的正式宿主版本，不猜改市场 `minAppVersion`。按对应专属标签下载安装包。
-
 - **源码迁移到 TypeScript**：`footer.js` 拆分为 `src/` 下的模块（宿主契约类型、DOM 与图标工厂、记录规范化与行数统计、内联 diff 渲染、回复插槽挂载），经 `scripts/build.mjs`（esbuild）打包为单个 `footer.js`；宿主仍以 ESM 动态导入该入口，相对导入不参与运行时解析，安装包结构与加载方式不变。
 - **移除未引用的死代码**：`index.js` 与 `style.css` 自初始提交起就未被 `plugin.json` 引用（`entry` 为 `footer.js`、`panels` 为空），本次一并删除；`footer.css` 与语言包不受影响。
 - **构建校验契约对齐**：新增 `package.json`、`tsconfig.json`、`scripts/build.mjs` 与锁文件，`npm run check` 执行 `tsc --noEmit` 并校验 `footer.js` 与 `src/` 一致；CI 增加对应步骤。

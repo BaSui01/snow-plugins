@@ -89,30 +89,33 @@
   overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb, var(--border-color, currentColor)) transparent;
+  transition: max-height 0.24s cubic-bezier(0.33, 0, 0.2, 1);
 }
-.sfc-inline .sfc-inline-list:has(.sfc-inline-diff:not([hidden])) {
+.sfc-inline .sfc-inline-list:has(.sfc-inline-diff-collapse:not(.is-collapsed)) {
   max-height: 560px;
 }
 .sfc-inline .sfc-inline-file {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 2px 12px;
   min-width: 0;
   padding: 7px 10px;
   border-radius: var(--radius-sm, 6px);
+  cursor: pointer;
 }
 .sfc-inline .sfc-inline-file:hover {
   background: var(--bg-hover, var(--bg-tertiary, transparent));
 }
 .sfc-inline .sfc-inline-path {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   flex: 1 1 12rem;
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
   color: var(--text-secondary, inherit);
   border: 0;
   border-radius: 3px;
@@ -122,7 +125,28 @@
   text-align: start;
   cursor: pointer;
 }
-.sfc-inline .sfc-inline-path:not(:disabled):hover {
+.sfc-inline .sfc-inline-file-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 14px;
+  width: 14px;
+  height: 14px;
+  line-height: 0;
+}
+.sfc-inline .sfc-inline-file-icon svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+.sfc-inline .sfc-inline-path-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.sfc-inline .sfc-inline-path:not(:disabled):hover .sfc-inline-path-text {
   color: var(--accent-blue-text, var(--accent-blue, currentColor));
   text-decoration: underline;
 }
@@ -189,6 +213,8 @@
   }
   .sfc-inline .sfc-inline-path {
     flex-basis: 100%;
+  }
+  .sfc-inline .sfc-inline-path-text {
     white-space: normal;
     overflow-wrap: anywhere;
   }
@@ -198,9 +224,33 @@
   }
 }
 
-.sfc-inline .sfc-inline-file { cursor: pointer; }
-.sfc-inline .sfc-inline-diff {
+/* Diff 展开/收起双向高度动画：grid-rows 0fr <-> 1fr 插值，与 Snow App 保持动画一致性 */
+.sfc-inline .sfc-inline-diff-collapse {
   flex: 0 0 100%;
+  min-width: 0;
+  max-width: 100%;
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition:
+    grid-template-rows 0.24s cubic-bezier(0.33, 0, 0.2, 1),
+    opacity 0.2s cubic-bezier(0.33, 0, 0.2, 1);
+}
+.sfc-inline .sfc-inline-diff-collapse.is-collapsed {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+.sfc-inline .sfc-inline-diff-collapse-inner {
+  min-height: 0;
+  overflow: hidden;
+  transition: visibility 0.24s;
+}
+.sfc-inline .sfc-inline-diff-collapse.is-collapsed .sfc-inline-diff-collapse-inner {
+  visibility: hidden;
+  transition: visibility 0.24s;
+}
+
+.sfc-inline .sfc-inline-diff {
   min-width: 0;
   max-width: 100%;
   cursor: auto;
@@ -208,8 +258,8 @@
   border: 1px solid var(--border-color, currentColor);
   border-radius: var(--radius-sm, 6px);
   background: var(--bg-primary, transparent);
+  overflow: hidden;
 }
-.sfc-inline .sfc-inline-diff[hidden] { display: none; }
 .sfc-inline .sfc-inline-diff-scroll {
   max-height: 340px;
   overflow: auto;
@@ -343,4 +393,12 @@
   color: var(--text-tertiary, var(--text-secondary, inherit));
   font-style: italic;
   font-size: 10px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sfc-inline .sfc-inline-list,
+  .sfc-inline .sfc-inline-diff-collapse,
+  .sfc-inline .sfc-inline-diff-collapse-inner {
+    transition: none !important;
+  }
 }

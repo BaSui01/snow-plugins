@@ -29,10 +29,14 @@ export const hostIcon = (
   api: FooterApi,
   name: string,
   className: string,
+  color?: string,
 ): HTMLElement => {
   const wrapper = element("span", className);
   wrapper.setAttribute("aria-hidden", "true");
-  const component = api.ui.icon(name);
+  if (color) {
+    wrapper.style.color = color;
+  }
+  const component = api.ui.icon(name) ?? api.ui.icon("File");
   const nodes = component?.render?.({}, null)?.props?.iconNode;
   if (!Array.isArray(nodes)) return wrapper;
   const svg = document.createElementNS(SVG_NS, "svg");

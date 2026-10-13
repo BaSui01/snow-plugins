@@ -8,6 +8,7 @@
 
 import { element, hostIcon, isMacPlatform } from "./dom";
 import { renderDiff } from "./diff";
+import { createFileIcon } from "./fileIcon";
 import {
   keyFor,
   latestFiles,
@@ -107,26 +108,39 @@ export function mountFooter(
     list.id = `sfc-files-${crypto.randomUUID()}`;
     for (const file of expanded ? files : files.slice(0, 4)) {
       const row = element("li", "sfc-inline-file");
-      const path = element("button", "sfc-inline-path", relativePath(file));
+      const path = element("button", "sfc-inline-path");
       path.type = "button";
       path.title = `${file.filePath}\n${t("footer.clickHint", { modifier })}\n${t("footer.diffSnapshot")}`;
       path.setAttribute(
         "aria-label",
         `${relativePath(file)}: ${t("footer.clickHint", { modifier })}`,
       );
+      const icon = createFileIcon(api, file.filePath, "sfc-inline-file-icon");
+      const name = element("span", "sfc-inline-path-text", relativePath(file));
+      path.append(icon, name);
+
       const key = keyFor(file);
+      const isExpanded = expandedDiffs.has(key);
+      const collapse = element("div", "sfc-inline-diff-collapse");
+      collapse.id = `sfc-diff-${crypto.randomUUID()}`;
+      if (!isExpanded) {
+        collapse.classList.add("is-collapsed");
+      }
+      path.setAttribute("aria-expanded", String(isExpanded));
+      path.setAttribute("aria-controls", collapse.id);
+
+      const inner = element("div", "sfc-inline-diff-collapse-inner");
       const diff = element("div", "sfc-inline-diff");
-      diff.id = `sfc-diff-${crypto.randomUUID()}`;
-      diff.hidden = !expandedDiffs.has(key);
-      path.setAttribute("aria-expanded", String(!diff.hidden));
-      path.setAttribute("aria-controls", diff.id);
+      inner.append(diff);
+      collapse.append(inner);
+
       let rendered = false;
       const populateDiff = (): void => {
         if (rendered) return;
         renderDiff(diff, file, t);
         rendered = true;
       };
-      if (!diff.hidden) populateDiff();
+      if (isExpanded) populateDiff();
       let pending = false;
       const open = async (event: MouseEvent): Promise<void> => {
         if (!active() || (event.button !== undefined && event.button !== 0))
@@ -134,13 +148,18 @@ export function mountFooter(
         event.preventDefault();
         const openDocument = isMacPlatform() ? event.metaKey : event.ctrlKey;
         if (!openDocument) {
-          diff.hidden = !diff.hidden;
-          if (diff.hidden) expandedDiffs.delete(key);
-          else {
+          const currentlyExpanded =
+            !collapse.classList.contains("is-collapsed");
+          if (currentlyExpanded) {
+            collapse.classList.add("is-collapsed");
+            expandedDiffs.delete(key);
+            path.setAttribute("aria-expanded", "false");
+          } else {
             expandedDiffs.add(key);
             populateDiff();
+            collapse.classList.remove("is-collapsed");
+            path.setAttribute("aria-expanded", "true");
           }
-          path.setAttribute("aria-expanded", String(!diff.hidden));
           return;
         }
         if (pending) return;
@@ -148,9 +167,11 @@ export function mountFooter(
           ? "footer.openUpgrade"
           : file.kind === "delete"
             ? "footer.deletedFile"
-            : typeof file.root === "string" && file.root.startsWith("ssh://")
+              : typeof file.root === "string" && file.root.startsWith("ssh://")
               ? "footer.remoteUnavailable"
-              : !/^(?:[a-zA-Z]:[\\/]|\/|\\\\)/.test(file.filePath) ||
+              : (!file.filePath.startsWith("/") &&
+                  !file.filePath.startsWith("\\\\") &&
+                  !/^[a-zA-Z]:[/\\]/.test(file.filePath)) ||
                   file.filePath.includes("\0")
                 ? "footer.invalidPath"
                 : null;
@@ -175,7 +196,11 @@ export function mountFooter(
         void open(event);
       });
       row.addEventListener("click", (event) => {
-        if ((event.target as Element | null)?.closest("button, .sfc-inline-diff"))
+        if (
+          (event.target as Element | null)?.closest(
+            "button, .sfc-inline-diff-collapse, .sfc-inline-diff",
+          )
+        )
           return;
         void open(event);
       });
@@ -185,7 +210,7 @@ export function mountFooter(
         stats
           ? signedLines(api, stats)
           : element("span", "sfc-inline-muted", t("footer.linesUnavailable")),
-        diff,
+        collapse,
       );
       list.append(row);
     }
