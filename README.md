@@ -3,13 +3,13 @@
 [![Plugin CI](https://github.com/BaSui01/snow-plugins/actions/workflows/ci.yml/badge.svg)](https://github.com/BaSui01/snow-plugins/actions/workflows/ci.yml "查看真实插件静态校验工作流")
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Snow App 插件源码集合。各插件可分别安装，本仓库不是插件市场索引；外部工具渲染为未发布开发版本，需配套桌面宿主。
+Snow App 插件源码集合。各插件可分别安装，本仓库不是插件市场索引；工具画廊为未发布开发版本，需配套桌面宿主。
 
 ## 插件、版本与下载
 
 | 插件 / ID | 清单版本 | 下载与发行状态 | 最低宿主（基础功能） | 使用说明 |
 | --- | --- | --- | --- | --- |
-| 外部工具渲染 / `com.snow.external-tool-renderer` | `0.2.0` | **开发版本，尚未发布；未自动安装** | 需提供 `ui.toolCallRendererVersion === 1` 的配套桌面构建；正式版 `0.4.23` 不含新插槽 | [使用说明](plugins/external-tool-renderer/README.md) · [发布说明](plugins/external-tool-renderer/RELEASE.md) |
+| 工具画廊 / `com.snow.external-tool-renderer` | `0.2.0` | **开发版本，尚未发布；未自动安装** | 需提供 `ui.toolCallRendererVersion === 1` 的配套桌面构建；正式版 `0.4.23` 不含新插槽 | [使用说明](plugins/external-tool-renderer/README.md) · [发布说明](plugins/external-tool-renderer/RELEASE.md) |
 | 提示词优化 / `com.snow.prompt-optimizer` | `1.4.1` | 已发布专属标签 [prompt-optimizer/v1.4.1](https://github.com/BaSui01/snow-plugins/releases/tag/prompt-optimizer/v1.4.1 "提示词优化 v1.4.1 安装包")（推送该标签后由 CI 打包 Release 并创建市场 PR）；历史 Release 见 [prompt-optimizer/v1.4.0](https://github.com/BaSui01/snow-plugins/releases/tag/prompt-optimizer/v1.4.0 "提示词优化 v1.4.0 安装包") · [prompt-optimizer/v1.1.2](https://github.com/BaSui01/snow-plugins/releases/tag/prompt-optimizer/v1.1.2 "提示词优化 v1.1.2 安装包") · [历史预发行 v1.1.0-preview.1](https://github.com/BaSui01/snow-plugins/releases/tag/v1.1.0-preview.1 "历史预发行包") | Snow App `v0.4.16`（历史基础功能；新行为另需配套构建） | [配置与使用](plugins/prompt-optimizer/README.md) · [发布说明](plugins/prompt-optimizer/RELEASE.md) |
 | 会话文件统计 / `com.snow.session-file-count` | `1.1.7` | 已发布专属标签 [session-file-count/v1.1.7](https://github.com/BaSui01/snow-plugins/releases/tag/session-file-count/v1.1.7 "会话文件统计 v1.1.7 安装包")（推送该标签后由 CI 打包 Release 并创建市场 PR）；历史 Release 见 [session-file-count/v1.1.6](https://github.com/BaSui01/snow-plugins/releases/tag/session-file-count/v1.1.6 "历史1.1.6安装包") · [session-file-count/v1.1.5](https://github.com/BaSui01/snow-plugins/releases/tag/session-file-count/v1.1.5 "会话文件统计 v1.1.5 安装包") · [历史 Release v1.1.4](https://github.com/BaSui01/snow-plugins/releases/tag/session-file-count/v1.1.4 "历史1.1.4安装包") · [历史 Release v1.1.2](https://github.com/BaSui01/snow-plugins/releases/tag/session-file-count/v1.1.2 "历史1.1.2安装包") | Snow App `v0.4.16`（历史统计展示；不代表 1.1.7 taskHistory 兼容） | [使用说明](plugins/session-file-count/README.md) · [发布说明](plugins/session-file-count/RELEASE.md) |
 
@@ -17,7 +17,7 @@ Snow App 插件源码集合。各插件可分别安装，本仓库不是插件�
 - 会话文件统计：当前开发源码在每次任务的结束回复下方展示该任务及子代理的独立文件数和清单，旧卡片保留并支持历史恢复；无独立面板。统计不是完整审计，没有记录不等于没有修改。源码为 TypeScript，`footer.js` 由 `npm run build` 生成。
 - 版本、标签和安装包按插件独立管理；历史统一预发行标签不是两个插件当前版本的统一下载入口。
 
-- 外部工具渲染：桌面开发源码保留 Anysearch / DBX，新增 Firecrawl / Chrome DevTools / Playwright / Context7 / GitHub / Exa / Brave / Tavily / Perplexity / Parallel / SerpApi / Kagi / Linkup / SearXNG / Supabase / Postman / Linear / Sentry / GitLab / Docker / Kubernetes / Notion 共 24 类热门开发工具与全网搜索服务，提供统一受控参数摘要、纯文本/表格/工单结果卡片；当前宿主 `0.4.23` 源码已配套扩容支持最多 64 项渲染器贡献，mobile 未迁移。源码安装目录为 `plugins/external-tool-renderer`，需提供 `ui.toolCallRendererVersion === 1` 的配套桌面宿主；本轮未安装、未发布。`index.js` 由本目录 `npm run build` 生成，不依赖相邻宿主仓库。
+- 工具画廊（`com.snow.external-tool-renderer`）：桌面开发源码保留 Anysearch / DBX，新增 Firecrawl / Chrome DevTools / Playwright / Context7 / GitHub / Exa / Brave / Tavily / Perplexity / Parallel / SerpApi / Kagi / Linkup / SearXNG / Supabase / Postman / Linear / Sentry / GitLab / Docker / Kubernetes / Notion 共 24 类热门开发工具与全网搜索服务，提供统一受控参数摘要、纯文本/表格/工单结果卡片；当前宿主 `0.4.23` 源码已配套扩容支持最多 64 项渲染器贡献，mobile 未迁移。源码安装目录为 `plugins/external-tool-renderer`，需提供 `ui.toolCallRendererVersion === 1` 的配套桌面宿主；本轮未安装、未发布。`index.js` 由本目录 `npm run build` 生成，不依赖相邻宿主仓库。
 
 ## 安装与更新
 
@@ -54,7 +54,7 @@ Snow App 插件源码集合。各插件可分别安装，本仓库不是插件�
 
 ## 来源与许可证
 
-外部工具渲染插件另迁移自当前 Snow App `0.4.23` 开发源码的桌面 Anysearch/DBX 组件、专属词条和样式，保留原 MIT 版权，详见 [来源声明](plugins/external-tool-renderer/NOTICE) 和 [独立许可证](plugins/external-tool-renderer/LICENSE)。
+工具画廊插件另迁移自当前 Snow App `0.4.23` 开发源码的桌面 Anysearch/DBX 组件、专属词条和样式，保留原 MIT 版权，详见 [来源声明](plugins/external-tool-renderer/NOTICE) 和 [独立许可证](plugins/external-tool-renderer/LICENSE)。
 
 源码复制自 `BaSui01/snow-plugin-store` 的提交 `14f6cd398ab871a6c40cfa76940bef40bd8a6ab7` 中两个插件目录。原仓库提交历史保留，本仓库从独立初始化提交开始，未迁入商店的其他文件或历史。
 

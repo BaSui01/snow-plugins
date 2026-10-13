@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Tool Gallery">
+  <defs>
+    <linearGradient id="etr-bg" x1="6" y1="4" x2="58" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="0.55" stop-color="#132a53"/>
+      <stop offset="1" stop-color="#1d3f8f"/>
+    </linearGradient>
+    <linearGradient id="etr-spark" x1="36" y1="8" x2="54" y2="28" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7dd3fc"/>
+      <stop offset="1" stop-color="#38bdf8"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="64" height="64" rx="16" fill="url(#etr-bg)"/>
+  <rect x="1.4" y="1.4" width="61.2" height="61.2" rx="14.6" fill="none" stroke="#ffffff" stroke-opacity="0.12" stroke-width="1.6"/>
+
+  <g fill="none" stroke="#e8eefc" stroke-width="3.1" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="24" cy="23" rx="10.5" ry="4.4"/>
+    <path d="M13.5 23v19.4c0 2.43 4.7 4.4 10.5 4.4s10.5-1.97 10.5-4.4V23"/>
+    <path d="M13.5 29.4c0 2.43 4.7 4.4 10.5 4.4s10.5-1.97 10.5-4.4"/>
+    <path d="M13.5 35.9c0 2.43 4.7 4.4 10.5 4.4s10.5-1.97 10.5-4.4"/>
+  </g>
+
+  <path d="M45.5 9c1.05 4.85 4.65 8.45 9.5 9.5-4.85 1.05-8.45 4.65-9.5 9.5-1.05-4.85-4.65-8.45-9.5-9.5 4.85-1.05 8.45-4.65 9.5-9.5z" fill="url(#etr-spark)"/>
+  <path d="M52.5 31.5c.55 2.55 2.45 4.45 5 5-2.55.55-4.45 2.45-5 5-.55-2.55-2.45-4.45-5-5 2.55-.55 4.45-2.45 5-5z" fill="#7dd3fc" fill-opacity="0.9"/>
+</svg>

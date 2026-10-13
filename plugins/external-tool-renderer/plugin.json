@@ -1,11 +1,11 @@
 {
   "id": "com.snow.external-tool-renderer",
-  "name": { "default": "External Tool Renderer", "zh-CN": "外部工具渲染", "zh-TW": "外部工具呈現", "en": "External Tool Renderer" },
-  "description": { "default": "Desktop cards for Anysearch, DBX, Firecrawl, Chrome DevTools, Playwright, Context7, GitHub, Exa, Brave, Tavily, Perplexity, Parallel, SerpApi, Kagi, Linkup, SearXNG, Supabase, Postman, Linear, Sentry, GitLab, Docker, Kubernetes and Notion; requires a compatible development host.", "zh-CN": "桌面 Anysearch、DBX、Firecrawl、Chrome DevTools、Playwright、Context7、GitHub、全网主流搜索与核心开发工具 (Supabase/Postman/Linear/Sentry/GitLab/Docker/K8s/Notion) MCP 卡片，需配套开发版宿主。", "zh-TW": "桌面 Anysearch、DBX、Firecrawl、Chrome DevTools、Playwright、Context7、GitHub、全網主流搜尋與核心開發工具 (Supabase/Postman/Linear/Sentry/GitLab/Docker/K8s/Notion) MCP 卡片，需配套開發版宿主。" },
+  "name": { "default": "Tool Gallery", "zh-CN": "工具画廊", "zh-TW": "工具畫廊", "en": "Tool Gallery" },
+  "description": { "default": "Unified cards for external MCP tool calls: argument summaries, tables, content blocks and error states, covering 24 search and developer services such as Anysearch, DBX, Firecrawl and Chrome DevTools. Requires a compatible desktop host.", "zh-CN": "为外部 MCP 工具调用提供统一卡片：参数摘要、表格、内容块与错误状态，覆盖 Anysearch、DBX、Firecrawl、Chrome DevTools 等 24 类搜索与开发服务。需配套支持工具卡插槽的桌面宿主。", "zh-TW": "為外部 MCP 工具呼叫提供統一卡片：參數摘要、表格、內容區塊與錯誤狀態，覆蓋 Anysearch、DBX、Firecrawl、Chrome DevTools 等 24 類搜尋與開發服務。需配套支援工具卡插槽的桌面宿主。", "en": "Unified cards for external MCP tool calls: argument summaries, tables, content blocks and error states, covering 24 search and developer services such as Anysearch, DBX, Firecrawl and Chrome DevTools. Requires a compatible desktop host." },
   "version": "0.2.0",
   "author": "BaSui",
   "license": "MIT",
-  "icon": "lucide:Blocks",
+  "icon": "assets/icon.svg",
   "renderMode": "esm",
   "panels": [],
   "contributions": {

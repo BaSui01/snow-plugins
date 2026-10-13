@@ -5,10 +5,15 @@
  * 工具名统一以 `dbx-` 前缀暴露（如 dbx-execute-query），因此前端
  * 可以按前缀稳定匹配并渲染，与内置工具保持同一套 ToolCallNode 风格。
  *
- * 覆盖操作：list-connections / add-connection / remove-connection /
- * execute-query / execute-and-show / describe-table / list-tables /
- * get-schema-context / open-session / close-session / open-table /
- * execute-redis-command。
+ * 覆盖操作（对齐 DBX MCP 0.4.x 的 22 个工具）：list-connections /
+ * list-databases / add-connection / duplicate-connection / remove-connection /
+ * list-tables / describe-table / list-routines / get-routine-source /
+ * get-schema-context / execute-query / execute-batch / open-session /
+ * close-session / execute-redis-command / salesforce-current-user /
+ * salesforce-prepare-write / salesforce-apply-write / peek-messages /
+ * send-message / open-table / execute-and-show。
+ *
+ * 未列入 switch 的新工具由 default 分支回退为操作名摘要 + 通用结果渲染。
  *
  * 注意：外部 MCP 的返回结构可能随 DBX 版本变化，表格解析（parseQueryTable）
  * 做了多格式容错（rows / result / values / queryResult），解析失败时
@@ -213,7 +218,9 @@ export const DbxToolCall = ({
   // 且 DBX MCP 工具名本身自带 dbx_ 前缀（完整 MCP 名如 dbx-dbx_execute_query），
   // 需连续剥掉 server 前缀与工具名自带前缀，统一归一为连字符后提取操作名，
   // 保证与下方 switch 的 case 匹配。
-  // 另外 DBX server 自身拼写缺失的 execute_redis_comman 映射到标准名（execute-redis-command）。
+  // 另外保留一条防御映射：若某些版本出现缺失末位字母的
+  // `execute_redis_comman`，统一归一到标准名（实测 0.4.102 二进制为完整的
+  // `dbx_execute_redis_command`，该映射仅作兜底）。
   const operation = toolCall.name
     .replace(/^dbx[-_](.+)$/, "$1")
     .replace(/^dbx[-_]/, "")
@@ -430,6 +437,167 @@ export const DbxToolCall = ({
         ) : null;
       break;
     }
+    case "list-databases": {
+      const connection =
+        asString(parsedArgs?.connection_name) ??
+        asString(parsedArgs?.connection_id);
+      displayName = connection;
+      // content 包装下返回 `- name` 文本行，Markdown 表格则按行数统计。
+      const databaseText = data ? contentText(data) : undefined;
+      const databaseCount = databaseText
+        ? databaseText
+            .split("\n")
+            .map((line) => line.trim())
+            .filter((line) => line.startsWith("- ")).length
+        : queryTable?.rows.length;
+      meta = databaseCount ? (
+        <span className="tool-call-dbx-meta tool-call-dbx-meta-ok">
+          <Database size={10} aria-hidden="true" />
+          {t("toolCall.dbx.databaseCount", { values: { count: databaseCount } })}
+        </span>
+      ) : null;
+      break;
+    }
+    case "duplicate-connection": {
+      const connection =
+        asString(parsedArgs?.connection_name) ?? asString(parsedArgs?.name);
+      displayName = connection;
+      meta = data ? (
+        <span className="tool-call-dbx-meta tool-call-dbx-meta-ok">
+          <CheckCircle2 size={10} aria-hidden="true" />
+          {t("toolCall.dbx.duplicated")}
+        </span>
+      ) : null;
+      break;
+    }
+    case "list-routines": {
+      const schema = asString(parsedArgs?.schema);
+      displayName = schema ?? t("toolCall.dbx.allRoutines");
+      const routineText = data ? contentText(data) : undefined;
+      const routineCount = routineText
+        ? routineText
+            .split("\n")
+            .map((line) => line.trim())
+            .filter((line) => line.startsWith("- ")).length
+        : queryTable?.rows.length;
+      meta = routineCount ? (
+        <span className="tool-call-dbx-meta tool-call-dbx-meta-ok">
+          <ListTree size={10} aria-hidden="true" />
+          {t("toolCall.dbx.routineCount", { values: { count: routineCount } })}
+        </span>
+      ) : null;
+      break;
+    }
+    case "get-routine-source": {
+      const routine =
+        asString(parsedArgs?.name) ?? asString(parsedArgs?.routine_name);
+      displayName = routine;
+      const sourceText = data ? contentText(data) : undefined;
+      meta = sourceText ? (
+        <span className="tool-call-dbx-meta tool-call-dbx-meta-ok">
+          <TerminalSquare size={10} aria-hidden="true" />
+          {t("toolCall.dbx.lineCount", {
+            values: { count: sourceText.split("\n").length },
+          })}
+        </span>
+      ) : null;
+      break;
+    }
+    case "execute-batch": {
+      const script = asString(parsedArgs?.script) ?? asString(parsedArgs?.sql);
+      displayName = script
+        ? truncate(script.replace(/\s+/g, " ").trim())
+        : undefined;
+      if (data) {
+        const rowCount =
+          typeof data.rowCount === "number"
+            ? data.rowCount
+            : Array.isArray(data.rows)
+              ? data.rows.length
+              : queryRowCount;
+        meta =
+          rowCount !== undefined ? (
+            <span className="tool-call-dbx-meta tool-call-dbx-meta-ok">
+              <Table2 size={10} aria-hidden="true" />
+              {t("toolCall.dbx.rowCount", { values: { count: rowCount } })}
+            </span>
+          ) : (
+            <span className="tool-call-dbx-meta tool-call-dbx-meta-ok">
+              <CheckCircle2 size={10} aria-hidden="true" />
+              {t("toolCall.dbx.done")}
+            </span>
+          );
+      }
+      break;
+    }
+    case "salesforce-current-user": {
+      const connection =
+        asString(parsedArgs?.connection_name) ??
+        asString(parsedArgs?.connection_id);
+      displayName = connection;
+      // content 包装下为用户名/组织信息文本，仅截断展示，不解析为结构化字段。
+      const userText = data ? contentText(data) : undefined;
+      meta = userText ? (
+        <span className="tool-call-dbx-meta tool-call-dbx-meta-ok">
+          <KeyRound size={10} aria-hidden="true" />
+          {truncate(userText.replace(/\s+/g, " ").trim(), 40)}
+        </span>
+      ) : null;
+      break;
+    }
+    case "salesforce-prepare-write": {
+      const recordObject =
+        asString(parsedArgs?.object) ?? asString(parsedArgs?.sobject);
+      displayName =
+        recordObject ?? t("toolCall.dbx.op.salesforce-prepare-write");
+      // 只提示待人工确认，绝不展示 confirm_token（一次性凭据）。
+      meta = data ? (
+        <span className="tool-call-dbx-meta tool-call-dbx-meta-ok">
+          <AlertCircle size={10} aria-hidden="true" />
+          {t("toolCall.dbx.prepared")}
+        </span>
+      ) : null;
+      break;
+    }
+    case "salesforce-apply-write": {
+      displayName = t("toolCall.dbx.op.salesforce-apply-write");
+      meta = data ? (
+        <span className="tool-call-dbx-meta tool-call-dbx-meta-ok">
+          <CheckCircle2 size={10} aria-hidden="true" />
+          {t("toolCall.dbx.applied")}
+        </span>
+      ) : null;
+      break;
+    }
+    case "peek-messages": {
+      const topic = asString(parsedArgs?.topic);
+      displayName = topic;
+      // 结果保留 base64 消息体，仅按数组长度统计条数，不展示消息内容。
+      const messageCount = Array.isArray(data?.messages)
+        ? data.messages.length
+        : Array.isArray(data?.records)
+          ? data.records.length
+          : undefined;
+      meta =
+        messageCount !== undefined ? (
+          <span className="tool-call-dbx-meta tool-call-dbx-meta-ok">
+            <ListTree size={10} aria-hidden="true" />
+            {t("toolCall.dbx.messageCount", { values: { count: messageCount } })}
+          </span>
+        ) : null;
+      break;
+    }
+    case "send-message": {
+      const topic = asString(parsedArgs?.topic);
+      displayName = topic;
+      meta = data ? (
+        <span className="tool-call-dbx-meta tool-call-dbx-meta-ok">
+          <CheckCircle2 size={10} aria-hidden="true" />
+          {t("toolCall.dbx.sent")}
+        </span>
+      ) : null;
+      break;
+    }
     default: {
       // 防御：DBX 未来新增工具（未列入 switch）时至少展示操作名摘要，
       // 表格/文本结果仍走通用渲染。
@@ -438,13 +606,15 @@ export const DbxToolCall = ({
     }
   }
 
-  /* SQL / Redis 命令行。 */
+  /* SQL / Redis / 批量脚本命令行。 */
   const commandText =
     operation === "execute-query" || operation === "execute-and-show"
       ? asString(parsedArgs?.sql)
       : operation === "execute-redis-command"
         ? asString(parsedArgs?.command)
-        : undefined;
+        : operation === "execute-batch"
+          ? (asString(parsedArgs?.script) ?? asString(parsedArgs?.sql))
+          : undefined;
 
   const resultText =
     parsedResult.type === "success"

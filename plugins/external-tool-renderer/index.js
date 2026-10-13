@@ -717,12 +717,83 @@ var DbxToolCall = ({
       meta = data && data.opened !== false ? /* @__PURE__ */ React.createElement("span", { className: "tool-call-dbx-meta tool-call-dbx-meta-ok" }, /* @__PURE__ */ React.createElement(CheckCircle2, { size: 10, "aria-hidden": "true" }), t("toolCall.dbx.opened")) : null;
       break;
     }
+    case "list-databases": {
+      const connection = asString2(parsedArgs?.connection_name) ?? asString2(parsedArgs?.connection_id);
+      displayName = connection;
+      const databaseText = data ? contentText(data) : void 0;
+      const databaseCount = databaseText ? databaseText.split("\n").map((line) => line.trim()).filter((line) => line.startsWith("- ")).length : queryTable?.rows.length;
+      meta = databaseCount ? /* @__PURE__ */ React.createElement("span", { className: "tool-call-dbx-meta tool-call-dbx-meta-ok" }, /* @__PURE__ */ React.createElement(Database, { size: 10, "aria-hidden": "true" }), t("toolCall.dbx.databaseCount", { values: { count: databaseCount } })) : null;
+      break;
+    }
+    case "duplicate-connection": {
+      const connection = asString2(parsedArgs?.connection_name) ?? asString2(parsedArgs?.name);
+      displayName = connection;
+      meta = data ? /* @__PURE__ */ React.createElement("span", { className: "tool-call-dbx-meta tool-call-dbx-meta-ok" }, /* @__PURE__ */ React.createElement(CheckCircle2, { size: 10, "aria-hidden": "true" }), t("toolCall.dbx.duplicated")) : null;
+      break;
+    }
+    case "list-routines": {
+      const schema = asString2(parsedArgs?.schema);
+      displayName = schema ?? t("toolCall.dbx.allRoutines");
+      const routineText = data ? contentText(data) : void 0;
+      const routineCount = routineText ? routineText.split("\n").map((line) => line.trim()).filter((line) => line.startsWith("- ")).length : queryTable?.rows.length;
+      meta = routineCount ? /* @__PURE__ */ React.createElement("span", { className: "tool-call-dbx-meta tool-call-dbx-meta-ok" }, /* @__PURE__ */ React.createElement(ListTree, { size: 10, "aria-hidden": "true" }), t("toolCall.dbx.routineCount", { values: { count: routineCount } })) : null;
+      break;
+    }
+    case "get-routine-source": {
+      const routine = asString2(parsedArgs?.name) ?? asString2(parsedArgs?.routine_name);
+      displayName = routine;
+      const sourceText = data ? contentText(data) : void 0;
+      meta = sourceText ? /* @__PURE__ */ React.createElement("span", { className: "tool-call-dbx-meta tool-call-dbx-meta-ok" }, /* @__PURE__ */ React.createElement(TerminalSquare, { size: 10, "aria-hidden": "true" }), t("toolCall.dbx.lineCount", {
+        values: { count: sourceText.split("\n").length }
+      })) : null;
+      break;
+    }
+    case "execute-batch": {
+      const script = asString2(parsedArgs?.script) ?? asString2(parsedArgs?.sql);
+      displayName = script ? truncate2(script.replace(/\s+/g, " ").trim()) : void 0;
+      if (data) {
+        const rowCount = typeof data.rowCount === "number" ? data.rowCount : Array.isArray(data.rows) ? data.rows.length : queryRowCount;
+        meta = rowCount !== void 0 ? /* @__PURE__ */ React.createElement("span", { className: "tool-call-dbx-meta tool-call-dbx-meta-ok" }, /* @__PURE__ */ React.createElement(Table2, { size: 10, "aria-hidden": "true" }), t("toolCall.dbx.rowCount", { values: { count: rowCount } })) : /* @__PURE__ */ React.createElement("span", { className: "tool-call-dbx-meta tool-call-dbx-meta-ok" }, /* @__PURE__ */ React.createElement(CheckCircle2, { size: 10, "aria-hidden": "true" }), t("toolCall.dbx.done"));
+      }
+      break;
+    }
+    case "salesforce-current-user": {
+      const connection = asString2(parsedArgs?.connection_name) ?? asString2(parsedArgs?.connection_id);
+      displayName = connection;
+      const userText = data ? contentText(data) : void 0;
+      meta = userText ? /* @__PURE__ */ React.createElement("span", { className: "tool-call-dbx-meta tool-call-dbx-meta-ok" }, /* @__PURE__ */ React.createElement(KeyRound, { size: 10, "aria-hidden": "true" }), truncate2(userText.replace(/\s+/g, " ").trim(), 40)) : null;
+      break;
+    }
+    case "salesforce-prepare-write": {
+      const recordObject = asString2(parsedArgs?.object) ?? asString2(parsedArgs?.sobject);
+      displayName = recordObject ?? t("toolCall.dbx.op.salesforce-prepare-write");
+      meta = data ? /* @__PURE__ */ React.createElement("span", { className: "tool-call-dbx-meta tool-call-dbx-meta-ok" }, /* @__PURE__ */ React.createElement(AlertCircle, { size: 10, "aria-hidden": "true" }), t("toolCall.dbx.prepared")) : null;
+      break;
+    }
+    case "salesforce-apply-write": {
+      displayName = t("toolCall.dbx.op.salesforce-apply-write");
+      meta = data ? /* @__PURE__ */ React.createElement("span", { className: "tool-call-dbx-meta tool-call-dbx-meta-ok" }, /* @__PURE__ */ React.createElement(CheckCircle2, { size: 10, "aria-hidden": "true" }), t("toolCall.dbx.applied")) : null;
+      break;
+    }
+    case "peek-messages": {
+      const topic = asString2(parsedArgs?.topic);
+      displayName = topic;
+      const messageCount = Array.isArray(data?.messages) ? data.messages.length : Array.isArray(data?.records) ? data.records.length : void 0;
+      meta = messageCount !== void 0 ? /* @__PURE__ */ React.createElement("span", { className: "tool-call-dbx-meta tool-call-dbx-meta-ok" }, /* @__PURE__ */ React.createElement(ListTree, { size: 10, "aria-hidden": "true" }), t("toolCall.dbx.messageCount", { values: { count: messageCount } })) : null;
+      break;
+    }
+    case "send-message": {
+      const topic = asString2(parsedArgs?.topic);
+      displayName = topic;
+      meta = data ? /* @__PURE__ */ React.createElement("span", { className: "tool-call-dbx-meta tool-call-dbx-meta-ok" }, /* @__PURE__ */ React.createElement(CheckCircle2, { size: 10, "aria-hidden": "true" }), t("toolCall.dbx.sent")) : null;
+      break;
+    }
     default: {
       displayName = operation ? truncate2(operation, 48) : void 0;
       break;
     }
   }
-  const commandText = operation === "execute-query" || operation === "execute-and-show" ? asString2(parsedArgs?.sql) : operation === "execute-redis-command" ? asString2(parsedArgs?.command) : void 0;
+  const commandText = operation === "execute-query" || operation === "execute-and-show" ? asString2(parsedArgs?.sql) : operation === "execute-redis-command" ? asString2(parsedArgs?.command) : operation === "execute-batch" ? asString2(parsedArgs?.script) ?? asString2(parsedArgs?.sql) : void 0;
   const resultText = parsedResult.type === "success" ? (
     // content 包装优先取原始文本（保留真实换行，如 list-tables 的表名列表），
     // 无 content 时才回退 JSON 序列化。

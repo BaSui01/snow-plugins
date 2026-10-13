@@ -1,6 +1,7 @@
-# 外部工具渲染（桌面 MCP 扩展，开发版本）
+# 工具画廊（桌面 MCP 扩展，开发版本）
 
-- ID：`com.snow.external-tool-renderer`
+- ID：`com.snow.external-tool-renderer`（保持稳定，未随显示名变更）
+- 显示名：`工具画廊` / `Tool Gallery` / `工具畫廊`
 - 独立版本：`0.2.0`
 - 作者：`BaSui`
 - 安装目录：`plugins/external-tool-renderer`（直接包含 `plugin.json`），不能安装仓库根目录。
@@ -18,7 +19,7 @@
 | 类别 / Provider | 覆盖前缀与服务 | 核心交互与展示特性 |
 | --- | --- | --- |
 | 原 Anysearch | `anysearch-`, `anysearch_` | 独立工厂 `renderAnysearch`，搜索/批量/网页提取/能力发现，原文 fallback |
-| 原 DBX | `dbx-`, `dbx_` | 独立工厂 `renderDbx`，SQL/Redis 命令与表格、多格式兼容 |
+| 原 DBX | `dbx-`, `dbx_` | 独立工厂 `renderDbx`，覆盖 DBX MCP 0.4.x 全部 22 个工具（连接/数据库/表/存储过程/SQL 与批量脚本/会话/Redis/Salesforce 两步写入/Kafka 消息/桌面 UI），SQL 与 Markdown 表格多格式兼容；`confirm_token` 与消息体不落卡片 |
 | Firecrawl | `firecrawl-`, `firecrawl_` | 网页/新闻/图片分组，抓取/解析 markdown/html/JSON，研究任务 ID 与状态进度 |
 | Chrome DevTools | `chrome-devtools-`, `chrome-devtools_`, `chrome_devtools-`, `chrome_devtools_` | 页面列表、快照、控制台消息、网络请求详情与表格、性能追踪、堆快照、截图 |
 | Playwright | `playwright-`, `playwright_` | 浏览器点击/输入/拖拽/选项/等待/媒体模拟/网络/快照/截图，敏感输入遮掩 |
@@ -85,6 +86,8 @@ MCP 内联图片只允许 PNG/JPEG/WebP/GIF，base64 编码不超过 2 Mi 字符
 
 参数默认隐藏 password/token/cookie/auth/headers 等敏感键，以及表单 text/value/elements/fields、prompt、function/script、请求体/代码/拖放数据等；非法/流式未完整的参数不展示原文。结果中的敏感键、明显凭据模式与长二进制串亦过滤。**过滤不是完备脱敏保证**：无标签的秘密、业务数据、图片与自由文本仍可能敏感；分享前须人工脱敏。原 Anysearch/DBX 协议/UI 不改动，本轮新增通用卡安全过滤不自动改变其历史行为。ESM 是可信代码，**不是隔离沙箱**。
 
+DBX 卡片只展示参数与结果摘要：`salesforce-prepare-write` 的一次性 `confirm_token` 不进入折叠摘要（仅提示「待确认」），`peek-messages` 的 base64 消息体只统计条数、不在摘要中展开；完整原文仍由下方结果区按原文展示，插件不做额外持久化。
+
 ## 独立开发与文案
 
 ```sh
@@ -97,7 +100,7 @@ python scripts/release.py validate
 
 `npm run check` 是现有生产校验（`tsc --noEmit` 与内存重建比较 `index.js`），不新增测试。仅编辑 `src/`，`index.js` 由 build 生成，Blob ESM 无相对运行时 import；依赖仍仅本地 esbuild/typescript/@types/react，不打包第二份 React 或宿主源码。
 
-三语词条保留原 83 条 Anysearch/DBX，新增 MCP 专属词条并等键；未知操作以规范化名显示。`style.css` 仅在 `.snow-external-tool-renderer` 根下补充通用卡片，继续使用宿主主题变量，不改变原卡片规则。MIT 来源、版权见 [NOTICE](NOTICE)、[LICENSE](LICENSE)。
+三语词条在原有 83 条 Anysearch/DBX 基础上补齐 DBX 新增工具名与操作名（共 347 条等键，`dbx-dbx_<tool>` 与 `dbx_<tool>` 两种公开名形式都覆盖）；未知操作以规范化名显示。`style.css` 仅在 `.sno************************` 根下补充通用卡片，继续使用宿主主题变量，不改变原卡片规则。MIT 来源、版权见 [NOTICE](NOTICE)、[LICENSE](LICENSE)。
 
 ## 发布与验证边界
 
