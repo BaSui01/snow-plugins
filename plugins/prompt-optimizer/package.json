@@ -1,6 +1,7 @@
 {
   "name": "snow-plugin-prompt-optimizer",
   "version": "1.4.1",
+  "author": "BaSui",
   "private": true,
   "type": "module",
   "license": "MIT",

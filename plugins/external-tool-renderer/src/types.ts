@@ -29,6 +29,8 @@ export type ToolCallNodeProps = {
   status: ToolCallInfo["status"];
   meta?: React.ReactNode;
   className?: string;
+  defaultOpen?: boolean;
+  lazyBody?: boolean;
   children?: React.ReactNode;
 };
 export type DataTableViewerProps = {

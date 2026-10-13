@@ -1,9 +1,9 @@
 {
   "id": "com.snow.external-tool-renderer",
   "name": { "default": "External Tool Renderer", "zh-CN": "外部工具渲染", "zh-TW": "外部工具呈現", "en": "External Tool Renderer" },
-  "description": { "default": "Desktop Anysearch and DBX tool-call cards; requires a compatible development host.", "zh-CN": "桌面端 Anysearch 与 DBX 工具卡片，需配套开发版宿主。", "zh-TW": "桌面端 Anysearch 與 DBX 工具卡片，需配套開發版宿主。" },
+  "description": { "default": "Desktop cards for Anysearch, DBX, Firecrawl, Chrome DevTools, Playwright, Context7, GitHub, Exa, Brave, Tavily, Perplexity, Parallel, SerpApi, Kagi, Linkup, SearXNG, Supabase, Postman, Linear, Sentry, GitLab, Docker, Kubernetes and Notion; requires a compatible development host.", "zh-CN": "桌面 Anysearch、DBX、Firecrawl、Chrome DevTools、Playwright、Context7、GitHub、全网主流搜索与核心开发工具 (Supabase/Postman/Linear/Sentry/GitLab/Docker/K8s/Notion) MCP 卡片，需配套开发版宿主。", "zh-TW": "桌面 Anysearch、DBX、Firecrawl、Chrome DevTools、Playwright、Context7、GitHub、全網主流搜尋與核心開發工具 (Supabase/Postman/Linear/Sentry/GitLab/Docker/K8s/Notion) MCP 卡片，需配套開發版宿主。" },
   "version": "0.1.0",
-  "author": "小青枣 & Snow App contributors",
+  "author": "BaSui",
   "license": "MIT",
   "icon": "lucide:Blocks",
   "renderMode": "esm",
@@ -11,7 +11,29 @@
   "contributions": {
     "toolCallRenderers": [
       { "id": "anysearch", "prefixes": ["anysearch-", "anysearch_"], "exportName": "renderAnysearch", "priority": 10 },
-      { "id": "dbx", "prefixes": ["dbx-", "dbx_"], "exportName": "renderDbx", "priority": 10 }
+      { "id": "dbx", "prefixes": ["dbx-", "dbx_"], "exportName": "renderDbx", "priority": 10 },
+      { "id": "firecrawl", "prefixes": ["firecrawl-", "firecrawl_"], "exportName": "renderMcp", "priority": 10 },
+      { "id": "chrome", "prefixes": ["chrome-devtools-", "chrome-devtools_", "chrome_devtools-", "chrome_devtools_"], "exportName": "renderMcp", "priority": 10 },
+      { "id": "playwright", "prefixes": ["playwright-", "playwright_"], "exportName": "renderMcp", "priority": 10 },
+      { "id": "context7", "prefixes": ["context7-", "context7_"], "exportName": "renderMcp", "priority": 10 },
+      { "id": "github", "prefixes": ["github-", "github_"], "exportName": "renderMcp", "priority": 10 },
+      { "id": "exa", "prefixes": ["exa-", "exa_"], "exportName": "renderMcp", "priority": 10 },
+      { "id": "brave", "prefixes": ["brave-search-", "brave-search_", "brave_search-", "brave_search_", "brave-", "brave_"], "exportName": "renderMcp", "priority": 10 },
+      { "id": "tavily", "prefixes": ["tavily-", "tavily_", "tavily-mcp-", "tavily-mcp_", "tavily_mcp-", "tavily_mcp_"], "exportName": "renderMcp", "priority": 10 },
+      { "id": "perplexity", "prefixes": ["perplexity-", "perplexity_"], "exportName": "renderMcp", "priority": 10 },
+      { "id": "parallel", "prefixes": ["parallel-", "parallel_", "parallel-search-", "parallel-search_", "parallel_search-", "parallel_search_"], "exportName": "renderMcp", "priority": 10 },
+      { "id": "serpapi", "prefixes": ["serpapi-", "serpapi_"], "exportName": "renderMcp", "priority": 10 },
+      { "id": "kagi", "prefixes": ["kagi-", "kagi_", "kagimcp-", "kagimcp_"], "exportName": "renderMcp", "priority": 10 },
+      { "id": "linkup", "prefixes": ["linkup-", "linkup_"], "exportName": "renderMcp", "priority": 10 },
+      { "id": "searxng", "prefixes": ["searxng-", "searxng_", "mcp-searxng-", "mcp-searxng_", "mcp_searxng-", "mcp_searxng_"], "exportName": "renderMcp", "priority": 10 },
+      { "id": "supabase", "prefixes": ["supabase-", "supabase_", "mcp-server-supabase-", "mcp-server-postgrest-"], "exportName": "renderMcp", "priority": 10 },
+      { "id": "postman", "prefixes": ["postman-", "postman_", "postman-mcp-", "postman_mcp-"], "exportName": "renderMcp", "priority": 10 },
+      { "id": "linear", "prefixes": ["linear-", "linear_", "linear-mcp-", "linear_mcp-"], "exportName": "renderMcp", "priority": 10 },
+      { "id": "sentry", "prefixes": ["sentry-", "sentry_", "sentry-mcp-", "sentry_mcp-"], "exportName": "renderMcp", "priority": 10 },
+      { "id": "gitlab", "prefixes": ["gitlab-", "gitlab_", "gitlab-mcp-", "gitlab_mcp-"], "exportName": "renderMcp", "priority": 10 },
+      { "id": "docker", "prefixes": ["docker-", "docker_", "docker-mcp-", "docker_mcp-"], "exportName": "renderMcp", "priority": 10 },
+      { "id": "k8s", "prefixes": ["kubernetes-", "kubernetes_", "k8s-", "k8s_", "kubernetes-mcp-", "k8s-mcp-"], "exportName": "renderMcp", "priority": 10 },
+      { "id": "notion", "prefixes": ["notion-", "notion_", "notion-mcp-", "notion_mcp-"], "exportName": "renderMcp", "priority": 10 }
     ]
   },
   "styles": ["style.css"],

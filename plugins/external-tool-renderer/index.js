@@ -751,6 +751,604 @@ var DbxToolCall = ({
   );
 };
 
+// src/mcp.ts
+var PAGE_SIZE = 20;
+var TEXT_PAGE_SIZE = 12e3;
+var MAX_JSON_CHARS = 8 * 1024 * 1024;
+var HIDDEN = "[redacted]";
+var BINARY = "[binary omitted]";
+var isRecord3 = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+function parseJson(text) {
+  if (!text || text.length > MAX_JSON_CHARS) return text;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+var secretKey = /password|passwd|secret|token|cookie|auth|headers|api[-_]?key|private[-_]?key|credential|session[-_]?id|confirm[-_]?token/i;
+var inputKey = /^(text|value|values|fields|elements|script|function|prompt|body|requestBody|content|input|data|payload|payload_text|payload_base64|raw|code|command|sql)$/i;
+function hiddenKey(key, parameters = false) {
+  return secretKey.test(key) || parameters && inputKey.test(key);
+}
+function safeText(text) {
+  return text.replace(/data:[^\s,;]+;base64,[a-z0-9+/=\s]+/gi, BINARY).replace(/[a-z0-9+/]{256,}={0,2}/gi, BINARY).replace(/\b(?:Bearer|Basic)\s+[a-z0-9._~+/=-]+/gi, HIDDEN).replace(/((?:["']?(?:password|passwd|secret|token|cookies?|authorization|headers|api[-_]?key|private[-_]?key)["']?)\s*[:=]\s*)([^\r\n,;]+)/gi, `$1${HIDDEN}`).replace(/(https?:\/\/)[^\s/]+@/gi, `$1${HIDDEN}@`).replace(/([?&](?:[^=&\s]*(?:token|key|secret|password|auth|cookie)[^=&\s]*)=)[^&#\s]+/gi, `$1${HIDDEN}`);
+}
+function safeUrl(value) {
+  if (typeof value !== "string" || value.length > 4096 || /[\u0000-\u0020]/.test(value)) return null;
+  try {
+    const url = new URL(value);
+    if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) return null;
+    if ([...url.searchParams.keys()].some((key) => hiddenKey(key))) return null;
+    return url.href;
+  } catch {
+    return null;
+  }
+}
+function preview(value, key = "", parameters = false) {
+  if (hiddenKey(key, parameters)) return HIDDEN;
+  if (typeof value === "string") return safeText(value).slice(0, 300);
+  if (Array.isArray(value)) return `[${value.length}]`;
+  if (isRecord3(value)) return `{${Object.keys(value).length}}`;
+  return String(value);
+}
+function failed(value, depth = 0) {
+  if (!isRecord3(value) || depth > 8) return false;
+  if (value.isError === true || value.success === false || value.status === "failed" || value.status === "error") return true;
+  if (value.error !== void 0 && value.error !== null && value.error !== false && value.error !== "") return true;
+  for (const key of ["structuredContent", "data", "result"]) {
+    if (failed(value[key], depth + 1)) return true;
+  }
+  if (Array.isArray(value.content)) {
+    return value.content.some((part) => isRecord3(part) && (failed(part, depth + 1) || part.type === "text" && failed(parseJson(typeof part.text === "string" ? part.text : void 0), depth + 1)));
+  }
+  return false;
+}
+function contentBlock(part, index) {
+  if (!isRecord3(part)) return { label: `content[${index}]`, kind: "value", value: part };
+  if (part.type === "image") return { label: `content[${index}] · image`, kind: "image", value: part };
+  if (part.type === "text" && typeof part.text === "string") {
+    const extra = Object.fromEntries(Object.entries(part).filter(([key]) => key !== "text" && key !== "type"));
+    return { label: `content[${index}] · text`, kind: "value", value: Object.keys(extra).length ? { text: parseJson(part.text), ...extra } : parseJson(part.text) };
+  }
+  if (part.type === "resource" && isRecord3(part.resource)) {
+    const resource = { ...part.resource };
+    if (typeof resource.text === "string") resource.text = parseJson(resource.text);
+    return { label: `content[${index}] · resource`, kind: "value", value: { ...part, resource } };
+  }
+  return { label: `content[${index}] · ${typeof part.type === "string" ? safeText(part.type).slice(0, 60) : "unknown"}`, kind: "value", value: part };
+}
+function parseMcp(result) {
+  if (result === void 0 || result === "") return { blocks: [], failed: false, bounded: false };
+  const root = parseJson(result);
+  let envelope = root;
+  let transportKey;
+  if (isRecord3(root) && !Array.isArray(root.content) && root.structuredContent === void 0) {
+    for (const key of ["result", "data"]) {
+      const value = root[key];
+      if (isRecord3(value) && (Array.isArray(value.content) || value.structuredContent !== void 0)) {
+        envelope = value;
+        transportKey = key;
+        break;
+      }
+    }
+  }
+  const blocks = [];
+  if (isRecord3(envelope) && (Array.isArray(envelope.content) || envelope.structuredContent !== void 0)) {
+    if (envelope.structuredContent !== void 0) blocks.push({ label: "structuredContent", kind: "value", value: envelope.structuredContent });
+    if (Array.isArray(envelope.content)) {
+      envelope.content.forEach((part, index) => blocks.push(contentBlock(part, index)));
+    }
+    const fields = Object.fromEntries(Object.entries(envelope).filter(([key]) => key !== "content" && key !== "structuredContent"));
+    if (Object.keys(fields).length) blocks.push({ label: "envelope", kind: "value", value: fields });
+    if (root !== envelope && isRecord3(root)) blocks.push({ label: "transport", kind: "value", value: Object.fromEntries(Object.entries(root).filter(([key]) => key !== transportKey)) });
+  } else blocks.push({ label: "result", kind: "value", value: root });
+  return { blocks, failed: failed(root), bounded: result.length > MAX_JSON_CHARS };
+}
+function candidates(blocks) {
+  const output = [];
+  const visit = (value, depth) => {
+    if (!isRecord3(value) || depth > 5 || output.length >= 80) return;
+    output.push(value);
+    for (const key of ["data", "result", "text", "resource"]) visit(value[key], depth + 1);
+  };
+  for (const block of blocks.slice(0, 80)) if (block.kind === "value") visit(block.value, 0);
+  return output;
+}
+function searchGroups(records) {
+  const groups = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const record of records) {
+    for (const name of ["web", "news", "images", "results"]) {
+      const field = record[name];
+      const items = Array.isArray(field) ? field : isRecord3(field) && Array.isArray(field.results) ? field.results : null;
+      if (items && !seen.has(items)) {
+        seen.add(items);
+        groups.push({ name, items });
+      }
+    }
+  }
+  return groups;
+}
+function inlineImage(value) {
+  if (!isRecord3(value) || typeof value.data !== "string" || typeof value.mimeType !== "string") return null;
+  const { data, mimeType } = value;
+  if (!["image/png", "image/jpeg", "image/webp", "image/gif"].includes(mimeType) || data.length < 16 || data.length > 2 * 1024 * 1024 || data.length % 4 !== 0 || !/^[a-z0-9+/]+={0,2}$/i.test(data)) return null;
+  try {
+    const prefix = atob(data.slice(0, 64));
+    const byte = (index) => prefix.charCodeAt(index);
+    const png = mimeType === "image/png" && prefix.startsWith("PNG\r\n\n");
+    const gif = mimeType === "image/gif" && (prefix.startsWith("GIF87a") || prefix.startsWith("GIF89a"));
+    const jpeg = mimeType === "image/jpeg" && byte(0) === 255 && byte(1) === 216 && byte(2) === 255;
+    const webp = mimeType === "image/webp" && prefix.startsWith("RIFF") && prefix.slice(8, 12) === "WEBP";
+    if (!png && !gif && !jpeg && !webp) return null;
+    if (png || gif) {
+      const u32 = (offset) => byte(offset) * 16777216 + byte(offset + 1) * 65536 + byte(offset + 2) * 256 + byte(offset + 3);
+      const width = png ? u32(16) : byte(6) + byte(7) * 256;
+      const height = png ? u32(20) : byte(8) + byte(9) * 256;
+      if (!width || !height || width > 8192 || height > 8192 || width * height > 16e6) return null;
+    }
+    return { src: `data:${mimeType};base64,${data}`, bytes: Math.floor(data.length * 3 / 4) };
+  } catch {
+    return null;
+  }
+}
+
+// src/Exa.ts
+var MAX_TEXT_CHARS = 2e5;
+var MAX_ITEMS = 200;
+var MAX_BODY_CHARS = 4e3;
+var MAX_BLOCKS = 20;
+function searchText(text) {
+  const items = [];
+  for (const section of text.split(/\r?\n[ \t]*---[ \t]*\r?\n/).slice(0, MAX_ITEMS)) {
+    const match = section.trim().match(/^Title: ([^\r\n]*)\r?\nURL: ([^\r\n]+)\r?\nPublished: ([^\r\n]*)\r?\nAuthor: ([^\r\n]*)(?:\r?\n([\s\S]*))?$/);
+    if (!match || !safeUrl(match[2].trim())) continue;
+    const body = (match[5] ?? "").replace(/^(?:Highlights:[ \t]*\r?\n|Text: )/, "");
+    items.push({ title: match[1].slice(0, 500), url: match[2].trim(), publishedDate: match[3], author: match[4], text: body.slice(0, MAX_BODY_CHARS) });
+  }
+  return items;
+}
+function fetchText(text) {
+  const header = /^# ([^\r\n]+)\r?\nURL: ([^\r\n]+)\r?\n(?:Published: ([^\r\n]+)\r?\n)?(?:Author: ([^\r\n]+)\r?\n)?\r?\n/gm;
+  const matches = [];
+  let match;
+  while (matches.length < MAX_ITEMS + 1 && (match = header.exec(text)) !== null) {
+    matches.push({ start: match.index, end: header.lastIndex, title: match[1].slice(0, 500), url: match[2].trim(), publishedDate: match[3], author: match[4] });
+  }
+  return matches.slice(0, MAX_ITEMS).filter((item) => safeUrl(item.url)).map((item) => {
+    const next = matches.find((candidate) => candidate.start > item.start);
+    const body = text.slice(item.end, next?.start ?? text.length).replace(/\r?\nError fetching [^\r\n]+:[^\r\n]*/g, "").trim();
+    return { title: item.title, url: item.url, ...item.publishedDate ? { publishedDate: item.publishedDate } : {}, ...item.author ? { author: item.author } : {}, text: body.slice(0, MAX_BODY_CHARS) };
+  });
+}
+function textOf(block) {
+  if (block.kind !== "value") return void 0;
+  if (typeof block.value === "string") return block.value;
+  if (isRecord3(block.value) && typeof block.value.text === "string") return block.value.text;
+  return void 0;
+}
+function exaView(blocks, records, operation) {
+  if (!["web-search-exa", "web-fetch-exa", "web-search-advanced-exa"].includes(operation)) {
+    return { groups: [], textPreview: false, partialError: false };
+  }
+  const groups = searchGroups(records);
+  const hasStructuredResults = groups.length > 0;
+  let partialError = false;
+  let textPreview = false;
+  let remaining = MAX_ITEMS;
+  for (const block of blocks.slice(0, MAX_BLOCKS)) {
+    const text = textOf(block);
+    if (!text) continue;
+    const bounded = text.slice(0, MAX_TEXT_CHARS);
+    if (operation === "web-fetch-exa" && /^Error fetching (?:URL\(s\)|[^\r\n]+):/m.test(bounded)) partialError = true;
+    if (hasStructuredResults || !remaining || operation === "web-search-advanced-exa") continue;
+    const items = (operation === "web-fetch-exa" ? fetchText(bounded) : searchText(bounded)).slice(0, remaining);
+    if (items.length) {
+      groups.push({ name: "results", items });
+      remaining -= items.length;
+      textPreview = true;
+    }
+  }
+  return { groups, textPreview, partialError };
+}
+function exaSummary(args, t) {
+  const parts = [];
+  if (typeof args.query === "string") parts.push(`${t("toolCall.exa.query")}: ${preview(args.query, "query", true)}`);
+  if (typeof args.numResults === "number" && Number.isFinite(args.numResults)) parts.push(`${t("toolCall.exa.numResults")}: ${args.numResults}`);
+  if (typeof args.objective === "string") parts.push(`${t("toolCall.exa.objectiveLength")}: ${args.objective.length}`);
+  if (Array.isArray(args.urls)) parts.push(`${t("toolCall.exa.urlCount")}: ${args.urls.length}`);
+  if (typeof args.maxCharacters === "number" && Number.isFinite(args.maxCharacters)) parts.push(`${t("toolCall.exa.maxCharacters")}: ${args.maxCharacters}`);
+  return parts.join(" · ").slice(0, 400);
+}
+function exaParameters(args) {
+  return Object.hasOwn(args, "objective") ? { ...args, objective: HIDDEN } : args;
+}
+
+// src/searchFeeds.ts
+var MAX_ITEMS2 = 80;
+var MAX_BODY_CHARS2 = 3e3;
+function textOf2(block) {
+  if (block.kind !== "value") return void 0;
+  if (typeof block.value === "string") return block.value;
+  if (isRecord3(block.value) && typeof block.value.text === "string") return block.value.text;
+  return void 0;
+}
+function parseSearchFeed(providerId, blocks, records) {
+  const groups = searchGroups(records);
+  const seenUrls = /* @__PURE__ */ new Set();
+  for (const record of records) {
+    let answerText;
+    if (typeof record.answer === "string" && record.answer.trim()) answerText = record.answer;
+    else if (typeof record.response === "string" && record.response.trim()) answerText = record.response;
+    const candidates2 = [
+      record.results,
+      record.search_results,
+      record.organic_results,
+      record.citations,
+      record.sources,
+      record.places,
+      record.locations,
+      record.news,
+      record.videos,
+      record.images
+    ];
+    for (const cand of candidates2) {
+      if (Array.isArray(cand)) {
+        const valid = cand.filter((item) => {
+          if (!isRecord3(item)) return false;
+          const u = safeUrl(item.url ?? item.link ?? item.source_url ?? item.uri);
+          return !!u;
+        });
+        if (valid.length > 0) {
+          const groupName = Array.isArray(record.places) ? "places" : "results";
+          const existing = groups.find((g) => g.name === groupName);
+          if (existing) {
+            for (const item of valid) {
+              const url = String(item.url ?? item.link ?? "");
+              if (!seenUrls.has(url)) {
+                seenUrls.add(url);
+                existing.items.push(item);
+              }
+            }
+          } else {
+            for (const item of valid) {
+              const url = String(item.url ?? item.link ?? "");
+              seenUrls.add(url);
+            }
+            groups.push({ name: groupName, items: valid });
+          }
+        }
+      }
+    }
+  }
+  let textPreview = false;
+  if (groups.length === 0) {
+    const fallbackItems = [];
+    for (const block of blocks.slice(0, 10)) {
+      const text = textOf2(block);
+      if (!text) continue;
+      const lines = text.split(/\r?\n/);
+      for (const line of lines) {
+        if (fallbackItems.length >= MAX_ITEMS2) break;
+        const mdLink = line.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
+        if (mdLink && safeUrl(mdLink[2])) {
+          fallbackItems.push({
+            title: mdLink[1].slice(0, 200),
+            url: mdLink[2],
+            snippet: line.replace(mdLink[0], "").trim().slice(0, MAX_BODY_CHARS2)
+          });
+        }
+      }
+    }
+    if (fallbackItems.length > 0) {
+      groups.push({ name: "results", items: fallbackItems });
+      textPreview = true;
+    }
+  }
+  let answer;
+  for (const record of records) {
+    if (typeof record.answer === "string" && record.answer.trim()) {
+      answer = record.answer;
+      break;
+    }
+    if (typeof record.response === "string" && record.response.trim()) {
+      answer = record.response;
+      break;
+    }
+    if (typeof record.summary === "string" && record.summary.trim()) {
+      answer = record.summary;
+      break;
+    }
+  }
+  return { groups, answer, textPreview };
+}
+function searchProviderSummary(providerId, args, t) {
+  const parts = [];
+  const q = args.query ?? args.q ?? args.search_query;
+  if (typeof q === "string") parts.push(`${t("toolCall.search.query")}: ${preview(q, "query", true)}`);
+  if (typeof args.url === "string") parts.push(`url: ${preview(args.url, "url", true)}`);
+  else if (Array.isArray(args.urls)) parts.push(`urls: ${args.urls.length}`);
+  if (typeof args.depth === "string") parts.push(`depth: ${args.depth}`);
+  if (typeof args.search_depth === "string") parts.push(`depth: ${args.search_depth}`);
+  if (typeof args.mode === "string") parts.push(`mode: ${args.mode}`);
+  if (typeof args.engine === "string") parts.push(`engine: ${args.engine}`);
+  if (typeof args.category === "string") parts.push(`category: ${args.category}`);
+  if (typeof args.country === "string") parts.push(`country: ${args.country}`);
+  const max = args.max_results ?? args.count ?? args.numResults ?? args.limit;
+  if (typeof max === "number" && Number.isFinite(max)) parts.push(`max: ${max}`);
+  return parts.join(" · ").slice(0, 400);
+}
+
+// src/McpToolCall.tsx
+function Pager({ total, page, onPage, size = PAGE_SIZE }) {
+  const { t } = useApi();
+  if (total <= size) return null;
+  const last = Math.max(0, Math.ceil(total / size) - 1);
+  return /* @__PURE__ */ React.createElement("div", { className: "mcp-pager" }, /* @__PURE__ */ React.createElement("button", { type: "button", disabled: page === 0, onClick: () => onPage(Math.max(0, page - 1)) }, t("toolCall.mcp.previous")), /* @__PURE__ */ React.createElement("span", null, t("toolCall.mcp.range", { values: { start: page * size + 1, end: Math.min(total, (page + 1) * size), total } })), /* @__PURE__ */ React.createElement("button", { type: "button", disabled: page >= last, onClick: () => onPage(Math.min(last, page + 1)) }, t("toolCall.mcp.next")));
+}
+function SafeLink({ value, label }) {
+  const api = useApi();
+  const url = safeUrl(value);
+  if (!url) return null;
+  return /* @__PURE__ */ React.createElement("button", { className: "mcp-link", type: "button", title: url, onClick: () => api.links.open(url, "browser") }, safeText(label || url).slice(0, 180));
+}
+function TextValue({ value }) {
+  const { t } = useApi();
+  const text = React.useMemo(() => safeText(value), [value]);
+  const [expanded, setExpanded] = React.useState(false);
+  const [requested, setPage] = React.useState(0);
+  const page = Math.min(requested, Math.max(0, Math.ceil(text.length / TEXT_PAGE_SIZE) - 1));
+  return /* @__PURE__ */ React.createElement("div", { className: "mcp-text" }, /* @__PURE__ */ React.createElement("pre", null, expanded ? text.slice(page * TEXT_PAGE_SIZE, (page + 1) * TEXT_PAGE_SIZE) : text.slice(0, 600)), text.length > 600 && /* @__PURE__ */ React.createElement("button", { type: "button", "aria-expanded": expanded, onClick: () => setExpanded(!expanded) }, t(expanded ? "toolCall.mcp.collapse" : "toolCall.mcp.fullText"), " · ", text.length), expanded && /* @__PURE__ */ React.createElement(Pager, { total: text.length, page, size: TEXT_PAGE_SIZE, onPage: setPage }), /* @__PURE__ */ React.createElement(SafeLink, { value }));
+}
+function Value({ value, field = "", parameters = false, depth = 0 }) {
+  const { t } = useApi();
+  const [open, setOpen] = React.useState(false);
+  const [continueDeep, setContinueDeep] = React.useState(false);
+  const [requested, setPage] = React.useState(0);
+  if (hiddenKey(field, parameters)) return /* @__PURE__ */ React.createElement("code", { className: "mcp-muted" }, t("toolCall.mcp.redacted"));
+  if (field === "blob" || field === "base64" || field === "data" && typeof value === "string" && value.length > 128 && /^[a-z0-9+/]+=*$/i.test(value)) return /* @__PURE__ */ React.createElement("code", { className: "mcp-muted" }, BINARY);
+  if (typeof value === "string") return /* @__PURE__ */ React.createElement(TextValue, { value });
+  if (!Array.isArray(value) && !isRecord3(value)) return /* @__PURE__ */ React.createElement("code", null, String(value));
+  const keys = Array.isArray(value) ? null : Object.keys(value);
+  const total = keys ? keys.length : value.length;
+  const page = Math.min(requested, Math.max(0, Math.ceil(total / PAGE_SIZE) - 1));
+  const start = page * PAGE_SIZE;
+  return /* @__PURE__ */ React.createElement("div", { className: "mcp-tree" }, /* @__PURE__ */ React.createElement("button", { type: "button", "aria-expanded": open, onClick: () => setOpen(!open) }, open ? "▾" : "▸", " ", Array.isArray(value) ? "[ ]" : "{ }", " · ", total, " ", t("toolCall.mcp.items")), open && depth >= 32 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("button", { type: "button", "aria-expanded": continueDeep, onClick: () => setContinueDeep(!continueDeep) }, t("toolCall.mcp.continueDepth")), continueDeep && /* @__PURE__ */ React.createElement(Value, { value, field, parameters })), open && depth < 32 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "mcp-fields" }, Array.from({ length: Math.min(PAGE_SIZE, total - start) }, (_, offset) => {
+    const index = start + offset;
+    const key = keys ? keys[index] : String(index);
+    const child = keys ? value[key] : value[index];
+    return /* @__PURE__ */ React.createElement("div", { className: "mcp-field", key }, /* @__PURE__ */ React.createElement("span", { className: "mcp-key" }, safeText(key).slice(0, 100)), /* @__PURE__ */ React.createElement(Value, { value: child, field: key, parameters, depth: depth + 1 }));
+  })), /* @__PURE__ */ React.createElement(Pager, { total, page, onPage: setPage })));
+}
+function ImageBlock({ value }) {
+  const { t } = useApi();
+  const [revealed, setRevealed] = React.useState(null);
+  const [failedValue, setFailedValue] = React.useState(null);
+  const shown = revealed === value;
+  const broken = failedValue === value;
+  const image = React.useMemo(() => inlineImage(value), [value]);
+  const metadata = isRecord3(value) ? Object.fromEntries(Object.entries(value).filter(([key]) => key !== "data")) : value;
+  return /* @__PURE__ */ React.createElement("div", { className: "mcp-image" }, /* @__PURE__ */ React.createElement(Value, { value: metadata }), !image || broken ? /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, t("toolCall.mcp.imageBlocked")) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("button", { type: "button", "aria-expanded": shown, onClick: () => setRevealed(shown ? null : value) }, t(shown ? "toolCall.mcp.hideImage" : "toolCall.mcp.showImage"), " · ", Math.ceil(image.bytes / 1024), " KiB"), shown && /* @__PURE__ */ React.createElement("img", { src: image.src, alt: t("toolCall.mcp.inlineImage"), loading: "lazy", onError: () => setFailedValue(value), onLoad: (event) => {
+    const { naturalWidth: width, naturalHeight: height } = event.currentTarget;
+    if (!width || !height || width > 8192 || height > 8192 || width * height > 16e6) setFailedValue(value);
+  } })));
+}
+var SearchResults = React.memo(function SearchResults2({ groups, showPublished = false }) {
+  const { t } = useApi();
+  const [requested, setPage] = React.useState(0);
+  const items = React.useMemo(() => groups.flatMap((group) => group.items.map((item) => ({ group: group.name, item }))), [groups]);
+  const page = Math.min(requested, Math.max(0, Math.ceil(items.length / PAGE_SIZE) - 1));
+  const pageItems = React.useMemo(() => items.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE), [items, page]);
+  return /* @__PURE__ */ React.createElement("section", { className: "mcp-search" }, /* @__PURE__ */ React.createElement("h4", null, t("toolCall.mcp.searchResults"), " · ", items.length), pageItems.map(({ group, item }, index) => /* @__PURE__ */ React.createElement("article", { key: page * PAGE_SIZE + index }, /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, t(`toolCall.mcp.group.${group}`, { defaultValue: group })), isRecord3(item) ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("strong", null, preview(item.title ?? item.name ?? item.url ?? "", "title")), /* @__PURE__ */ React.createElement(SafeLink, { value: item.url ?? item.link }), showPublished && typeof item.publishedDate === "string" && /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, t("toolCall.exa.published"), ": ", preview(item.publishedDate).slice(0, 80)), /* @__PURE__ */ React.createElement("p", null, preview(item.description ?? item.snippet ?? item.text ?? "")), /* @__PURE__ */ React.createElement(Value, { value: item })) : /* @__PURE__ */ React.createElement(Value, { value: item }))), /* @__PURE__ */ React.createElement(Pager, { total: items.length, page, onPage: setPage }));
+});
+var RecordTable = React.memo(function RecordTable2({ rows, label }) {
+  const api = useApi();
+  const [requested, setPage] = React.useState(0);
+  const page = Math.min(requested, Math.max(0, Math.ceil(rows.length / PAGE_SIZE) - 1));
+  const visible = React.useMemo(() => rows.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE), [rows, page]);
+  const columns = React.useMemo(() => [...new Set(visible.flatMap((row) => isRecord3(row) ? Object.keys(row) : ["value"]))].slice(0, 12), [visible]);
+  const tableColumns = React.useMemo(() => columns.map((key) => safeText(key).slice(0, 100)), [columns]);
+  const tableRows = React.useMemo(() => visible.map((row) => columns.map((key) => preview(isRecord3(row) ? row[key] : row, key))), [visible, columns]);
+  const Table = api.ui.DataTableViewer;
+  return /* @__PURE__ */ React.createElement("section", { className: "mcp-table" }, /* @__PURE__ */ React.createElement("h4", null, label, " · ", rows.length), /* @__PURE__ */ React.createElement(Table, { columns: tableColumns, rows: tableRows, maxInitialRows: PAGE_SIZE, enableExport: false, enableSearch: false }), /* @__PURE__ */ React.createElement(Pager, { total: rows.length, page, onPage: setPage }), /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, api.t("toolCall.mcp.tablePreview")));
+});
+function BrowserView({ records, blocks }) {
+  const { t } = useApi();
+  const tables = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const record of records) for (const key of ["pages", "messages", "requests", "entries", "insights", "metrics"]) {
+    const rows = record[key];
+    if (Array.isArray(rows) && !seen.has(rows)) {
+      seen.add(rows);
+      tables.push({ label: key, rows });
+    }
+  }
+  if (!tables.length) {
+    for (const block of blocks.slice(0, 20)) {
+      if (typeof block.value !== "string" || block.value.length > 2e5) continue;
+      const text = block.value;
+      if (/^\s*(?:[-*]\s*)?\d+:\s*(?:https?:\/\/|\[|\(current\))/m.test(text)) {
+        const rows = text.split(/\r?\n/).filter((line) => /^\s*(?:[-*]\s*)?\d+:/.test(line)).map((line) => {
+          const match = line.match(/^\s*(?:[-*]\s*)?(\d+):\s*(.*)$/);
+          return { pageId: match?.[1] ?? "", url: line.match(/https?:\/\/[^\s)]+/)?.[0] ?? "", page: line.trim() };
+        });
+        if (rows.length) tables.push({ label: t("toolCall.mcp.pages"), rows });
+      }
+      const requestLines = text.split(/\r?\n/).filter((line) => /(?:reqid|msgid)=\d+/.test(line));
+      if (requestLines.length) tables.push({ label: "console / network", rows: requestLines.map((line) => ({ id: line.match(/(?:reqid|msgid)=(\d+)/)?.[1] ?? "", record: line.trim() })) });
+    }
+  }
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, tables.slice(0, 8).map((table, index) => /* @__PURE__ */ React.createElement(RecordTable, { key: index, ...table })));
+}
+function GenericView({ records, blocks }) {
+  const { t } = useApi();
+  const tables = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const block of blocks.slice(0, 20)) {
+    if (Array.isArray(block.value) && !seen.has(block.value)) {
+      seen.add(block.value);
+      tables.push({ label: t("toolCall.mcp.records"), rows: block.value });
+    }
+  }
+  for (const record of records) for (const key of [
+    "libraries",
+    "repositories",
+    "items",
+    "files",
+    "commits",
+    "results",
+    "collections",
+    "environments",
+    "requests",
+    "responses",
+    "issues",
+    "projects",
+    "comments",
+    "users",
+    "teams",
+    "events",
+    "traces",
+    "containers",
+    "images",
+    "volumes",
+    "pods",
+    "services",
+    "deployments",
+    "schemas",
+    "tables",
+    "columns",
+    "pages",
+    "databases",
+    "blocks"
+  ]) {
+    const rows = record[key];
+    if (Array.isArray(rows) && !seen.has(rows)) {
+      seen.add(rows);
+      tables.push({ label: t(`toolCall.mcp.collection.${key}`, { defaultValue: key }), rows });
+    }
+  }
+  return /* @__PURE__ */ React.createElement(React.Fragment, null, tables.slice(0, 6).map((table, index) => /* @__PURE__ */ React.createElement(RecordTable, { key: index, ...table })));
+}
+var Metrics = React.memo(function Metrics2({ records }) {
+  const { t } = useApi();
+  const fields = React.useMemo(() => ["id", "status", "progress", "completed", "total", "totalPages", "creditsUsed", "duration", "durationMs"], []);
+  const selected = React.useMemo(() => {
+    const map = /* @__PURE__ */ new Map();
+    for (const record of records) {
+      for (const key of fields) {
+        const value = record[key];
+        if (!map.has(key) && (typeof value === "string" || typeof value === "number" || typeof value === "boolean")) {
+          map.set(key, value);
+        }
+      }
+    }
+    return map;
+  }, [records, fields]);
+  if (!selected.size) return null;
+  return /* @__PURE__ */ React.createElement("dl", { className: "mcp-metrics" }, [...selected].map(([key, value]) => /* @__PURE__ */ React.createElement("div", { key }, /* @__PURE__ */ React.createElement("dt", null, t(`toolCall.mcp.metric.${key}`, { defaultValue: key })), /* @__PURE__ */ React.createElement("dd", null, preview(value, key)))));
+});
+var Blocks = React.memo(function Blocks2({ blocks }) {
+  const { t } = useApi();
+  const [requested, setPage] = React.useState(0);
+  const page = Math.min(requested, Math.max(0, Math.ceil(blocks.length / 5) - 1));
+  const currentBlocks = React.useMemo(() => blocks.slice(page * 5, (page + 1) * 5), [blocks, page]);
+  return /* @__PURE__ */ React.createElement("section", { className: "mcp-blocks" }, /* @__PURE__ */ React.createElement("h4", null, t("toolCall.mcp.contentBlocks"), " · ", blocks.length), currentBlocks.map((block, index) => /* @__PURE__ */ React.createElement("div", { className: "mcp-block", key: `${page}:${index}` }, /* @__PURE__ */ React.createElement("h5", null, block.label), block.kind === "image" ? /* @__PURE__ */ React.createElement(ImageBlock, { value: block.value }) : /* @__PURE__ */ React.createElement(Value, { value: block.value }))), /* @__PURE__ */ React.createElement(Pager, { total: blocks.length, page, size: 5, onPage: setPage }));
+});
+function McpToolCall({ toolCall, provider, operation }) {
+  const api = useApi();
+  const parsed = React.useMemo(() => parseMcp(toolCall.result), [toolCall.result]);
+  const records = React.useMemo(() => candidates(parsed.blocks), [parsed.blocks]);
+  const args = React.useMemo(() => parseJson(toolCall.arguments), [toolCall.arguments]);
+  const exa = React.useMemo(() => provider.id === "exa" ? exaView(parsed.blocks, records, operation) : null, [provider.id, parsed.blocks, records, operation]);
+  const feed = React.useMemo(() => provider.kind === "search" && provider.id !== "exa" && provider.id !== "firecrawl" ? parseSearchFeed(provider.id, parsed.blocks, records) : null, [provider.kind, provider.id, parsed.blocks, records]);
+  const groups = React.useMemo(() => exa ? exa.groups : feed ? feed.groups : provider.kind === "search" ? searchGroups(records) : [], [exa, feed, provider.kind, records]);
+  const [parametersOpen, setParametersOpen] = React.useState(false);
+  const status = toolCall.status === "error" || parsed.failed || exa?.partialError ? "error" : toolCall.status;
+  const ToolCallNode = api.ui.ToolCallNode;
+  const op = api.t(`toolCall.mcp.op.${operation}`, { defaultValue: operation });
+  const summaryKeys = React.useMemo(() => provider.kind === "browser" ? ["url", "pageId", "uid", "target", "ref", "index", "part", "key", "action", "type", "filename", "format", "fullPage"] : ["query", "url", "libraryName", "libraryId", "language", "owner", "repo", "project", "issue", "issue_id", "issueId", "collection", "container", "pod", "namespace", "database", "table", "method", "status", "action", "id", "formats", "limit"], [provider.kind]);
+  const parts = React.useMemo(() => {
+    if (!isRecord3(args)) return [];
+    const list = summaryKeys.filter((key) => args[key] !== void 0 && !hiddenKey(key, true)).map((key) => `${key}: ${preview(args[key], key, true)}`);
+    for (const key of ["elements", "fields", "text", "value", "function", "script", "prompt", "code", "paths", "data"]) {
+      const value = args[key];
+      if (Array.isArray(value)) list.push(`${key}.count: ${value.length}`);
+      else if (typeof value === "string") list.push(`${key}.length: ${value.length}`);
+      else if (isRecord3(value)) list.push(`${key}.count: ${Object.keys(value).length}`);
+    }
+    return list;
+  }, [args, summaryKeys]);
+  const summary = React.useMemo(() => {
+    if (provider.id === "exa" && isRecord3(args)) {
+      return exaSummary(args, api.t);
+    }
+    if (feed && isRecord3(args)) {
+      return searchProviderSummary(provider.id, args, api.t);
+    }
+    return parts.join(" · ").slice(0, 400);
+  }, [provider.id, feed, args, api.t, parts]);
+  return /* @__PURE__ */ React.createElement(ToolCallNode, { toolName: toolCall.name, status, lazyBody: true, category: provider.category, badgeName: provider.name, displayName: summary ? `${op} · ${summary}` : op, displayNameTitle: toolCall.name, className: "snow-external-tool-renderer", meta: /* @__PURE__ */ React.createElement("span", null, parsed.blocks.length ? api.t("toolCall.mcp.blockCount", { values: { count: parsed.blocks.length } }) : api.t(`toolCall.mcp.status.${status}`)) }, /* @__PURE__ */ React.createElement("div", { className: "mcp-card" }, summary && /* @__PURE__ */ React.createElement("p", { className: "mcp-summary" }, summary), status === "error" && /* @__PURE__ */ React.createElement("p", { role: "status", className: "mcp-error" }, api.t("toolCall.mcp.failed")), /* @__PURE__ */ React.createElement("button", { type: "button", "aria-expanded": parametersOpen, onClick: () => setParametersOpen(!parametersOpen) }, api.t("toolCall.mcp.parameters")), parametersOpen && /* @__PURE__ */ React.createElement("section", null, /* @__PURE__ */ React.createElement("p", { className: "mcp-muted" }, api.t("toolCall.mcp.parameterPrivacy")), isRecord3(args) ? /* @__PURE__ */ React.createElement(Value, { value: provider.id === "exa" ? exaParameters(args) : args, parameters: true }) : /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, HIDDEN)), /* @__PURE__ */ React.createElement(Metrics, { records }), feed?.answer && /* @__PURE__ */ React.createElement("div", { className: "mcp-answer" }, /* @__PURE__ */ React.createElement("strong", null, api.t("toolCall.search.answer"), ":"), /* @__PURE__ */ React.createElement("p", null, preview(feed.answer))), exa?.textPreview && /* @__PURE__ */ React.createElement("p", { className: "mcp-muted" }, api.t("toolCall.exa.previewOnly")), feed?.textPreview && /* @__PURE__ */ React.createElement("p", { className: "mcp-muted" }, api.t("toolCall.search.textPreview")), groups.length > 0 && /* @__PURE__ */ React.createElement(SearchResults, { groups, showPublished: provider.id === "exa" || provider.id === "brave" }), provider.kind === "browser" && /* @__PURE__ */ React.createElement(BrowserView, { records, blocks: parsed.blocks }), provider.kind === "generic" && /* @__PURE__ */ React.createElement(GenericView, { records, blocks: parsed.blocks }), parsed.bounded && /* @__PURE__ */ React.createElement("p", { className: "mcp-muted" }, api.t("toolCall.mcp.parseLimit")), parsed.blocks.length > 0 ? /* @__PURE__ */ React.createElement(Blocks, { blocks: parsed.blocks }) : /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, api.t(`toolCall.mcp.status.${status}`)), toolCall.streamingStdout && /* @__PURE__ */ React.createElement("section", null, /* @__PURE__ */ React.createElement("h4", null, "stdout"), /* @__PURE__ */ React.createElement(TextValue, { value: toolCall.streamingStdout })), toolCall.streamingStderr && /* @__PURE__ */ React.createElement("section", null, /* @__PURE__ */ React.createElement("h4", null, "stderr"), /* @__PURE__ */ React.createElement(TextValue, { value: toolCall.streamingStderr }))));
+}
+
+// src/providers.ts
+var providers = [
+  { id: "firecrawl", name: "Firecrawl", services: ["firecrawl"], category: "web", kind: "search" },
+  { id: "chrome", name: "Chrome DevTools", services: ["chrome-devtools", "chrome_devtools"], category: "web", kind: "browser" },
+  { id: "playwright", name: "Playwright", services: ["playwright"], category: "web", kind: "browser" },
+  { id: "context7", name: "Context7", services: ["context7"], kind: "generic" },
+  { id: "github", name: "GitHub", services: ["github"], kind: "generic" },
+  { id: "exa", name: "Exa", services: ["exa"], category: "web", kind: "search" },
+  { id: "brave", name: "Brave Search", services: ["brave-search", "brave_search", "brave"], category: "web", kind: "search" },
+  { id: "tavily", name: "Tavily", services: ["tavily", "tavily-mcp", "tavily_mcp"], category: "web", kind: "search" },
+  { id: "perplexity", name: "Perplexity", services: ["perplexity"], category: "web", kind: "search" },
+  { id: "parallel", name: "Parallel", services: ["parallel", "parallel-search", "parallel_search"], category: "web", kind: "search" },
+  { id: "serpapi", name: "SerpApi", services: ["serpapi"], category: "web", kind: "search" },
+  { id: "kagi", name: "Kagi", services: ["kagi", "kagimcp"], category: "web", kind: "search" },
+  { id: "linkup", name: "Linkup", services: ["linkup"], category: "web", kind: "search" },
+  { id: "searxng", name: "SearXNG", services: ["searxng", "mcp-searxng", "mcp_searxng"], category: "web", kind: "search" },
+  // ── 新增 8 个现代开发者顶级 MCP ──
+  { id: "supabase", name: "Supabase", services: ["supabase", "mcp-server-supabase", "mcp-server-postgrest"], category: "database", kind: "generic" },
+  { id: "postman", name: "Postman", services: ["postman", "postman-mcp", "postman_mcp"], kind: "generic" },
+  { id: "linear", name: "Linear", services: ["linear", "linear-mcp", "linear_mcp"], kind: "generic" },
+  { id: "sentry", name: "Sentry", services: ["sentry", "sentry-mcp", "sentry_mcp"], kind: "generic" },
+  { id: "gitlab", name: "GitLab", services: ["gitlab", "gitlab-mcp", "gitlab_mcp"], kind: "generic" },
+  { id: "docker", name: "Docker", services: ["docker", "docker-mcp", "docker_mcp"], kind: "generic" },
+  { id: "k8s", name: "Kubernetes", services: ["kubernetes", "k8s", "kubernetes-mcp", "k8s-mcp"], kind: "generic" },
+  { id: "notion", name: "Notion", services: ["notion", "notion-mcp", "notion_mcp"], kind: "generic" }
+];
+var normalizeName = (name) => name.replace(/_/g, "-");
+var prefixMap = [];
+for (const provider of providers) {
+  const aliases = [...new Set(provider.services.map(normalizeName))];
+  for (const alias of aliases) {
+    prefixMap.push({ prefix: `${alias}-`, provider, aliasLen: alias.length });
+  }
+}
+prefixMap.sort((a, b) => b.prefix.length - a.prefix.length);
+var cache = /* @__PURE__ */ new Map();
+var MAX_CACHE_SIZE = 500;
+function identifyProvider(name) {
+  if (cache.has(name)) return cache.get(name);
+  const normalized = normalizeName(name);
+  let result = null;
+  for (const entry of prefixMap) {
+    if (normalized.startsWith(entry.prefix)) {
+      let operation = normalized.slice(entry.aliasLen + 1);
+      while (operation.startsWith(entry.prefix)) {
+        operation = operation.slice(entry.aliasLen + 1);
+      }
+      if (operation) {
+        result = { provider: entry.provider, operation };
+        break;
+      }
+    }
+  }
+  if (cache.size >= MAX_CACHE_SIZE) cache.clear();
+  cache.set(name, result);
+  return result;
+}
+
 // src/index.tsx
 function renderAnysearch(api, context) {
   if (api.signal.aborted || api.ui.toolCallRendererVersion !== 1 || api.ui.React !== React || context.slot !== "tool-call") return null;
@@ -762,7 +1360,14 @@ function renderDbx(api, context) {
   if (!context.toolCall.name.startsWith("dbx-") && !context.toolCall.name.startsWith("dbx_")) return null;
   return /* @__PURE__ */ React.createElement(ApiContext.Provider, { value: api }, /* @__PURE__ */ React.createElement(DbxToolCall, { toolCall: context.toolCall }));
 }
+function renderMcp(api, context) {
+  if (api.signal.aborted || api.ui.toolCallRendererVersion !== 1 || api.ui.React !== React || context.slot !== "tool-call") return null;
+  const match = identifyProvider(context.toolCall.name);
+  if (!match) return null;
+  return /* @__PURE__ */ React.createElement(ApiContext.Provider, { value: api }, /* @__PURE__ */ React.createElement(McpToolCall, { key: context.toolCall.interactionId, toolCall: context.toolCall, ...match }));
+}
 export {
   renderAnysearch,
-  renderDbx
+  renderDbx,
+  renderMcp
 };

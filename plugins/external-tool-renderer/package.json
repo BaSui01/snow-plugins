@@ -1,6 +1,7 @@
 {
   "name": "snow-external-tool-renderer",
   "version": "0.1.0",
+  "author": "BaSui",
   "private": true,
   "type": "module",
   "license": "MIT",
