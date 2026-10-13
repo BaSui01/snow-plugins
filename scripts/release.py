@@ -81,8 +81,13 @@ def validate(directory, manifest):
     market_path = directory / "market.json"
     if market_path.exists():
         validate_market_metadata(json.loads(market_path.read_text(encoding="utf-8")))
-    resources = [manifest["entry"], *manifest.get("styles", []), *manifest.get("locales", {}).values()]
-    resources += [item["entry"] for item in manifest.get("contributions", {}).get("messageFooters", [])]
+    resources = [manifest.get("entry", "index.js"), *manifest.get("styles", []), *manifest.get("locales", {}).values()]
+    contributions = manifest.get("contributions", {})
+    resources += [item["entry"] for item in contributions.get("messageFooters", [])]
+    renderers = contributions.get("toolCallRenderers", [])
+    if renderers and (manifest.get("renderMode") != "esm" or "messages" not in manifest.get("privacy", {}).get("scopes", [])):
+        raise ValueError(f"Tool call renderers require esm and messages privacy: {directory.name}")
+    resources += [item.get("entry", manifest.get("entry", "index.js")) for item in renderers]
     icon = manifest.get("icon", "")
     if icon and not icon.startswith(("lucide:", "https://", "http://", "data:")):
         resources.append(icon)

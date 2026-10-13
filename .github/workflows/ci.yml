@@ -38,3 +38,8 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           npm run check
+      - name: Verify the external-tool-renderer entry matches its sources
+        working-directory: plugins/external-tool-renderer
+        run: |
+          npm ci --no-audit --no-fund
+          npm run check

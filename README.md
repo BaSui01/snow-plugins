@@ -3,12 +3,13 @@
 [![Plugin CI](https://github.com/BaSui01/snow-plugins/actions/workflows/ci.yml/badge.svg)](https://github.com/BaSui01/snow-plugins/actions/workflows/ci.yml "查看真实插件静态校验工作流")
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Snow App 插件源码集合。两个插件可分别安装，本仓库不是插件市场索引。
+Snow App 插件源码集合。各插件可分别安装，本仓库不是插件市场索引；外部工具渲染为未发布开发版本，需配套桌面宿主。
 
 ## 插件、版本与下载
 
 | 插件 / ID | 清单版本 | 下载与发行状态 | 最低宿主（基础功能） | 使用说明 |
 | --- | --- | --- | --- | --- |
+| 外部工具渲染 / `com.snow.external-tool-renderer` | `0.1.0` | **开发版本，尚未发布；未自动安装** | 需提供 `ui.toolCallRendererVersion === 1` 的配套桌面构建；正式版 `0.4.23` 不含新插槽 | [使用说明](plugins/external-tool-renderer/README.md) · [发布说明](plugins/external-tool-renderer/RELEASE.md) |
 | 提示词优化 / `com.snow.prompt-optimizer` | `1.4.0` | 已发布专属标签 [prompt-optimizer/v1.4.0](https://github.com/BaSui01/snow-plugins/releases/tag/prompt-optimizer/v1.4.0 "提示词优化 v1.4.0 安装包")（推送该标签后由 CI 打包 Release 并创建市场 PR）；历史 Release 见 [prompt-optimizer/v1.1.2](https://github.com/BaSui01/snow-plugins/releases/tag/prompt-optimizer/v1.1.2 "提示词优化 v1.1.2 安装包") · [历史预发行 v1.1.0-preview.1](https://github.com/BaSui01/snow-plugins/releases/tag/v1.1.0-preview.1 "历史预发行包") | Snow App `v0.4.16`（历史基础功能；新行为另需配套构建） | [配置与使用](plugins/prompt-optimizer/README.md) · [发布说明](plugins/prompt-optimizer/RELEASE.md) |
 | 会话文件统计 / `com.snow.session-file-count` | `1.1.6` | 本地源码已升版，**尚未发布**；历史 Release 见 [session-file-count/v1.1.5](https://github.com/BaSui01/snow-plugins/releases/tag/session-file-count/v1.1.5 "会话文件统计 v1.1.5 安装包") · [历史 Release v1.1.4](https://github.com/BaSui01/snow-plugins/releases/tag/session-file-count/v1.1.4 "历史1.1.4安装包") · [历史 Release v1.1.2](https://github.com/BaSui01/snow-plugins/releases/tag/session-file-count/v1.1.2 "历史1.1.2安装包") | Snow App `v0.4.16`（历史统计展示；不代表 1.1.6 taskHistory 兼容） | [使用说明](plugins/session-file-count/README.md) · [发布说明](plugins/session-file-count/RELEASE.md) |
 
@@ -16,11 +17,13 @@ Snow App 插件源码集合。两个插件可分别安装，本仓库不是插�
 - 会话文件统计：当前开发源码在每次任务的结束回复下方展示该任务及子代理的独立文件数和清单，旧卡片保留并支持历史恢复；无独立面板。统计不是完整审计，没有记录不等于没有修改。源码为 TypeScript，`footer.js` 由 `npm run build` 生成。
 - 版本、标签和安装包按插件独立管理；历史统一预发行标签不是两个插件当前版本的统一下载入口。
 
+- 外部工具渲染：桌面 P0 仅接管当前 Anysearch / DBX 工具卡；当前宿主 `0.4.23` 源码已配套但不是正式版能力承诺，mobile 本轮未迁移。源码安装目录为 `plugins/external-tool-renderer`，请先读独立兼容性说明，不能按旧宿主最低版本安装并期待生效。`index.js` 由本目录 `npm run build` 生成，不依赖相邻宿主仓库。
+
 ## 安装与更新
 
 1. 从上表选择所需插件的 Release，下载对应压缩包并解压；也可下载或克隆本仓库。
 2. 在 Snow App 插件管理页点击「从目录安装」。
-3. 选择直接包含 `plugin.json` 的解压目录；从源码安装时分别选择 `plugins/prompt-optimizer` 或 `plugins/session-file-count`，不要选择仓库根目录。
+3. 选择直接包含 `plugin.json` 的解压目录；从源码安装时选择 `plugins/prompt-optimizer`、`plugins/session-file-count` 或 `plugins/external-tool-renderer`（未发布开发版本，需配套桌面宿主），不要选择仓库根目录。
 4. 确认插件已启用，并按该插件说明验收功能。
 
 重复安装同一标识会替换已安装副本，并保留启用状态和已保存偏好。修改下载的源码不会自动更新已安装副本，更新时需重新安装相应目录。**安装或更新插件不会更新 Snow App。**
@@ -50,6 +53,8 @@ Snow App 插件源码集合。两个插件可分别安装，本仓库不是插�
 - [报告问题](https://github.com/BaSui01/snow-plugins/issues/new?template=bug_report.yml "填写插件和宿主版本及脱敏复现资料") · [提出功能建议](https://github.com/BaSui01/snow-plugins/issues/new?template=feature_request.yml "描述需求与宿主兼容性边界")。
 
 ## 来源与许可证
+
+外部工具渲染插件另迁移自当前 Snow App `0.4.23` 开发源码的桌面 Anysearch/DBX 组件、专属词条和样式，保留原 MIT 版权，详见 [来源声明](plugins/external-tool-renderer/NOTICE) 和 [独立许可证](plugins/external-tool-renderer/LICENSE)。
 
 源码复制自 `BaSui01/snow-plugin-store` 的提交 `14f6cd398ab871a6c40cfa76940bef40bd8a6ab7` 中两个插件目录。原仓库提交历史保留，本仓库从独立初始化提交开始，未迁入商店的其他文件或历史。
 

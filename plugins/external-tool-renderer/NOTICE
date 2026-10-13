@@ -1,0 +1,22 @@
+External Tool Renderer — provenance notice
+
+Copyright (c) 2026 MayMay
+Licensed under the MIT License; see LICENSE.
+
+Derived from the local Snow App 0.4.23 development source tree, not a claim
+about capabilities in the published 0.4.23 distribution:
+- src/renderer/components/mainContent/chatMessages/toolCalls/AnysearchToolCall.tsx
+- src/renderer/components/mainContent/chatMessages/toolCalls/DbxToolCall.tsx
+- src/renderer/i18n/lang/en.ts, zh-CN.ts, zh-TW.ts (Anysearch/DBX entries only)
+- src/renderer/styles.css (Anysearch/DBX dedicated rules only)
+
+The host LICENSE and snow-plugins root LICENSE both carry the above MIT
+copyright notice. This independent directory preserves it in full. No Git
+revision was queried or invented. Plugin adapters, namespace scoping and
+standalone build integration are maintained in snow-plugins.
+
+React and lucide implementations are provided by the host, not bundled or
+redistributed here. @types/react is a development-only typing dependency;
+its package license remains with the locally installed dependency. Anysearch
+and DBX are third-party MCP services; no affiliation or protocol stability
+warranty is implied. The plugin renders current snapshots, not tool execution.

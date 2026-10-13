@@ -1,0 +1,20 @@
+{
+  "id": "com.snow.external-tool-renderer",
+  "name": { "default": "External Tool Renderer", "zh-CN": "外部工具渲染", "zh-TW": "外部工具呈現", "en": "External Tool Renderer" },
+  "description": { "default": "Desktop Anysearch and DBX tool-call cards; requires a compatible development host.", "zh-CN": "桌面端 Anysearch 与 DBX 工具卡片，需配套开发版宿主。", "zh-TW": "桌面端 Anysearch 與 DBX 工具卡片，需配套開發版宿主。" },
+  "version": "0.1.0",
+  "author": "小青枣 & Snow App contributors",
+  "license": "MIT",
+  "icon": "lucide:Blocks",
+  "renderMode": "esm",
+  "panels": [],
+  "contributions": {
+    "toolCallRenderers": [
+      { "id": "anysearch", "prefixes": ["anysearch-", "anysearch_"], "exportName": "renderAnysearch", "priority": 10 },
+      { "id": "dbx", "prefixes": ["dbx-", "dbx_"], "exportName": "renderDbx", "priority": 10 }
+    ]
+  },
+  "styles": ["style.css"],
+  "locales": { "en": "locales/en.json", "zh-CN": "locales/zh-CN.json", "zh-TW": "locales/zh-TW.json" },
+  "privacy": { "scopes": ["messages"], "note": "仅渲染宿主提供的当前工具调用只读快照（名称、参数、状态、结果）。不主动读取其他消息、不执行工具或数据库写入、不持久化、不主动联网；链接仅在用户点击时经宿主受限 API 打开。ESM 是可信本地代码，不是隔离沙箱。" }
+}
