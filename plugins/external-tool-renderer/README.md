@@ -2,13 +2,13 @@
 
 - ID：`com.snow.external-tool-renderer`（保持稳定，未随显示名变更）
 - 显示名：`工具画廊` / `Tool Gallery` / `工具畫廊`
-- 独立版本：`0.2.0`
+- 独立版本：`0.2.1`
 - 作者：`BaSui`
 - 安装目录：`plugins/external-tool-renderer`（直接包含 `plugin.json`），不能安装仓库根目录。
 
 ## 宿主要求与范围
 
-当前 Snow App **0.4.23 本地源码已配套** `contributions.toolCallRenderers` 与受限桌面 v1 API；**正式版 0.4.23 不含新插槽**。仅提供 `api.ui.toolCallRendererVersion === 1`、共享 `ui.React` 的配套桌面构建才能渲染。开发清单不伪造正式最低宿主版本。安装或更新插件不会更新 Snow App。
+当前 Snow App **0.4.23 本地源码已配套** `contributions.toolCallRenderers` 与受限桌面 v1 API；该插槽已随上游 PR [#201](https://github.com/MayDay-wpf/snow-app/pull/201 "插件工具调用渲染插槽贡献已合并") 合并进上游 `main`（提交 `408f1fb2`），但**尚未随任何正式标签发布**——已发布的正式版 `0.4.23` 不含该插槽。仅提供 `api.ui.toolCallRendererVersion === 1`、共享 `ui.React` 的桌面构建才能渲染。开发清单不伪造正式最低宿主版本。安装或更新插件不会更新 Snow App。
 
 工厂同步返回绑定当前卡 API 的 `ApiContext.Provider`；无 hooks、Promise 或加载期 API 捕获。非 v1、已中止 API、React 不一致、插槽错误或不匹配工具返回 `null`，由宿主回退通用卡片。仅桌面；mobile 不在本轮范围。无独立面板、常驻任务或自动执行工具。
 
@@ -104,6 +104,6 @@ python scripts/release.py validate
 
 ## 发布与验证边界
 
-正式最低宿主版本尚未确定；未安装/未发布，desktop 真机交互、三语/主题、链接用户激活、图片解码、大结果与各 MCP 服务版本返回格式须由配套宿主实际验收。静态构建不等于 UI 验收；不宣称所有 MCP 协议都具备专属字段展示。
+正式最低宿主版本尚未确定；desktop 真机交互、三语/主题、链接用户激活、图片解码、大结果与各 MCP 服务版本返回格式须由配套宿主实际验收。静态构建不等于 UI 验收；不宣称所有 MCP 协议都具备专属字段展示。
 
-独立标签/安装包仍按 `external-tool-renderer/v0.1.0` 约定，本轮不创建标签或更新市场。开发/文档/词条改动不会自动更新宿主或已安装插件。
+独立标签/安装包按 `<slug>/v<version>` 约定，本版本为 `external-tool-renderer/v0.2.1`。开发/文档/词条改动不会自动更新宿主或已安装插件。
