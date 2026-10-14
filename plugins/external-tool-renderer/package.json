@@ -1,10 +1,17 @@
 {
   "name": "snow-external-tool-renderer",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "author": "BaSui",
   "private": true,
   "type": "module",
   "license": "MIT",
-  "scripts": { "build": "node scripts/build.mjs", "check": "tsc --noEmit && node scripts/build.mjs --check" },
-  "devDependencies": { "@types/react": "^19.2.0", "esbuild": "^0.28.2", "typescript": "^5.9.3" }
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "tsc --noEmit && node scripts/build.mjs --check"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.9.3"
+  }
 }

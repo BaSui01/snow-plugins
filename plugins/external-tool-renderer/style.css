@@ -293,3 +293,293 @@
 .snow-external-tool-renderer .mcp-metrics dd { margin: 0; overflow-wrap: anywhere; }
 .snow-external-tool-renderer .mcp-answer { padding: 8px 10px; border-radius: var(--radius-sm); background: var(--bg-primary); border-left: 3px solid var(--accent-blue-text); }
 .snow-external-tool-renderer .mcp-answer p { margin-top: 4px; font-size: 12px; line-height: 1.5; color: var(--text-primary); }
+/* ── 卡片排版统一与美化 ───────────────────────────────────────────────────
+   全部规则限定在插件根类下，只使用宿主主题变量，随主题（含亮/暗与预设主题）
+   自动适配；不引入固定色值，避免与宿主主题冲突。 */
+.snow-external-tool-renderer .mcp-card { gap: 10px; line-height: 1.55; }
+
+/* 章节标题：小号字距标签，弱化层级但保持可扫读 */
+.snow-external-tool-renderer .mcp-card h4 {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.snow-external-tool-renderer .mcp-card h5 {
+  margin: 0 0 2px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+/* 摘要与说明：正文色但更紧凑，长词强制换行不撑破卡片 */
+.snow-external-tool-renderer .mcp-summary {
+  padding: 7px 9px;
+  border-left: 2px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+.snow-external-tool-renderer .mcp-error {
+  padding: 7px 9px;
+  border-left: 2px solid var(--accent-red-text);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+/* 参数开关：贴近宿主按钮风格，展开态给出明确反馈 */
+.snow-external-tool-renderer .mcp-card > button[aria-expanded] {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  font-size: 11.5px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.snow-external-tool-renderer .mcp-card > button[aria-expanded="true"] {
+  border-color: var(--accent-blue-text);
+  color: var(--accent-blue-text);
+}
+
+/* 检索结果：整卡可点区域视觉分组，悬停轻微提亮 */
+.snow-external-tool-renderer .mcp-search > h4 { margin-bottom: 2px; }
+.snow-external-tool-renderer .mcp-search article {
+  gap: 4px;
+  padding: 9px 10px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.snow-external-tool-renderer .mcp-search article:hover { border-color: var(--border-color); }
+.snow-external-tool-renderer .mcp-search article > .mcp-muted:first-child {
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.snow-external-tool-renderer .mcp-search article strong {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.snow-external-tool-renderer .mcp-search article p {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.snow-external-tool-renderer .mcp-link {
+  width: fit-content;
+  max-width: 100%;
+  padding: 1px 0;
+  border: none;
+  background: none;
+  font-size: 11px;
+  color: var(--accent-blue-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  overflow-wrap: anywhere;
+}
+.snow-external-tool-renderer .mcp-link:hover { background: none; text-decoration-thickness: 2px; }
+
+/* 引用来源：紧凑的链接清单 */
+.snow-external-tool-renderer .mcp-sources {
+  padding: 8px 10px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+}
+.snow-external-tool-renderer .mcp-sources > strong {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.snow-external-tool-renderer .mcp-sources ul { margin: 0; padding-left: 16px; }
+.snow-external-tool-renderer .mcp-sources li { margin: 2px 0; font-size: 11px; }
+
+/* 指标：药丸状标签，数值与名称分层 */
+.snow-external-tool-renderer .mcp-metrics { gap: 6px; }
+.snow-external-tool-renderer .mcp-metrics div {
+  align-items: baseline;
+  gap: 5px;
+  padding: 3px 9px;
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  background: var(--bg-tertiary);
+  font-size: 11px;
+}
+.snow-external-tool-renderer .mcp-metrics dt { font-size: 10.5px; }
+.snow-external-tool-renderer .mcp-metrics dd { color: var(--text-primary); font-family: var(--font-mono); }
+
+/* 内容块：带标题的独立面板 */
+.snow-external-tool-renderer .mcp-blocks > h4 { margin-bottom: 2px; }
+.snow-external-tool-renderer .mcp-block {
+  gap: 6px;
+  padding: 9px 10px;
+  border-left: 2px solid var(--border-color);
+}
+.snow-external-tool-renderer .mcp-block > h5 { margin-bottom: 0; }
+
+/* 分页：等宽数字，按钮紧凑 */
+.snow-external-tool-renderer .mcp-pager {
+  gap: 8px;
+  padding-top: 2px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.snow-external-tool-renderer .mcp-pager button { padding: 2px 8px; font-size: 11px; }
+
+/* 折叠树：连接线更轻，键名与值区分明确 */
+.snow-external-tool-renderer .mcp-fields { padding-left: 9px; }
+.snow-external-tool-renderer .mcp-field { gap: 2px; }
+.snow-external-tool-renderer .mcp-key { font-size: 10.5px; }
+.snow-external-tool-renderer .mcp-tree > button { font-family: var(--font-mono); font-size: 11px; }
+.snow-external-tool-renderer .mcp-text > button { font-size: 11px; }
+
+/* 表格容器：标题与提示分层，避免撑破卡片 */
+.snow-external-tool-renderer .mcp-table > h4 { margin-bottom: 4px; }
+.snow-external-tool-renderer .mcp-table > .mcp-muted { font-size: 10.5px; }
+/* ── 形态视图（diff / tree / log / snapshot / progress / checklist）──────── */
+.snow-external-tool-renderer .mcp-shape {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.snow-external-tool-renderer .mcp-shape-count {
+  margin-inline-start: 6px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-tertiary);
+}
+.snow-external-tool-renderer .mcp-shape-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+/* diff */
+.snow-external-tool-renderer .mcp-diff-add { color: var(--accent-green-text); font-family: var(--font-mono); }
+.snow-external-tool-renderer .mcp-diff-del { color: var(--accent-red-text); font-family: var(--font-mono); }
+.snow-external-tool-renderer .mcp-diff-file {
+  min-width: 0;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  overflow: hidden;
+}
+.snow-external-tool-renderer .mcp-diff-file-head {
+  padding: 5px 9px;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--bg-tertiary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+.snow-external-tool-renderer .mcp-diff-body {
+  margin: 0;
+  max-height: 420px;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  user-select: text;
+}
+.snow-external-tool-renderer .mcp-diff-line { display: flex; gap: 6px; padding: 0 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.snow-external-tool-renderer .mcp-diff-sign { flex-shrink: 0; width: 8px; color: var(--text-tertiary); }
+.snow-external-tool-renderer .mcp-diff-add { background: color-mix(in srgb, var(--accent-green-text) 10%, transparent); }
+.snow-external-tool-renderer .mcp-diff-remove { background: color-mix(in srgb, var(--accent-red-text) 10%, transparent); }
+.snow-external-tool-renderer .mcp-diff-meta { color: var(--text-tertiary); }
+
+/* tree */
+.snow-external-tool-renderer .mcp-tree-list { margin: 0; padding: 0; list-style: none; font-family: var(--font-mono); font-size: 11.5px; }
+.snow-external-tool-renderer .mcp-tree-item { display: flex; align-items: baseline; gap: 5px; padding-block: 1px; user-select: text; }
+.snow-external-tool-renderer .mcp-tree-mark { flex-shrink: 0; width: 10px; color: var(--text-tertiary); }
+.snow-external-tool-renderer .mcp-tree-dir .mcp-tree-name { color: var(--accent-blue-text); font-weight: 600; }
+.snow-external-tool-renderer .mcp-tree-name { overflow-wrap: anywhere; }
+
+/* log */
+.snow-external-tool-renderer .mcp-log-chip {
+  padding: 2px 8px;
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  background: var(--bg-tertiary);
+  font: inherit;
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.snow-external-tool-renderer .mcp-log-chip.is-active { border-color: var(--accent-blue-text); color: var(--accent-blue-text); }
+.snow-external-tool-renderer .mcp-log-body {
+  margin: 0;
+  max-height: 420px;
+  overflow: auto;
+  padding: 6px 0;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  user-select: text;
+}
+.snow-external-tool-renderer .mcp-log-line { display: flex; gap: 7px; padding: 0 9px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.snow-external-tool-renderer .mcp-log-id { flex-shrink: 0; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+.snow-external-tool-renderer .mcp-log-level { flex-shrink: 0; width: 48px; color: var(--text-tertiary); }
+.snow-external-tool-renderer .mcp-level-error, .snow-external-tool-renderer .mcp-level-fatal, .snow-external-tool-renderer .mcp-level-critical, .snow-external-tool-renderer .mcp-level-critical,
+.snow-external-tool-renderer .mcp-level-high { color: var(--accent-red-text); }
+.snow-external-tool-renderer .mcp-level-warn, .snow-external-tool-renderer .mcp-level-warning, .snow-external-tool-renderer .mcp-level-medium { color: var(--accent-orange-text, var(--accent-blue-text)); }
+.snow-external-tool-renderer .mcp-level-info, .snow-external-tool-renderer .mcp-level-notice, .snow-external-tool-renderer .mcp-level-log, .snow-external-tool-renderer .mcp-level-low { color: var(--accent-blue-text); }
+.snow-external-tool-renderer .mcp-level-debug, .snow-external-tool-renderer .mcp-level-trace { color: var(--text-tertiary); }
+
+/* accessibility snapshot */
+.snow-external-tool-renderer .mcp-snapshot-list { margin: 0; padding: 0; list-style: none; font-size: 11.5px; }
+.snow-external-tool-renderer .mcp-snapshot-node { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; padding-block: 1px; user-select: text; }
+.snow-external-tool-renderer .mcp-snapshot-role { flex-shrink: 0; padding: 0 5px; border-radius: var(--radius-sm); background: var(--bg-tertiary); font-family: var(--font-mono); font-size: 10.5px; color: var(--text-secondary); }
+.snow-external-tool-renderer .mcp-snapshot-name { color: var(--text-primary); overflow-wrap: anywhere; }
+.snow-external-tool-renderer .mcp-snapshot-ref { font-family: var(--font-mono); font-size: 10.5px; color: var(--accent-blue-text); }
+.snow-external-tool-renderer .mcp-snapshot-meta { font-family: var(--font-mono); font-size: 10.5px; }
+
+/* progress */
+.snow-external-tool-renderer .mcp-progress-list { display: flex; flex-direction: column; gap: 6px; margin: 0; }
+.snow-external-tool-renderer .mcp-progress-item { display: flex; align-items: center; gap: 8px; font-size: 11.5px; }
+.snow-external-tool-renderer .mcp-progress-item dt { flex-shrink: 0; min-width: 84px; color: var(--text-tertiary); }
+.snow-external-tool-renderer .mcp-progress-item dd { display: flex; align-items: center; gap: 8px; margin: 0; overflow-wrap: anywhere; }
+.snow-external-tool-renderer .mcp-progress-bar { position: relative; width: 120px; height: 6px; border-radius: 999px; background: var(--bg-tertiary); overflow: hidden; }
+.snow-external-tool-renderer .mcp-progress-fill { display: block; height: 100%; background: var(--accent-blue-text); }
+.snow-external-tool-renderer .mcp-progress-value { font-family: var(--font-mono); color: var(--text-secondary); }
+.snow-external-tool-renderer .mcp-progress-value.is-done { color: var(--accent-green-text); }
+
+/* checklist */
+.snow-external-tool-renderer .mcp-checklist { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.snow-external-tool-renderer .mcp-checklist-item {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+  padding: 5px 9px;
+  border: 1px solid var(--border-light);
+  border-inline-start-width: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  font-size: 11.5px;
+}
+.snow-external-tool-renderer .mcp-checklist-level { flex-shrink: 0; font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; }
+.snow-external-tool-renderer .mcp-checklist-title { min-width: 0; color: var(--text-primary); overflow-wrap: anywhere; user-select: text; }
+.snow-external-tool-renderer .mcp-checklist-detail { min-width: 0; font-family: var(--font-mono); font-size: 10.5px; overflow-wrap: anywhere; }

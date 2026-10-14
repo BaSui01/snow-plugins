@@ -1,8 +1,18 @@
 {
   "id": "com.snow.external-tool-renderer",
-  "name": { "default": "Tool Gallery", "zh-CN": "工具画廊", "zh-TW": "工具畫廊", "en": "Tool Gallery" },
-  "description": { "default": "Unified cards for external MCP tool calls: argument summaries, tables, content blocks and error states, covering 24 search and developer services such as Anysearch, DBX, Firecrawl and Chrome DevTools. Requires a compatible desktop host.", "zh-CN": "为外部 MCP 工具调用提供统一卡片：参数摘要、表格、内容块与错误状态，覆盖 Anysearch、DBX、Firecrawl、Chrome DevTools 等 24 类搜索与开发服务。需配套支持工具卡插槽的桌面宿主。", "zh-TW": "為外部 MCP 工具呼叫提供統一卡片：參數摘要、表格、內容區塊與錯誤狀態，覆蓋 Anysearch、DBX、Firecrawl、Chrome DevTools 等 24 類搜尋與開發服務。需配套支援工具卡插槽的桌面宿主。", "en": "Unified cards for external MCP tool calls: argument summaries, tables, content blocks and error states, covering 24 search and developer services such as Anysearch, DBX, Firecrawl and Chrome DevTools. Requires a compatible desktop host." },
-  "version": "0.2.1",
+  "name": {
+    "default": "Tool Gallery",
+    "zh-CN": "工具画廊",
+    "zh-TW": "工具畫廊",
+    "en": "Tool Gallery"
+  },
+  "description": {
+    "default": "Unified cards for external MCP tool calls: argument summaries, tables, content blocks and error states, covering 24 search and developer services such as Anysearch, DBX, Firecrawl and Chrome DevTools. Requires a compatible desktop host.",
+    "zh-CN": "为外部 MCP 工具调用提供统一卡片：参数摘要、表格、内容块与错误状态，覆盖 Anysearch、DBX、Firecrawl、Chrome DevTools 等 24 类搜索与开发服务。需配套支持工具卡插槽的桌面宿主。",
+    "zh-TW": "為外部 MCP 工具呼叫提供統一卡片：參數摘要、表格、內容區塊與錯誤狀態，覆蓋 Anysearch、DBX、Firecrawl、Chrome DevTools 等 24 類搜尋與開發服務。需配套支援工具卡插槽的桌面宿主。",
+    "en": "Unified cards for external MCP tool calls: argument summaries, tables, content blocks and error states, covering 24 search and developer services such as Anysearch, DBX, Firecrawl and Chrome DevTools. Requires a compatible desktop host."
+  },
+  "version": "0.3.0",
   "author": "BaSui",
   "license": "MIT",
   "icon": "assets/icon.svg",
@@ -10,33 +20,274 @@
   "panels": [],
   "contributions": {
     "toolCallRenderers": [
-      { "id": "anysearch", "prefixes": ["anysearch-", "anysearch_"], "exportName": "renderAnysearch", "priority": 10 },
-      { "id": "dbx", "prefixes": ["dbx-", "dbx_"], "exportName": "renderDbx", "priority": 10 },
-      { "id": "firecrawl", "prefixes": ["firecrawl-", "firecrawl_"], "exportName": "renderMcp", "priority": 10 },
-      { "id": "chrome", "prefixes": ["chrome-devtools-", "chrome-devtools_", "chrome_devtools-", "chrome_devtools_"], "exportName": "renderMcp", "priority": 10 },
-      { "id": "playwright", "prefixes": ["playwright-", "playwright_"], "exportName": "renderMcp", "priority": 10 },
-      { "id": "context7", "prefixes": ["context7-", "context7_"], "exportName": "renderMcp", "priority": 10 },
-      { "id": "github", "prefixes": ["github-", "github_"], "exportName": "renderMcp", "priority": 10 },
-      { "id": "exa", "prefixes": ["exa-", "exa_"], "exportName": "renderMcp", "priority": 10 },
-      { "id": "brave", "prefixes": ["brave-search-", "brave-search_", "brave_search-", "brave_search_", "brave-", "brave_"], "exportName": "renderMcp", "priority": 10 },
-      { "id": "tavily", "prefixes": ["tavily-", "tavily_", "tavily-mcp-", "tavily-mcp_", "tavily_mcp-", "tavily_mcp_"], "exportName": "renderMcp", "priority": 10 },
-      { "id": "perplexity", "prefixes": ["perplexity-", "perplexity_"], "exportName": "renderMcp", "priority": 10 },
-      { "id": "parallel", "prefixes": ["parallel-", "parallel_", "parallel-search-", "parallel-search_", "parallel_search-", "parallel_search_"], "exportName": "renderMcp", "priority": 10 },
-      { "id": "serpapi", "prefixes": ["serpapi-", "serpapi_"], "exportName": "renderMcp", "priority": 10 },
-      { "id": "kagi", "prefixes": ["kagi-", "kagi_", "kagimcp-", "kagimcp_"], "exportName": "renderMcp", "priority": 10 },
-      { "id": "linkup", "prefixes": ["linkup-", "linkup_"], "exportName": "renderMcp", "priority": 10 },
-      { "id": "searxng", "prefixes": ["searxng-", "searxng_", "mcp-searxng-", "mcp-searxng_", "mcp_searxng-", "mcp_searxng_"], "exportName": "renderMcp", "priority": 10 },
-      { "id": "supabase", "prefixes": ["supabase-", "supabase_", "mcp-server-supabase-", "mcp-server-postgrest-"], "exportName": "renderMcp", "priority": 10 },
-      { "id": "postman", "prefixes": ["postman-", "postman_", "postman-mcp-", "postman_mcp-"], "exportName": "renderMcp", "priority": 10 },
-      { "id": "linear", "prefixes": ["linear-", "linear_", "linear-mcp-", "linear_mcp-"], "exportName": "renderMcp", "priority": 10 },
-      { "id": "sentry", "prefixes": ["sentry-", "sentry_", "sentry-mcp-", "sentry_mcp-"], "exportName": "renderMcp", "priority": 10 },
-      { "id": "gitlab", "prefixes": ["gitlab-", "gitlab_", "gitlab-mcp-", "gitlab_mcp-"], "exportName": "renderMcp", "priority": 10 },
-      { "id": "docker", "prefixes": ["docker-", "docker_", "docker-mcp-", "docker_mcp-"], "exportName": "renderMcp", "priority": 10 },
-      { "id": "k8s", "prefixes": ["kubernetes-", "kubernetes_", "k8s-", "k8s_", "kubernetes-mcp-", "k8s-mcp-"], "exportName": "renderMcp", "priority": 10 },
-      { "id": "notion", "prefixes": ["notion-", "notion_", "notion-mcp-", "notion_mcp-"], "exportName": "renderMcp", "priority": 10 }
+      {
+        "id": "anysearch",
+        "prefixes": [
+          "anysearch-",
+          "anysearch_"
+        ],
+        "exportName": "renderAnysearch",
+        "priority": 10
+      },
+      {
+        "id": "dbx",
+        "prefixes": [
+          "dbx-",
+          "dbx_"
+        ],
+        "exportName": "renderDbx",
+        "priority": 10
+      },
+      {
+        "id": "firecrawl",
+        "prefixes": [
+          "firecrawl-",
+          "firecrawl_"
+        ],
+        "exportName": "renderMcp",
+        "priority": 10
+      },
+      {
+        "id": "chrome",
+        "prefixes": [
+          "chrome-devtools-",
+          "chrome-devtools_",
+          "chrome_devtools-",
+          "chrome_devtools_"
+        ],
+        "exportName": "renderMcp",
+        "priority": 10
+      },
+      {
+        "id": "playwright",
+        "prefixes": [
+          "playwright-",
+          "playwright_"
+        ],
+        "exportName": "renderMcp",
+        "priority": 10
+      },
+      {
+        "id": "context7",
+        "prefixes": [
+          "context7-",
+          "context7_"
+        ],
+        "exportName": "renderMcp",
+        "priority": 10
+      },
+      {
+        "id": "github",
+        "prefixes": [
+          "github-",
+          "github_"
+        ],
+        "exportName": "renderMcp",
+        "priority": 10
+      },
+      {
+        "id": "exa",
+        "prefixes": [
+          "exa-",
+          "exa_"
+        ],
+        "exportName": "renderMcp",
+        "priority": 10
+      },
+      {
+        "id": "brave",
+        "prefixes": [
+          "brave-search-",
+          "brave-search_",
+          "brave_search-",
+          "brave_search_",
+          "brave-",
+          "brave_"
+        ],
+        "exportName": "renderMcp",
+        "priority": 10
+      },
+      {
+        "id": "tavily",
+        "prefixes": [
+          "tavily-",
+          "tavily_",
+          "tavily-mcp-",
+          "tavily-mcp_",
+          "tavily_mcp-",
+          "tavily_mcp_"
+        ],
+        "exportName": "renderMcp",
+        "priority": 10
+      },
+      {
+        "id": "perplexity",
+        "prefixes": [
+          "perplexity-",
+          "perplexity_"
+        ],
+        "exportName": "renderMcp",
+        "priority": 10
+      },
+      {
+        "id": "parallel",
+        "prefixes": [
+          "parallel-",
+          "parallel_",
+          "parallel-search-",
+          "parallel-search_",
+          "parallel_search-",
+          "parallel_search_"
+        ],
+        "exportName": "renderMcp",
+        "priority": 10
+      },
+      {
+        "id": "serpapi",
+        "prefixes": [
+          "serpapi-",
+          "serpapi_"
+        ],
+        "exportName": "renderMcp",
+        "priority": 10
+      },
+      {
+        "id": "kagi",
+        "prefixes": [
+          "kagi-",
+          "kagi_",
+          "kagimcp-",
+          "kagimcp_"
+        ],
+        "exportName": "renderMcp",
+        "priority": 10
+      },
+      {
+        "id": "linkup",
+        "prefixes": [
+          "linkup-",
+          "linkup_"
+        ],
+        "exportName": "renderMcp",
+        "priority": 10
+      },
+      {
+        "id": "searxng",
+        "prefixes": [
+          "searxng-",
+          "searxng_",
+          "mcp-searxng-",
+          "mcp-searxng_",
+          "mcp_searxng-",
+          "mcp_searxng_"
+        ],
+        "exportName": "renderMcp",
+        "priority": 10
+      },
+      {
+        "id": "supabase",
+        "prefixes": [
+          "supabase-",
+          "supabase_",
+          "mcp-server-supabase-",
+          "mcp-server-postgrest-"
+        ],
+        "exportName": "renderMcp",
+        "priority": 10
+      },
+      {
+        "id": "postman",
+        "prefixes": [
+          "postman-",
+          "postman_",
+          "postman-mcp-",
+          "postman_mcp-"
+        ],
+        "exportName": "renderMcp",
+        "priority": 10
+      },
+      {
+        "id": "linear",
+        "prefixes": [
+          "linear-",
+          "linear_",
+          "linear-mcp-",
+          "linear_mcp-"
+        ],
+        "exportName": "renderMcp",
+        "priority": 10
+      },
+      {
+        "id": "sentry",
+        "prefixes": [
+          "sentry-",
+          "sentry_",
+          "sentry-mcp-",
+          "sentry_mcp-"
+        ],
+        "exportName": "renderMcp",
+        "priority": 10
+      },
+      {
+        "id": "gitlab",
+        "prefixes": [
+          "gitlab-",
+          "gitlab_",
+          "gitlab-mcp-",
+          "gitlab_mcp-"
+        ],
+        "exportName": "renderMcp",
+        "priority": 10
+      },
+      {
+        "id": "docker",
+        "prefixes": [
+          "docker-",
+          "docker_",
+          "docker-mcp-",
+          "docker_mcp-"
+        ],
+        "exportName": "renderMcp",
+        "priority": 10
+      },
+      {
+        "id": "k8s",
+        "prefixes": [
+          "kubernetes-",
+          "kubernetes_",
+          "k8s-",
+          "k8s_",
+          "kubernetes-mcp-",
+          "k8s-mcp-"
+        ],
+        "exportName": "renderMcp",
+        "priority": 10
+      },
+      {
+        "id": "notion",
+        "prefixes": [
+          "notion-",
+          "notion_",
+          "notion-mcp-",
+          "notion_mcp-"
+        ],
+        "exportName": "renderMcp",
+        "priority": 10
+      }
     ]
   },
-  "styles": ["style.css"],
-  "locales": { "en": "locales/en.json", "zh-CN": "locales/zh-CN.json", "zh-TW": "locales/zh-TW.json" },
-  "privacy": { "scopes": ["messages"], "note": "仅渲染宿主提供的当前工具调用只读快照（名称、参数、状态、结果）。不主动读取其他消息、不执行工具或数据库写入、不持久化、不主动联网；链接仅在用户点击时经宿主受限 API 打开。ESM 是可信本地代码，不是隔离沙箱。" }
+  "styles": [
+    "style.css"
+  ],
+  "locales": {
+    "en": "locales/en.json",
+    "zh-CN": "locales/zh-CN.json",
+    "zh-TW": "locales/zh-TW.json"
+  },
+  "privacy": {
+    "scopes": [
+      "messages"
+    ],
+    "note": "仅渲染宿主提供的当前工具调用只读快照（名称、参数、状态、结果）。不主动读取其他消息、不执行工具或数据库写入、不持久化、不主动联网；链接仅在用户点击时经宿主受限 API 打开。ESM 是可信本地代码，不是隔离沙箱。"
+  }
 }

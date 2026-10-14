@@ -1039,72 +1039,153 @@ function exaParameters(args) {
 // src/searchFeeds.ts
 var MAX_ITEMS2 = 80;
 var MAX_BODY_CHARS2 = 3e3;
+var MAX_PER_BLOCK_ITEMS = 20;
 function textOf2(block) {
   if (block.kind !== "value") return void 0;
   if (typeof block.value === "string") return block.value;
   if (isRecord3(block.value) && typeof block.value.text === "string") return block.value.text;
   return void 0;
 }
+var urlOf = (item) => safeUrl(item.url ?? item.link ?? item.source_url ?? item.uri);
+function asResultItem(value) {
+  if (!isRecord3(value)) return null;
+  if (!urlOf(value)) return null;
+  if (value.title === void 0 && value.name === void 0 && value.description === void 0) return null;
+  return value;
+}
+function splitCitations(text) {
+  const match = /\n\s*Citations:\s*\n([\s\S]*)$/i.exec(text);
+  if (!match) return { body: text, citations: [] };
+  const citations = match[1].split(/\r?\n/).map((line) => line.replace(/^\s*\[?\d+\]?[\s.)]*\s*/, "").trim()).filter((line) => safeUrl(line));
+  return { body: text.slice(0, match.index).trim(), citations };
+}
 function parseSearchFeed(providerId, blocks, records) {
   const groups = searchGroups(records);
   const seenUrls = /* @__PURE__ */ new Set();
-  for (const record of records) {
-    let answerText;
-    if (typeof record.answer === "string" && record.answer.trim()) answerText = record.answer;
-    else if (typeof record.response === "string" && record.response.trim()) answerText = record.response;
-    const candidates2 = [
-      record.results,
-      record.search_results,
-      record.organic_results,
-      record.citations,
-      record.sources,
-      record.places,
-      record.locations,
-      record.news,
-      record.videos,
-      record.images
-    ];
-    for (const cand of candidates2) {
-      if (Array.isArray(cand)) {
-        const valid = cand.filter((item) => {
-          if (!isRecord3(item)) return false;
-          const u = safeUrl(item.url ?? item.link ?? item.source_url ?? item.uri);
-          return !!u;
-        });
-        if (valid.length > 0) {
-          const groupName = Array.isArray(record.places) ? "places" : "results";
-          const existing = groups.find((g) => g.name === groupName);
-          if (existing) {
-            for (const item of valid) {
-              const url = String(item.url ?? item.link ?? "");
-              if (!seenUrls.has(url)) {
-                seenUrls.add(url);
-                existing.items.push(item);
-              }
-            }
-          } else {
-            for (const item of valid) {
-              const url = String(item.url ?? item.link ?? "");
-              seenUrls.add(url);
-            }
-            groups.push({ name: groupName, items: valid });
-          }
+  for (const group of groups) {
+    for (const item of group.items) {
+      if (isRecord3(item)) {
+        const url = urlOf(item);
+        if (url) seenUrls.add(url);
+      }
+    }
+  }
+  const push = (name, items) => {
+    const fresh = items.filter((item) => {
+      const url = urlOf(item);
+      if (!url || seenUrls.has(url)) return false;
+      seenUrls.add(url);
+      return true;
+    });
+    if (!fresh.length) return;
+    const existing = groups.find((group) => group.name === name);
+    if (existing) existing.items.push(...fresh);
+    else groups.push({ name, items: fresh });
+  };
+  const itemArrays = {
+    serpapi: ["organic_results", "news_results", "local_results", "images_results", "shopping_results", "video_results", "top_stories", "related_questions", "perspectives", "immersive_products"],
+    searxng: ["results", "suggestions", "answers", "infoboxes"],
+    tavily: ["results", "failed_results"],
+    parallel: ["results"],
+    linkup: ["results", "images"],
+    firecrawl: ["web", "news", "images"],
+    brave: ["items"]
+  };
+  const keys = itemArrays[providerId] ?? [];
+  if (keys.length) {
+    for (const record of records) {
+      for (const key of keys) {
+        const value = record[key];
+        if (Array.isArray(value)) {
+          push(key, value.filter(isRecord3));
         }
       }
     }
   }
+  let answer;
+  const sources = [];
+  for (const record of records) {
+    if (!answer) {
+      for (const key of ["answer", "response", "summary", "result", "output"]) {
+        const value = record[key];
+        if (typeof value === "string" && value.trim() && (providerId !== "searxng" || key !== "result")) {
+          answer = value;
+          break;
+        }
+      }
+    }
+    for (const key of ["citations", "sources", "urls"]) {
+      const value = record[key];
+      if (Array.isArray(value)) {
+        for (const entry of value) {
+          const url = typeof entry === "string" ? safeUrl(entry) : isRecord3(entry) ? urlOf(entry) : null;
+          if (url) sources.push(url);
+        }
+      }
+    }
+  }
+  if (answer && providerId === "perplexity") {
+    const split = splitCitations(answer);
+    if (split.citations.length) {
+      answer = split.body;
+      sources.push(...split.citations);
+    }
+  }
+  if (!groups.length || providerId === "brave") {
+    const loose = [];
+    for (const block of blocks.slice(0, 40)) {
+      if (loose.length >= MAX_ITEMS2) break;
+      const text = textOf2(block);
+      if (!text || text.length > 2e5) continue;
+      const parsed = text.trim();
+      if (!parsed.startsWith("{") && !parsed.startsWith("[")) continue;
+      let decoded;
+      try {
+        decoded = JSON.parse(parsed);
+      } catch {
+        continue;
+      }
+      const candidates2 = Array.isArray(decoded) ? decoded : [decoded];
+      for (const candidate of candidates2.slice(0, MAX_PER_BLOCK_ITEMS)) {
+        const item = asResultItem(candidate);
+        if (item) loose.push(item);
+      }
+    }
+    if (loose.length) push("results", loose);
+  }
   let textPreview = false;
-  if (groups.length === 0) {
-    const fallbackItems = [];
+  if (providerId === "tavily" && !groups.length) {
+    const fallback = [];
     for (const block of blocks.slice(0, 10)) {
       const text = textOf2(block);
       if (!text) continue;
-      const lines = text.split(/\r?\n/);
-      for (const line of lines) {
-        if (fallbackItems.length >= MAX_ITEMS2) break;
+      for (const chunk of text.split(/\n(?=Title:\s)/)) {
+        const url = /URL:\s*(\S+)/.exec(chunk)?.[1];
+        const safe = url ? safeUrl(url) : null;
+        if (!safe) continue;
+        fallback.push({
+          title: /Title:\s*([^\n]*)/.exec(chunk)?.[1]?.trim() ?? "",
+          url: safe,
+          snippet: /Content:\s*([\s\S]*)/.exec(chunk)?.[1]?.trim().slice(0, MAX_BODY_CHARS2) ?? ""
+        });
+        if (fallback.length >= MAX_ITEMS2) break;
+      }
+    }
+    if (fallback.length) {
+      push("results", fallback);
+      textPreview = true;
+    }
+  }
+  if (!groups.length) {
+    const fallback = [];
+    for (const block of blocks.slice(0, 10)) {
+      const text = textOf2(block);
+      if (!text) continue;
+      for (const line of text.split(/\r?\n/)) {
+        if (fallback.length >= MAX_ITEMS2) break;
         const mdLink = line.match(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/);
         if (mdLink && safeUrl(mdLink[2])) {
-          fallbackItems.push({
+          fallback.push({
             title: mdLink[1].slice(0, 200),
             url: mdLink[2],
             snippet: line.replace(mdLink[0], "").trim().slice(0, MAX_BODY_CHARS2)
@@ -1112,47 +1193,448 @@ function parseSearchFeed(providerId, blocks, records) {
         }
       }
     }
-    if (fallbackItems.length > 0) {
-      groups.push({ name: "results", items: fallbackItems });
+    if (fallback.length) {
+      push("results", fallback);
       textPreview = true;
     }
   }
-  let answer;
-  for (const record of records) {
-    if (typeof record.answer === "string" && record.answer.trim()) {
-      answer = record.answer;
-      break;
-    }
-    if (typeof record.response === "string" && record.response.trim()) {
-      answer = record.response;
-      break;
-    }
-    if (typeof record.summary === "string" && record.summary.trim()) {
-      answer = record.summary;
-      break;
+  return {
+    groups,
+    answer: answer ? safeText(answer).slice(0, 8e3) : void 0,
+    sources: sources.length ? [...new Set(sources)].slice(0, 50) : void 0,
+    textPreview
+  };
+}
+
+// src/summaries.ts
+var MAX_SUMMARY = 400;
+var COUNT_KEYS = /* @__PURE__ */ new Set([
+  "urls",
+  "queries",
+  "search_queries",
+  "messages",
+  "command",
+  "elements",
+  "fields",
+  "args",
+  "paths",
+  "sources",
+  "categories",
+  "formats",
+  "schemas",
+  "children",
+  "properties",
+  "sorts",
+  "includeDomains",
+  "excludeDomains",
+  "select_paths",
+  "select_domains",
+  "include_domains",
+  "exclude_domains",
+  "search_domain_filter",
+  "types",
+  "resourceTypes",
+  "include",
+  "labels",
+  "fieldsToInclude"
+]);
+var PROVIDER_FIELDS = {
+  firecrawl: ["url", "query", "formats", "limit", "sources", "categories", "onlyMainContent", "maxAge", "filePath", "prompt", "view", "id"],
+  chrome: ["pageId", "uid", "url", "type", "text", "value", "reqid", "function", "format", "fullPage", "resourceTypes", "timeout"],
+  playwright: ["url", "target", "action", "text", "index", "level", "static", "filename", "fullPage", "depth", "function"],
+  context7: ["libraryName", "libraryId", "query", "language"],
+  github: ["owner", "repo", "path", "query", "method", "resource_id", "issue_number", "pull_number", "branch", "ref", "sha", "state", "perPage", "type"],
+  exa: ["query", "numResults", "objective", "urls", "maxCharacters", "category"],
+  brave: ["query", "count", "country", "search_lang", "freshness", "key", "latitude", "longitude", "location"],
+  tavily: ["query", "url", "urls", "search_depth", "topic", "max_results", "model", "input", "extract_depth", "format"],
+  perplexity: ["query", "messages", "max_results", "search_recency_filter", "country"],
+  parallel: ["objective", "search_queries", "urls", "full_content", "session_id", "model_name"],
+  serpapi: ["q", "engine", "location", "num", "output"],
+  kagi: ["query", "workflow", "limit", "extract_count", "url", "lens_id", "time_relative"],
+  linkup: ["query", "depth", "maxResults", "mode", "reasoningDepth", "id", "url", "fromDate", "toDate"],
+  searxng: ["query", "pageno", "language", "time_range", "num_results", "categories", "engines", "response_format", "url", "maxLength"],
+  supabase: ["project_id", "query", "name", "schemas", "table", "type", "id", "branch_id", "organization_id", "region"],
+  postman: ["collectionId", "workspaceId", "workspace", "environmentId", "elementType", "limit", "cursor", "type"],
+  linear: ["query", "teamId", "id", "title", "assigneeId", "stateId", "priority", "limit", "projectId"],
+  sentry: ["organizationSlug", "projectSlug", "query", "issueId", "issueUrl", "status", "limit", "name", "arguments", "sort"],
+  gitlab: ["project_id", "merge_request_iid", "issue_iid", "branch", "file_path", "ref", "group_id", "per_page", "page", "namespace", "name"],
+  docker: ["args", "namespace", "repository", "tag", "query", "container", "image", "name"],
+  k8s: ["namespace", "name", "pod", "container", "apiVersion", "kind", "context", "labelSelector", "command", "image", "resource", "scale", "tail"],
+  notion: ["page_id", "block_id", "data_source_id", "database_id", "query", "parent", "properties", "type", "filter", "page_size"]
+};
+var GENERIC_FIELDS = [
+  "query",
+  "q",
+  "search_query",
+  "url",
+  "urls",
+  "objective",
+  "libraryName",
+  "owner",
+  "repo",
+  "project",
+  "project_id",
+  "id",
+  "name",
+  "issue",
+  "issue_id",
+  "pull_number",
+  "branch",
+  "method",
+  "container",
+  "pod",
+  "namespace",
+  "database",
+  "table",
+  "path",
+  "engine",
+  "status",
+  "action",
+  "limit",
+  "count",
+  "max_results",
+  "numResults"
+];
+var fieldLabel = (t, key) => t(`toolCall.field.${key}`, { defaultValue: key });
+function describe(t, key, value) {
+  if (value === void 0 || value === null || hiddenKey(key, true)) return null;
+  if (Array.isArray(value)) return `${fieldLabel(t, key)}: ${value.length}`;
+  if (isRecord3(value)) {
+    if (COUNT_KEYS.has(key)) return `${fieldLabel(t, key)}: ${Object.keys(value).length}`;
+    return `${fieldLabel(t, key)}: ${preview(value, key, true)}`;
+  }
+  if (COUNT_KEYS.has(key)) return `${fieldLabel(t, key)}: ${String(value).length}`;
+  return `${fieldLabel(t, key)}: ${preview(value, key, true)}`;
+}
+function providerSummary(providerId, args, t) {
+  const source = providerId === "serpapi" && isRecord3(args.params) ? args.params : args;
+  const fields = PROVIDER_FIELDS[providerId] ?? GENERIC_FIELDS;
+  const parts = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const key of fields) {
+    if (seen.has(key) || parts.length >= 8) continue;
+    const text = describe(t, key, source[key]);
+    if (text) {
+      seen.add(key);
+      parts.push(text);
     }
   }
-  return { groups, answer, textPreview };
+  return parts.join(" · ").slice(0, MAX_SUMMARY);
 }
-function searchProviderSummary(providerId, args, t) {
-  const parts = [];
-  const q = args.query ?? args.q ?? args.search_query;
-  if (typeof q === "string") parts.push(`${t("toolCall.search.query")}: ${preview(q, "query", true)}`);
-  if (typeof args.url === "string") parts.push(`url: ${preview(args.url, "url", true)}`);
-  else if (Array.isArray(args.urls)) parts.push(`urls: ${args.urls.length}`);
-  if (typeof args.depth === "string") parts.push(`depth: ${args.depth}`);
-  if (typeof args.search_depth === "string") parts.push(`depth: ${args.search_depth}`);
-  if (typeof args.mode === "string") parts.push(`mode: ${args.mode}`);
-  if (typeof args.engine === "string") parts.push(`engine: ${args.engine}`);
-  if (typeof args.category === "string") parts.push(`category: ${args.category}`);
-  if (typeof args.country === "string") parts.push(`country: ${args.country}`);
-  const max = args.max_results ?? args.count ?? args.numResults ?? args.limit;
-  if (typeof max === "number" && Number.isFinite(max)) parts.push(`max: ${max}`);
-  return parts.join(" · ").slice(0, 400);
+
+// src/shapes.ts
+var SHAPE_LIMIT = 400;
+var DIFF_HEADER = /^(?:diff --git |--- |\+\+\+ |@@ )/m;
+function parseDiff(text) {
+  if (!DIFF_HEADER.test(text)) return null;
+  const lines = text.split(/\r?\n/);
+  const files = [];
+  let current = null;
+  let additions = 0;
+  let deletions = 0;
+  let seenHunk = false;
+  for (const line of lines) {
+    if (line.startsWith("diff --git ")) {
+      current = { header: line.slice("diff --git ".length), lines: [] };
+      files.push(current);
+      continue;
+    }
+    if (line.startsWith("@@")) {
+      seenHunk = true;
+      if (!current) {
+        current = { header: "", lines: [] };
+        files.push(current);
+      }
+      current.lines.push({ type: "meta", text: line });
+      continue;
+    }
+    if (!current) continue;
+    if (line.startsWith("+++") || line.startsWith("---") || line.startsWith("index ")) {
+      current.lines.push({ type: "meta", text: line });
+      continue;
+    }
+    if (line.startsWith("+")) {
+      additions += 1;
+      current.lines.push({ type: "add", text: line.slice(1) });
+      continue;
+    }
+    if (line.startsWith("-")) {
+      deletions += 1;
+      current.lines.push({ type: "remove", text: line.slice(1) });
+      continue;
+    }
+    if (line.startsWith(" ")) {
+      current.lines.push({ type: "context", text: line.slice(1) });
+      continue;
+    }
+    if (line.startsWith("\\")) {
+      current.lines.push({ type: "meta", text: line });
+    }
+  }
+  if (!seenHunk || !files.length) return null;
+  for (const file of files) file.lines = file.lines.slice(0, SHAPE_LIMIT);
+  return { kind: "diff", files: files.slice(0, 20), additions, deletions };
+}
+var BOX = /^([\s│├└─┬┼┤]*)([├└]──\s*|├──\s*|└──\s*)?(.+)$/;
+function parseTree(text) {
+  const lines = text.split(/\r?\n/);
+  const entries = [];
+  let dirs = 0;
+  let files = 0;
+  for (const raw of lines) {
+    const match = BOX.exec(raw);
+    if (!match) continue;
+    const prefix = match[1] ?? "";
+    const branch = match[2];
+    const name = (match[3] ?? "").trim();
+    if (!name) continue;
+    if (!branch && !/[├└│]/.test(prefix)) continue;
+    const depth = Math.floor(prefix.replace(/[│├└─\s]/g, " ").length / 4) || prefix.length / 4;
+    const dir = name.endsWith("/");
+    if (dir) dirs += 1;
+    else files += 1;
+    entries.push({ depth: Math.max(0, Math.round(depth)), name, dir });
+  }
+  if (entries.length < 3 || !/[├└]/.test(text)) return null;
+  return { kind: "tree", entries: entries.slice(0, SHAPE_LIMIT), dirs, files };
+}
+function treeFromRecords(records) {
+  for (const record of records) {
+    const tree = record.tree;
+    if (!Array.isArray(tree) || tree.length < 2) continue;
+    const entries = [];
+    let dirs = 0;
+    let files = 0;
+    for (const item of tree) {
+      if (item === null || typeof item !== "object") continue;
+      const node = item;
+      const path = typeof node.path === "string" ? node.path : typeof node.name === "string" ? node.name : "";
+      if (!path) continue;
+      const type = typeof node.type === "string" ? node.type : "";
+      const dir = type === "tree" || type === "dir";
+      if (dir) dirs += 1;
+      else files += 1;
+      entries.push({ depth: Math.max(0, path.split("/").length - 1), name: path.split("/").pop() ?? path, dir });
+    }
+    if (entries.length < 2) continue;
+    return { kind: "tree", entries: entries.slice(0, SHAPE_LIMIT), dirs, files };
+  }
+  return null;
+}
+var LOG_LINE = /^(?:(\d{4}-\d{2}-\d{2}[T ][\d:.]+Z?)\s+)?(?:\[?(TRACE|DEBUG|INFO|NOTICE|WARN(?:ING)?|ERROR|FATAL|CRIT|CRITICAL)\]?:?\s+)?(.*)$/i;
+var CHROME_ROW = /^(msgid|reqid)=(\d+)\s+(?:\[([^\]]+)\]\s+)?(.*)$/;
+function parseLogs(text) {
+  const raw = text.split(/\r?\n/);
+  const lines = [];
+  const counts = {};
+  let chromeRows = 0;
+  let stamped = 0;
+  for (const line of raw) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const chrome = CHROME_ROW.exec(trimmed);
+    if (chrome) {
+      const level2 = (chrome[3] ?? "").toLowerCase();
+      counts[level2 || "row"] = (counts[level2 || "row"] ?? 0) + 1;
+      lines.push({ level: level2 || "row", text: safeText(chrome[4] ?? ""), id: chrome[2] });
+      chromeRows += 1;
+      continue;
+    }
+    const match = LOG_LINE.exec(trimmed);
+    if (!match) continue;
+    const hasTime = Boolean(match[1]);
+    const level = (match[2] ?? "").toUpperCase();
+    if (!hasTime && !level) continue;
+    const key = level || "LOG";
+    counts[key] = (counts[key] ?? 0) + 1;
+    lines.push({ level: key, text: safeText(match[3] ?? "") });
+    stamped += 1;
+  }
+  const structured = chromeRows + stamped;
+  const accepted = chromeRows >= 2 || stamped >= 4 && structured >= raw.filter((l) => l.trim()).length * 0.6;
+  if (!accepted) return null;
+  return { kind: "log", lines: lines.slice(0, SHAPE_LIMIT), counts };
+}
+var CHROME_NODE = /^(\s*)uid=([\w-]+)\s+(\S+)\s*(.*)$/;
+var PW_NODE = /^(\s*)(?:-\s+)?([a-z][\w-]*)\s*("(?:[^"\\]|\\.)*")?\s*(\[[^\]]*\])*\s*(\[ref=([\w-]+)\])?/;
+var PW_REF = /\[ref=([\w-]+)\]/;
+function parseSnapshot(text) {
+  const lines = text.split(/\r?\n/);
+  const chromeNodes = [];
+  const pwNodes = [];
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    const chrome = CHROME_NODE.exec(line);
+    if (chrome) {
+      const indent = (chrome[1] ?? "").replace(/\t/g, "  ").length;
+      chromeNodes.push({
+        depth: Math.floor(indent / 2),
+        role: safeText(chrome[3] ?? ""),
+        name: safeText((chrome[4] ?? "").replace(/\s*url="[^"]*"/, "").slice(0, 300)),
+        meta: safeText(/url="([^"]*)"/.exec(chrome[4] ?? "")?.[1] ?? ""),
+        ref: chrome[2]
+      });
+      continue;
+    }
+    const pw = PW_NODE.exec(line);
+    if (pw && (/\[ref=[\w-]+\]/.test(line) || /^[a-z][\w-]*\s+"/.test(line.trim()))) {
+      const indent = (pw[1] ?? "").replace(/\t/g, "  ").length;
+      const name = (pw[3] ?? "").replace(/^"|"$/g, "");
+      const ref = PW_REF.exec(line)?.[1];
+      const meta = (line.match(/\[[^\]]*\]/g) ?? []).filter((part) => !part.startsWith("[ref=")).map((part) => part.replace(/^\[|\]$/g, "")).join(" ");
+      pwNodes.push({
+        depth: Math.floor(indent / 2),
+        role: safeText(pw[2] ?? ""),
+        name: safeText(name.slice(0, 300)),
+        meta: safeText(meta),
+        ref
+      });
+    }
+  }
+  if (chromeNodes.length >= 3) return { kind: "snapshot", nodes: chromeNodes.slice(0, SHAPE_LIMIT), flavor: "chrome" };
+  if (pwNodes.length >= 3) return { kind: "snapshot", nodes: pwNodes.slice(0, SHAPE_LIMIT), flavor: "playwright" };
+  return null;
+}
+var PROGRESS_KEYS = ["status", "progress", "state", "completed", "total", "totalPages", "pages", "creditsUsed", "duration", "durationMs"];
+function progressFromRecords(records) {
+  const items = [];
+  const seen = /* @__PURE__ */ new Set();
+  let status;
+  for (const record of records) {
+    for (const key of PROGRESS_KEYS) {
+      const value = record[key];
+      if (seen.has(key)) continue;
+      if (typeof value !== "string" && typeof value !== "number" && typeof value !== "boolean") continue;
+      seen.add(key);
+      if (key === "status" && typeof value === "string") status = value;
+      items.push({ label: key, value: String(value), done: value === "completed" || value === "succeeded" });
+    }
+    const completed = record.completed;
+    const total = record.total;
+    if (typeof completed === "number" && typeof total === "number" && total > 0) {
+      const ratio = Math.min(1, Math.max(0, completed / total));
+      const existing = items.find((item) => item.label === "progress");
+      if (existing) {
+        existing.ratio = ratio;
+        existing.value = `${completed} / ${total}`;
+      } else {
+        items.push({ label: "progress", value: `${completed} / ${total}`, done: ratio >= 1, ratio });
+      }
+    }
+  }
+  if (!status && !items.some((item) => item.ratio !== void 0)) return null;
+  return { kind: "progress", items: items.slice(0, 12), status };
+}
+var LEVEL_KEYS = ["severity", "level", "state", "status", "priority"];
+var TITLE_KEYS = ["title", "name", "message", "description", "summary", "rule", "check"];
+function checklistFromRecords(records) {
+  for (const record of records) {
+    for (const key of ["vulnerabilities", "alerts", "findings", "lints", "issues", "advisories", "code_scanning_alerts"]) {
+      const rows = record[key];
+      if (!Array.isArray(rows) || rows.length < 2) continue;
+      const items = [];
+      const counts = {};
+      for (const row of rows) {
+        if (row === null || typeof row !== "object") continue;
+        const node = row;
+        let level = "info";
+        for (const levelKey of LEVEL_KEYS) {
+          const value = node[levelKey];
+          if (typeof value === "string" && value) {
+            level = value.toLowerCase();
+            break;
+          }
+        }
+        let title = "";
+        for (const titleKey of TITLE_KEYS) {
+          const value = node[titleKey];
+          if (typeof value === "string" && value) {
+            title = value;
+            break;
+          }
+        }
+        if (!title) continue;
+        counts[level] = (counts[level] ?? 0) + 1;
+        const detail = typeof node.detail === "string" ? node.detail : typeof node.location === "string" ? node.location : void 0;
+        items.push({ title: safeText(title).slice(0, 300), level, detail: detail ? safeText(detail).slice(0, 200) : void 0 });
+      }
+      if (items.length >= 2) {
+        return { kind: "checklist", items: items.slice(0, SHAPE_LIMIT), counts };
+      }
+    }
+  }
+  return null;
+}
+
+// src/ShapeViews.tsx
+function Pager({ total, page, onPage, size = PAGE_SIZE }) {
+  const { t } = useApi();
+  if (total <= size) return null;
+  const last = Math.max(0, Math.ceil(total / size) - 1);
+  return /* @__PURE__ */ React.createElement("div", { className: "mcp-pager" }, /* @__PURE__ */ React.createElement("button", { type: "button", disabled: page === 0, onClick: () => onPage(Math.max(0, page - 1)) }, t("toolCall.mcp.previous")), /* @__PURE__ */ React.createElement("span", null, t("toolCall.mcp.range", { values: { start: page * size + 1, end: Math.min(total, (page + 1) * size), total } })), /* @__PURE__ */ React.createElement("button", { type: "button", disabled: page >= last, onClick: () => onPage(Math.min(last, page + 1)) }, t("toolCall.mcp.next")));
+}
+function ShapeHead({ label, count }) {
+  return /* @__PURE__ */ React.createElement("h4", null, label, count > 0 ? /* @__PURE__ */ React.createElement("span", { className: "mcp-shape-count" }, count) : null);
+}
+function DiffView({ shape }) {
+  const { t } = useApi();
+  const [requested, setPage] = React.useState(0);
+  const page = Math.min(requested, Math.max(0, Math.ceil(shape.files.length / 5) - 1));
+  const files = React.useMemo(() => shape.files.slice(page * 5, (page + 1) * 5), [shape.files, page]);
+  return /* @__PURE__ */ React.createElement("section", { className: "mcp-shape mcp-diff" }, /* @__PURE__ */ React.createElement(ShapeHead, { label: t("toolCall.shape.diff"), count: shape.files.length }), /* @__PURE__ */ React.createElement("div", { className: "mcp-shape-stats" }, /* @__PURE__ */ React.createElement("span", { className: "mcp-diff-add" }, "+", shape.additions), /* @__PURE__ */ React.createElement("span", { className: "mcp-diff-del" }, "−", shape.deletions), /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, t("toolCall.shape.files", { values: { count: shape.files.length } }))), files.map((file, fileIndex) => /* @__PURE__ */ React.createElement("article", { className: "mcp-diff-file", key: `${page}:${fileIndex}` }, /* @__PURE__ */ React.createElement("header", { className: "mcp-diff-file-head", title: file.header }, safeText(file.header).slice(0, 300) || t("toolCall.shape.diff")), /* @__PURE__ */ React.createElement("pre", { className: "mcp-diff-body" }, file.lines.map((line, lineIndex) => /* @__PURE__ */ React.createElement("div", { className: `mcp-diff-line mcp-diff-${line.type}`, key: lineIndex }, /* @__PURE__ */ React.createElement("span", { className: "mcp-diff-sign", "aria-hidden": "true" }, line.type === "add" ? "+" : line.type === "remove" ? "−" : " "), /* @__PURE__ */ React.createElement("span", { className: "mcp-diff-text" }, safeText(line.text))))))), /* @__PURE__ */ React.createElement(Pager, { total: shape.files.length, page, size: 5, onPage: setPage }));
+}
+function TreeView({ shape }) {
+  const { t } = useApi();
+  const [requested, setPage] = React.useState(0);
+  const page = Math.min(requested, Math.max(0, Math.ceil(shape.entries.length / 100) - 1));
+  const entries = React.useMemo(() => shape.entries.slice(page * 100, (page + 1) * 100), [shape.entries, page]);
+  return /* @__PURE__ */ React.createElement("section", { className: "mcp-shape mcp-tree-shape" }, /* @__PURE__ */ React.createElement(ShapeHead, { label: t("toolCall.shape.tree"), count: shape.entries.length }), /* @__PURE__ */ React.createElement("div", { className: "mcp-shape-stats" }, /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, t("toolCall.shape.dirs", { values: { count: shape.dirs } })), /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, t("toolCall.shape.filesCount", { values: { count: shape.files } }))), /* @__PURE__ */ React.createElement("ul", { className: "mcp-tree-list" }, entries.map((entry, index) => /* @__PURE__ */ React.createElement("li", { className: `mcp-tree-item${entry.dir ? " mcp-tree-dir" : ""}`, key: `${page}:${index}`, style: { paddingInlineStart: `${Math.min(entry.depth, 16) * 14}px` } }, /* @__PURE__ */ React.createElement("span", { className: "mcp-tree-mark", "aria-hidden": "true" }, entry.dir ? "▸" : "·"), /* @__PURE__ */ React.createElement("span", { className: "mcp-tree-name" }, safeText(entry.name).slice(0, 300))))), /* @__PURE__ */ React.createElement(Pager, { total: shape.entries.length, page, size: 100, onPage: setPage }));
+}
+function LogView({ shape }) {
+  const { t } = useApi();
+  const [requested, setPage] = React.useState(0);
+  const [filter, setFilter] = React.useState("");
+  const levels = React.useMemo(() => Object.keys(shape.counts).sort((a, b) => shape.counts[b] - shape.counts[a]), [shape.counts]);
+  const lines = React.useMemo(() => filter ? shape.lines.filter((line) => line.level === filter) : shape.lines, [shape.lines, filter]);
+  const page = Math.min(requested, Math.max(0, Math.ceil(lines.length / 100) - 1));
+  const visible = React.useMemo(() => lines.slice(page * 100, (page + 1) * 100), [lines, page]);
+  return /* @__PURE__ */ React.createElement("section", { className: "mcp-shape mcp-log-shape" }, /* @__PURE__ */ React.createElement(ShapeHead, { label: t("toolCall.shape.log"), count: shape.lines.length }), levels.length > 1 ? /* @__PURE__ */ React.createElement("div", { className: "mcp-shape-stats" }, /* @__PURE__ */ React.createElement("button", { type: "button", className: `mcp-log-chip${filter === "" ? " is-active" : ""}`, onClick: () => {
+    setFilter("");
+    setPage(0);
+  } }, t("toolCall.shape.all"), " ", shape.lines.length), levels.map((level) => /* @__PURE__ */ React.createElement("button", { type: "button", key: level, className: `mcp-log-chip mcp-level-${level.toLowerCase()}${filter === level ? " is-active" : ""}`, onClick: () => {
+    setFilter(level);
+    setPage(0);
+  } }, level, " ", shape.counts[level]))) : null, /* @__PURE__ */ React.createElement("pre", { className: "mcp-log-body" }, visible.map((line, index) => /* @__PURE__ */ React.createElement("div", { className: "mcp-log-line", key: `${page}:${index}` }, line.id ? /* @__PURE__ */ React.createElement("span", { className: "mcp-log-id" }, line.id) : null, /* @__PURE__ */ React.createElement("span", { className: `mcp-log-level mcp-level-${line.level.toLowerCase()}` }, line.level), /* @__PURE__ */ React.createElement("span", { className: "mcp-log-text" }, line.text)))), /* @__PURE__ */ React.createElement(Pager, { total: lines.length, page, size: 100, onPage: setPage }));
+}
+function SnapshotView({ shape }) {
+  const { t } = useApi();
+  const [requested, setPage] = React.useState(0);
+  const page = Math.min(requested, Math.max(0, Math.ceil(shape.nodes.length / 100) - 1));
+  const nodes = React.useMemo(() => shape.nodes.slice(page * 100, (page + 1) * 100), [shape.nodes, page]);
+  return /* @__PURE__ */ React.createElement("section", { className: "mcp-shape mcp-snapshot-shape" }, /* @__PURE__ */ React.createElement(ShapeHead, { label: t("toolCall.shape.snapshot"), count: shape.nodes.length }), /* @__PURE__ */ React.createElement("div", { className: "mcp-shape-stats" }, /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, t(`toolCall.shape.flavor.${shape.flavor}`, { defaultValue: shape.flavor }))), /* @__PURE__ */ React.createElement("ul", { className: "mcp-snapshot-list" }, nodes.map((node, index) => /* @__PURE__ */ React.createElement("li", { className: "mcp-snapshot-node", key: `${page}:${index}`, style: { paddingInlineStart: `${Math.min(node.depth, 20) * 12}px` } }, /* @__PURE__ */ React.createElement("span", { className: "mcp-snapshot-role" }, safeText(node.role)), node.name ? /* @__PURE__ */ React.createElement("span", { className: "mcp-snapshot-name" }, node.name) : null, node.ref ? /* @__PURE__ */ React.createElement("span", { className: "mcp-snapshot-ref" }, node.ref) : null, node.meta && node.meta !== node.name ? /* @__PURE__ */ React.createElement("span", { className: "mcp-muted mcp-snapshot-meta" }, node.meta) : null))), /* @__PURE__ */ React.createElement(Pager, { total: shape.nodes.length, page, size: 100, onPage: setPage }));
+}
+function ProgressView({ shape }) {
+  const { t } = useApi();
+  return /* @__PURE__ */ React.createElement("section", { className: "mcp-shape mcp-progress-shape" }, /* @__PURE__ */ React.createElement(ShapeHead, { label: t("toolCall.shape.progress"), count: 0 }), /* @__PURE__ */ React.createElement("dl", { className: "mcp-progress-list" }, shape.items.map((item) => /* @__PURE__ */ React.createElement("div", { className: "mcp-progress-item", key: item.label }, /* @__PURE__ */ React.createElement("dt", null, t(`toolCall.mcp.metric.${item.label}`, { defaultValue: t(`toolCall.shape.field.${item.label}`, { defaultValue: item.label }) })), /* @__PURE__ */ React.createElement("dd", null, item.ratio !== void 0 ? /* @__PURE__ */ React.createElement("span", { className: "mcp-progress-bar", role: "progressbar", "aria-valuenow": Math.round(item.ratio * 100), "aria-valuemin": 0, "aria-valuemax": 100 }, /* @__PURE__ */ React.createElement("span", { className: "mcp-progress-fill", style: { inlineSize: `${Math.round(item.ratio * 100)}%` } })) : null, /* @__PURE__ */ React.createElement("span", { className: `mcp-progress-value${item.done ? " is-done" : ""}` }, safeText(item.value).slice(0, 200)))))));
+}
+function ChecklistView({ shape }) {
+  const { t } = useApi();
+  const [requested, setPage] = React.useState(0);
+  const levels = React.useMemo(() => Object.keys(shape.counts).sort((a, b) => shape.counts[b] - shape.counts[a]), [shape.counts]);
+  const page = Math.min(requested, Math.max(0, Math.ceil(shape.items.length / 50) - 1));
+  const items = React.useMemo(() => shape.items.slice(page * 50, (page + 1) * 50), [shape.items, page]);
+  return /* @__PURE__ */ React.createElement("section", { className: "mcp-shape mcp-checklist-shape" }, /* @__PURE__ */ React.createElement(ShapeHead, { label: t("toolCall.shape.checklist"), count: shape.items.length }), /* @__PURE__ */ React.createElement("div", { className: "mcp-shape-stats" }, levels.map((level) => /* @__PURE__ */ React.createElement("span", { className: `mcp-log-chip mcp-level-${level}`, key: level }, level, " ", shape.counts[level]))), /* @__PURE__ */ React.createElement("ul", { className: "mcp-checklist" }, items.map((item, index) => {
+    const url = safeUrl(item.detail);
+    return /* @__PURE__ */ React.createElement("li", { className: `mcp-checklist-item mcp-level-${item.level}`, key: `${page}:${index}` }, /* @__PURE__ */ React.createElement("span", { className: `mcp-checklist-level mcp-level-${item.level}` }, item.level), /* @__PURE__ */ React.createElement("span", { className: "mcp-checklist-title" }, item.title), item.detail ? url ? /* @__PURE__ */ React.createElement(LinkLine, { url }) : /* @__PURE__ */ React.createElement("span", { className: "mcp-muted mcp-checklist-detail" }, item.detail) : null);
+  })), /* @__PURE__ */ React.createElement(Pager, { total: shape.items.length, page, size: 50, onPage: setPage }));
+}
+function LinkLine({ url }) {
+  const api = useApi();
+  return /* @__PURE__ */ React.createElement("button", { type: "button", className: "mcp-link mcp-checklist-detail", title: url, onClick: () => api.links.open(url, "browser") }, url.slice(0, 120));
 }
 
 // src/McpToolCall.tsx
-function Pager({ total, page, onPage, size = PAGE_SIZE }) {
+function Pager2({ total, page, onPage, size = PAGE_SIZE }) {
   const { t } = useApi();
   if (total <= size) return null;
   const last = Math.max(0, Math.ceil(total / size) - 1);
@@ -1170,7 +1652,7 @@ function TextValue({ value }) {
   const [expanded, setExpanded] = React.useState(false);
   const [requested, setPage] = React.useState(0);
   const page = Math.min(requested, Math.max(0, Math.ceil(text.length / TEXT_PAGE_SIZE) - 1));
-  return /* @__PURE__ */ React.createElement("div", { className: "mcp-text" }, /* @__PURE__ */ React.createElement("pre", null, expanded ? text.slice(page * TEXT_PAGE_SIZE, (page + 1) * TEXT_PAGE_SIZE) : text.slice(0, 600)), text.length > 600 && /* @__PURE__ */ React.createElement("button", { type: "button", "aria-expanded": expanded, onClick: () => setExpanded(!expanded) }, t(expanded ? "toolCall.mcp.collapse" : "toolCall.mcp.fullText"), " · ", text.length), expanded && /* @__PURE__ */ React.createElement(Pager, { total: text.length, page, size: TEXT_PAGE_SIZE, onPage: setPage }), /* @__PURE__ */ React.createElement(SafeLink, { value }));
+  return /* @__PURE__ */ React.createElement("div", { className: "mcp-text" }, /* @__PURE__ */ React.createElement("pre", null, expanded ? text.slice(page * TEXT_PAGE_SIZE, (page + 1) * TEXT_PAGE_SIZE) : text.slice(0, 600)), text.length > 600 && /* @__PURE__ */ React.createElement("button", { type: "button", "aria-expanded": expanded, onClick: () => setExpanded(!expanded) }, t(expanded ? "toolCall.mcp.collapse" : "toolCall.mcp.fullText"), " · ", text.length), expanded && /* @__PURE__ */ React.createElement(Pager2, { total: text.length, page, size: TEXT_PAGE_SIZE, onPage: setPage }), /* @__PURE__ */ React.createElement(SafeLink, { value }));
 }
 function Value({ value, field = "", parameters = false, depth = 0 }) {
   const { t } = useApi();
@@ -1190,7 +1672,7 @@ function Value({ value, field = "", parameters = false, depth = 0 }) {
     const key = keys ? keys[index] : String(index);
     const child = keys ? value[key] : value[index];
     return /* @__PURE__ */ React.createElement("div", { className: "mcp-field", key }, /* @__PURE__ */ React.createElement("span", { className: "mcp-key" }, safeText(key).slice(0, 100)), /* @__PURE__ */ React.createElement(Value, { value: child, field: key, parameters, depth: depth + 1 }));
-  })), /* @__PURE__ */ React.createElement(Pager, { total, page, onPage: setPage })));
+  })), /* @__PURE__ */ React.createElement(Pager2, { total, page, onPage: setPage })));
 }
 function ImageBlock({ value }) {
   const { t } = useApi();
@@ -1211,7 +1693,7 @@ var SearchResults = React.memo(function SearchResults2({ groups, showPublished =
   const items = React.useMemo(() => groups.flatMap((group) => group.items.map((item) => ({ group: group.name, item }))), [groups]);
   const page = Math.min(requested, Math.max(0, Math.ceil(items.length / PAGE_SIZE) - 1));
   const pageItems = React.useMemo(() => items.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE), [items, page]);
-  return /* @__PURE__ */ React.createElement("section", { className: "mcp-search" }, /* @__PURE__ */ React.createElement("h4", null, t("toolCall.mcp.searchResults"), " · ", items.length), pageItems.map(({ group, item }, index) => /* @__PURE__ */ React.createElement("article", { key: page * PAGE_SIZE + index }, /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, t(`toolCall.mcp.group.${group}`, { defaultValue: group })), isRecord3(item) ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("strong", null, preview(item.title ?? item.name ?? item.url ?? "", "title")), /* @__PURE__ */ React.createElement(SafeLink, { value: item.url ?? item.link }), showPublished && typeof item.publishedDate === "string" && /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, t("toolCall.exa.published"), ": ", preview(item.publishedDate).slice(0, 80)), /* @__PURE__ */ React.createElement("p", null, preview(item.description ?? item.snippet ?? item.text ?? "")), /* @__PURE__ */ React.createElement(Value, { value: item })) : /* @__PURE__ */ React.createElement(Value, { value: item }))), /* @__PURE__ */ React.createElement(Pager, { total: items.length, page, onPage: setPage }));
+  return /* @__PURE__ */ React.createElement("section", { className: "mcp-search" }, /* @__PURE__ */ React.createElement("h4", null, t("toolCall.mcp.searchResults"), " · ", items.length), pageItems.map(({ group, item }, index) => /* @__PURE__ */ React.createElement("article", { key: page * PAGE_SIZE + index }, /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, t(`toolCall.mcp.group.${group}`, { defaultValue: group })), isRecord3(item) ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("strong", null, preview(item.title ?? item.name ?? item.url ?? "", "title")), /* @__PURE__ */ React.createElement(SafeLink, { value: item.url ?? item.link }), showPublished && typeof item.publishedDate === "string" && /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, t("toolCall.exa.published"), ": ", preview(item.publishedDate).slice(0, 80)), /* @__PURE__ */ React.createElement("p", null, preview(item.description ?? item.snippet ?? item.text ?? "")), /* @__PURE__ */ React.createElement(Value, { value: item })) : /* @__PURE__ */ React.createElement(Value, { value: item }))), /* @__PURE__ */ React.createElement(Pager2, { total: items.length, page, onPage: setPage }));
 });
 var RecordTable = React.memo(function RecordTable2({ rows, label }) {
   const api = useApi();
@@ -1222,13 +1704,13 @@ var RecordTable = React.memo(function RecordTable2({ rows, label }) {
   const tableColumns = React.useMemo(() => columns.map((key) => safeText(key).slice(0, 100)), [columns]);
   const tableRows = React.useMemo(() => visible.map((row) => columns.map((key) => preview(isRecord3(row) ? row[key] : row, key))), [visible, columns]);
   const Table = api.ui.DataTableViewer;
-  return /* @__PURE__ */ React.createElement("section", { className: "mcp-table" }, /* @__PURE__ */ React.createElement("h4", null, label, " · ", rows.length), /* @__PURE__ */ React.createElement(Table, { columns: tableColumns, rows: tableRows, maxInitialRows: PAGE_SIZE, enableExport: false, enableSearch: false }), /* @__PURE__ */ React.createElement(Pager, { total: rows.length, page, onPage: setPage }), /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, api.t("toolCall.mcp.tablePreview")));
+  return /* @__PURE__ */ React.createElement("section", { className: "mcp-table" }, /* @__PURE__ */ React.createElement("h4", null, label, " · ", rows.length), /* @__PURE__ */ React.createElement(Table, { columns: tableColumns, rows: tableRows, maxInitialRows: PAGE_SIZE, enableExport: false, enableSearch: false }), /* @__PURE__ */ React.createElement(Pager2, { total: rows.length, page, onPage: setPage }), /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, api.t("toolCall.mcp.tablePreview")));
 });
-function BrowserView({ records, blocks }) {
+function BrowserView({ records, collections, blocks }) {
   const { t } = useApi();
   const tables = [];
   const seen = /* @__PURE__ */ new Set();
-  for (const record of records) for (const key of ["pages", "messages", "requests", "entries", "insights", "metrics"]) {
+  for (const record of records) for (const key of collections) {
     const rows = record[key];
     if (Array.isArray(rows) && !seen.has(rows)) {
       seen.add(rows);
@@ -1252,7 +1734,7 @@ function BrowserView({ records, blocks }) {
   }
   return /* @__PURE__ */ React.createElement(React.Fragment, null, tables.slice(0, 8).map((table, index) => /* @__PURE__ */ React.createElement(RecordTable, { key: index, ...table })));
 }
-function GenericView({ records, blocks }) {
+function GenericView({ records, collections, blocks }) {
   const { t } = useApi();
   const tables = [];
   const seen = /* @__PURE__ */ new Set();
@@ -1262,37 +1744,7 @@ function GenericView({ records, blocks }) {
       tables.push({ label: t("toolCall.mcp.records"), rows: block.value });
     }
   }
-  for (const record of records) for (const key of [
-    "libraries",
-    "repositories",
-    "items",
-    "files",
-    "commits",
-    "results",
-    "collections",
-    "environments",
-    "requests",
-    "responses",
-    "issues",
-    "projects",
-    "comments",
-    "users",
-    "teams",
-    "events",
-    "traces",
-    "containers",
-    "images",
-    "volumes",
-    "pods",
-    "services",
-    "deployments",
-    "schemas",
-    "tables",
-    "columns",
-    "pages",
-    "databases",
-    "blocks"
-  ]) {
+  for (const record of records) for (const key of collections) {
     const rows = record[key];
     if (Array.isArray(rows) && !seen.has(rows)) {
       seen.add(rows);
@@ -1324,7 +1776,7 @@ var Blocks = React.memo(function Blocks2({ blocks }) {
   const [requested, setPage] = React.useState(0);
   const page = Math.min(requested, Math.max(0, Math.ceil(blocks.length / 5) - 1));
   const currentBlocks = React.useMemo(() => blocks.slice(page * 5, (page + 1) * 5), [blocks, page]);
-  return /* @__PURE__ */ React.createElement("section", { className: "mcp-blocks" }, /* @__PURE__ */ React.createElement("h4", null, t("toolCall.mcp.contentBlocks"), " · ", blocks.length), currentBlocks.map((block, index) => /* @__PURE__ */ React.createElement("div", { className: "mcp-block", key: `${page}:${index}` }, /* @__PURE__ */ React.createElement("h5", null, block.label), block.kind === "image" ? /* @__PURE__ */ React.createElement(ImageBlock, { value: block.value }) : /* @__PURE__ */ React.createElement(Value, { value: block.value }))), /* @__PURE__ */ React.createElement(Pager, { total: blocks.length, page, size: 5, onPage: setPage }));
+  return /* @__PURE__ */ React.createElement("section", { className: "mcp-blocks" }, /* @__PURE__ */ React.createElement("h4", null, t("toolCall.mcp.contentBlocks"), " · ", blocks.length), currentBlocks.map((block, index) => /* @__PURE__ */ React.createElement("div", { className: "mcp-block", key: `${page}:${index}` }, /* @__PURE__ */ React.createElement("h5", null, block.label), block.kind === "image" ? /* @__PURE__ */ React.createElement(ImageBlock, { value: block.value }) : /* @__PURE__ */ React.createElement(Value, { value: block.value }))), /* @__PURE__ */ React.createElement(Pager2, { total: blocks.length, page, size: 5, onPage: setPage }));
 });
 function McpToolCall({ toolCall, provider, operation }) {
   const api = useApi();
@@ -1338,55 +1790,61 @@ function McpToolCall({ toolCall, provider, operation }) {
   const status = toolCall.status === "error" || parsed.failed || exa?.partialError ? "error" : toolCall.status;
   const ToolCallNode = api.ui.ToolCallNode;
   const op = api.t(`toolCall.mcp.op.${operation}`, { defaultValue: operation });
-  const summaryKeys = React.useMemo(() => provider.kind === "browser" ? ["url", "pageId", "uid", "target", "ref", "index", "part", "key", "action", "type", "filename", "format", "fullPage"] : ["query", "url", "libraryName", "libraryId", "language", "owner", "repo", "project", "issue", "issue_id", "issueId", "collection", "container", "pod", "namespace", "database", "table", "method", "status", "action", "id", "formats", "limit"], [provider.kind]);
-  const parts = React.useMemo(() => {
-    if (!isRecord3(args)) return [];
-    const list = summaryKeys.filter((key) => args[key] !== void 0 && !hiddenKey(key, true)).map((key) => `${key}: ${preview(args[key], key, true)}`);
-    for (const key of ["elements", "fields", "text", "value", "function", "script", "prompt", "code", "paths", "data"]) {
-      const value = args[key];
-      if (Array.isArray(value)) list.push(`${key}.count: ${value.length}`);
-      else if (typeof value === "string") list.push(`${key}.length: ${value.length}`);
-      else if (isRecord3(value)) list.push(`${key}.count: ${Object.keys(value).length}`);
-    }
-    return list;
-  }, [args, summaryKeys]);
   const summary = React.useMemo(() => {
-    if (provider.id === "exa" && isRecord3(args)) {
-      return exaSummary(args, api.t);
+    if (!isRecord3(args)) return "";
+    if (provider.id === "exa") return exaSummary(args, api.t);
+    return providerSummary(provider.id, args, api.t);
+  }, [provider.id, args, api.t]);
+  const shape = React.useMemo(() => {
+    const texts = [];
+    for (const block of parsed.blocks) {
+      if (typeof block.value === "string") texts.push(block.value);
+      else if (isRecord3(block.value) && typeof block.value.text === "string") texts.push(block.value.text);
     }
-    if (feed && isRecord3(args)) {
-      return searchProviderSummary(provider.id, args, api.t);
+    const joined = texts.join("\n");
+    if (joined.length <= 4e5) {
+      const diff = parseDiff(joined);
+      if (diff) return /* @__PURE__ */ React.createElement(DiffView, { shape: diff });
+      const snapshot = parseSnapshot(joined);
+      if (snapshot) return /* @__PURE__ */ React.createElement(SnapshotView, { shape: snapshot });
+      const tree = parseTree(joined) ?? treeFromRecords(records);
+      if (tree) return /* @__PURE__ */ React.createElement(TreeView, { shape: tree });
+      const log = parseLogs(joined);
+      if (log) return /* @__PURE__ */ React.createElement(LogView, { shape: log });
     }
-    return parts.join(" · ").slice(0, 400);
-  }, [provider.id, feed, args, api.t, parts]);
-  return /* @__PURE__ */ React.createElement(ToolCallNode, { toolName: toolCall.name, status, lazyBody: true, category: provider.category, badgeName: provider.name, displayName: summary ? `${op} · ${summary}` : op, displayNameTitle: toolCall.name, className: "snow-external-tool-renderer", meta: /* @__PURE__ */ React.createElement("span", null, parsed.blocks.length ? api.t("toolCall.mcp.blockCount", { values: { count: parsed.blocks.length } }) : api.t(`toolCall.mcp.status.${status}`)) }, /* @__PURE__ */ React.createElement("div", { className: "mcp-card" }, summary && /* @__PURE__ */ React.createElement("p", { className: "mcp-summary" }, summary), status === "error" && /* @__PURE__ */ React.createElement("p", { role: "status", className: "mcp-error" }, api.t("toolCall.mcp.failed")), /* @__PURE__ */ React.createElement("button", { type: "button", "aria-expanded": parametersOpen, onClick: () => setParametersOpen(!parametersOpen) }, api.t("toolCall.mcp.parameters")), parametersOpen && /* @__PURE__ */ React.createElement("section", null, /* @__PURE__ */ React.createElement("p", { className: "mcp-muted" }, api.t("toolCall.mcp.parameterPrivacy")), isRecord3(args) ? /* @__PURE__ */ React.createElement(Value, { value: provider.id === "exa" ? exaParameters(args) : args, parameters: true }) : /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, HIDDEN)), /* @__PURE__ */ React.createElement(Metrics, { records }), feed?.answer && /* @__PURE__ */ React.createElement("div", { className: "mcp-answer" }, /* @__PURE__ */ React.createElement("strong", null, api.t("toolCall.search.answer"), ":"), /* @__PURE__ */ React.createElement("p", null, preview(feed.answer))), exa?.textPreview && /* @__PURE__ */ React.createElement("p", { className: "mcp-muted" }, api.t("toolCall.exa.previewOnly")), feed?.textPreview && /* @__PURE__ */ React.createElement("p", { className: "mcp-muted" }, api.t("toolCall.search.textPreview")), groups.length > 0 && /* @__PURE__ */ React.createElement(SearchResults, { groups, showPublished: provider.id === "exa" || provider.id === "brave" }), provider.kind === "browser" && /* @__PURE__ */ React.createElement(BrowserView, { records, blocks: parsed.blocks }), provider.kind === "generic" && /* @__PURE__ */ React.createElement(GenericView, { records, blocks: parsed.blocks }), parsed.bounded && /* @__PURE__ */ React.createElement("p", { className: "mcp-muted" }, api.t("toolCall.mcp.parseLimit")), parsed.blocks.length > 0 ? /* @__PURE__ */ React.createElement(Blocks, { blocks: parsed.blocks }) : /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, api.t(`toolCall.mcp.status.${status}`)), toolCall.streamingStdout && /* @__PURE__ */ React.createElement("section", null, /* @__PURE__ */ React.createElement("h4", null, "stdout"), /* @__PURE__ */ React.createElement(TextValue, { value: toolCall.streamingStdout })), toolCall.streamingStderr && /* @__PURE__ */ React.createElement("section", null, /* @__PURE__ */ React.createElement("h4", null, "stderr"), /* @__PURE__ */ React.createElement(TextValue, { value: toolCall.streamingStderr }))));
+    const checklist = checklistFromRecords(records);
+    if (checklist) return /* @__PURE__ */ React.createElement(ChecklistView, { shape: checklist });
+    const progress = progressFromRecords(records);
+    if (progress) return /* @__PURE__ */ React.createElement(ProgressView, { shape: progress });
+    return null;
+  }, [parsed.blocks, records]);
+  return /* @__PURE__ */ React.createElement(ToolCallNode, { toolName: toolCall.name, status, lazyBody: true, category: provider.category, badgeName: provider.name, displayName: summary ? `${op} · ${summary}` : op, displayNameTitle: toolCall.name, className: "sno************************", meta: /* @__PURE__ */ React.createElement("span", null, parsed.blocks.length ? api.t("toolCall.mcp.blockCount", { values: { count: parsed.blocks.length } }) : api.t(`toolCall.mcp.status.${status}`)) }, /* @__PURE__ */ React.createElement("div", { className: "mcp-card" }, summary && /* @__PURE__ */ React.createElement("p", { className: "mcp-summary" }, summary), status === "error" && /* @__PURE__ */ React.createElement("p", { role: "status", className: "mcp-error" }, api.t("toolCall.mcp.failed")), /* @__PURE__ */ React.createElement("button", { type: "button", "aria-expanded": parametersOpen, onClick: () => setParametersOpen(!parametersOpen) }, api.t("toolCall.mcp.parameters")), parametersOpen && /* @__PURE__ */ React.createElement("section", null, /* @__PURE__ */ React.createElement("p", { className: "mcp-muted" }, api.t("toolCall.mcp.parameterPrivacy")), isRecord3(args) ? /* @__PURE__ */ React.createElement(Value, { value: provider.id === "exa" ? exaParameters(args) : args, parameters: true }) : /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, HIDDEN)), /* @__PURE__ */ React.createElement(Metrics, { records }), feed?.answer && /* @__PURE__ */ React.createElement("div", { className: "mcp-answer" }, /* @__PURE__ */ React.createElement("strong", null, api.t("toolCall.search.answer"), ":"), /* @__PURE__ */ React.createElement("p", null, preview(feed.answer))), feed?.sources && feed.sources.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mcp-sources" }, /* @__PURE__ */ React.createElement("strong", null, api.t("toolCall.search.sources"), " · ", feed.sources.length), /* @__PURE__ */ React.createElement("ul", null, feed.sources.slice(0, 20).map((url, index) => /* @__PURE__ */ React.createElement("li", { key: `${url}-${index}` }, /* @__PURE__ */ React.createElement(SafeLink, { value: url }))))), exa?.textPreview && /* @__PURE__ */ React.createElement("p", { className: "mcp-muted" }, api.t("toolCall.exa.previewOnly")), feed?.textPreview && /* @__PURE__ */ React.createElement("p", { className: "mcp-muted" }, api.t("toolCall.search.textPreview")), groups.length > 0 && /* @__PURE__ */ React.createElement(SearchResults, { groups, showPublished: provider.id === "exa" || provider.id === "brave" }), shape, provider.kind === "browser" && /* @__PURE__ */ React.createElement(BrowserView, { records, collections: provider.collections, blocks: parsed.blocks }), provider.kind === "generic" && /* @__PURE__ */ React.createElement(GenericView, { records, collections: provider.collections, blocks: parsed.blocks }), parsed.bounded && /* @__PURE__ */ React.createElement("p", { className: "mcp-muted" }, api.t("toolCall.mcp.parseLimit")), parsed.blocks.length > 0 ? /* @__PURE__ */ React.createElement(Blocks, { blocks: parsed.blocks }) : /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, api.t(`toolCall.mcp.status.${status}`)), toolCall.streamingStdout && /* @__PURE__ */ React.createElement("section", null, /* @__PURE__ */ React.createElement("h4", null, "stdout"), /* @__PURE__ */ React.createElement(TextValue, { value: toolCall.streamingStdout })), toolCall.streamingStderr && /* @__PURE__ */ React.createElement("section", null, /* @__PURE__ */ React.createElement("h4", null, "stderr"), /* @__PURE__ */ React.createElement(TextValue, { value: toolCall.streamingStderr }))));
 }
 
 // src/providers.ts
 var providers = [
-  { id: "firecrawl", name: "Firecrawl", services: ["firecrawl"], category: "web", kind: "search" },
-  { id: "chrome", name: "Chrome DevTools", services: ["chrome-devtools", "chrome_devtools"], category: "web", kind: "browser" },
-  { id: "playwright", name: "Playwright", services: ["playwright"], category: "web", kind: "browser" },
-  { id: "context7", name: "Context7", services: ["context7"], kind: "generic" },
-  { id: "github", name: "GitHub", services: ["github"], kind: "generic" },
-  { id: "exa", name: "Exa", services: ["exa"], category: "web", kind: "search" },
-  { id: "brave", name: "Brave Search", services: ["brave-search", "brave_search", "brave"], category: "web", kind: "search" },
-  { id: "tavily", name: "Tavily", services: ["tavily", "tavily-mcp", "tavily_mcp"], category: "web", kind: "search" },
-  { id: "perplexity", name: "Perplexity", services: ["perplexity"], category: "web", kind: "search" },
-  { id: "parallel", name: "Parallel", services: ["parallel", "parallel-search", "parallel_search"], category: "web", kind: "search" },
-  { id: "serpapi", name: "SerpApi", services: ["serpapi"], category: "web", kind: "search" },
-  { id: "kagi", name: "Kagi", services: ["kagi", "kagimcp"], category: "web", kind: "search" },
-  { id: "linkup", name: "Linkup", services: ["linkup"], category: "web", kind: "search" },
-  { id: "searxng", name: "SearXNG", services: ["searxng", "mcp-searxng", "mcp_searxng"], category: "web", kind: "search" },
-  // ── 新增 8 个现代开发者顶级 MCP ──
-  { id: "supabase", name: "Supabase", services: ["supabase", "mcp-server-supabase", "mcp-server-postgrest"], category: "database", kind: "generic" },
-  { id: "postman", name: "Postman", services: ["postman", "postman-mcp", "postman_mcp"], kind: "generic" },
-  { id: "linear", name: "Linear", services: ["linear", "linear-mcp", "linear_mcp"], kind: "generic" },
-  { id: "sentry", name: "Sentry", services: ["sentry", "sentry-mcp", "sentry_mcp"], kind: "generic" },
-  { id: "gitlab", name: "GitLab", services: ["gitlab", "gitlab-mcp", "gitlab_mcp"], kind: "generic" },
-  { id: "docker", name: "Docker", services: ["docker", "docker-mcp", "docker_mcp"], kind: "generic" },
-  { id: "k8s", name: "Kubernetes", services: ["kubernetes", "k8s", "kubernetes-mcp", "k8s-mcp"], kind: "generic" },
-  { id: "notion", name: "Notion", services: ["notion", "notion-mcp", "notion_mcp"], kind: "generic" }
+  { id: "firecrawl", name: "Firecrawl", services: ["firecrawl"], category: "web", kind: "search", collections: ["web", "news", "images", "data"] },
+  { id: "chrome", name: "Chrome DevTools", services: ["chrome-devtools", "chrome_devtools"], category: "web", kind: "browser", collections: ["pages", "messages", "requests", "entries", "insights", "metrics"] },
+  { id: "playwright", name: "Playwright", services: ["playwright"], category: "web", kind: "browser", collections: ["tabs", "requests", "messages", "entries"] },
+  { id: "context7", name: "Context7", services: ["context7"], category: "read", kind: "generic", collections: ["libraries"] },
+  { id: "github", name: "GitHub", services: ["github"], category: "git", kind: "generic", collections: ["repositories", "issues", "pull_requests", "commits", "branches", "releases", "files", "gists", "discussions", "notifications", "users", "teams", "jobs", "workflow_runs", "items"] },
+  { id: "exa", name: "Exa", services: ["exa"], category: "search", kind: "search", collections: ["results"] },
+  { id: "brave", name: "Brave Search", services: ["brave-search", "brave_search", "brave"], category: "search", kind: "search", collections: ["results", "items", "grounding", "sources"] },
+  { id: "tavily", name: "Tavily", services: ["tavily", "tavily-mcp", "tavily_mcp"], category: "search", kind: "search", collections: ["results", "failed_results", "images"] },
+  { id: "perplexity", name: "Perplexity", services: ["perplexity"], category: "search", kind: "search", collections: ["results"] },
+  { id: "parallel", name: "Parallel", services: ["parallel", "parallel-search", "parallel_search"], category: "search", kind: "search", collections: ["results", "errors"] },
+  { id: "serpapi", name: "SerpApi", services: ["serpapi"], category: "search", kind: "search", collections: ["organic_results", "news_results", "local_results", "images_results", "shopping_results", "video_results", "top_stories", "related_questions", "related_searches", "perspectives", "immersive_products", "knowledge_graph", "pagination"] },
+  { id: "kagi", name: "Kagi", services: ["kagi", "kagimcp"], category: "search", kind: "search", collections: ["results"] },
+  { id: "linkup", name: "Linkup", services: ["linkup"], category: "search", kind: "search", collections: ["results", "images"] },
+  { id: "searxng", name: "SearXNG", services: ["searxng", "mcp-searxng", "mcp_searxng"], category: "search", kind: "search", collections: ["results", "suggestions", "answers", "infoboxes", "corrections", "engines"] },
+  { id: "supabase", name: "Supabase", services: ["supabase", "mcp-server-supabase", "mcp-server-postgrest"], category: "database", kind: "generic", collections: ["tables", "columns", "extensions", "migrations", "functions", "projects", "organizations", "branches", "buckets", "lints", "logs", "advisors", "schemas"] },
+  { id: "postman", name: "Postman", services: ["postman", "postman-mcp", "postman_mcp"], category: "workflow", kind: "generic", collections: ["workspaces", "collections", "environments", "mocks", "specs", "items", "requests", "responses"] },
+  { id: "linear", name: "Linear", services: ["linear", "linear-mcp", "linear_mcp"], category: "todo", kind: "generic", collections: ["issues", "projects", "teams", "users", "comments", "cycles", "labels", "statuses", "documents"] },
+  { id: "sentry", name: "Sentry", services: ["sentry", "sentry-mcp", "sentry_mcp"], category: "telemetry", kind: "generic", collections: ["organizations", "projects", "issues", "events", "traces", "logs", "metrics", "profiles", "replays", "spans", "resources"] },
+  { id: "gitlab", name: "GitLab", services: ["gitlab", "gitlab-mcp", "gitlab_mcp"], category: "git", kind: "generic", collections: ["projects", "issues", "merge_requests", "branches", "commits", "pipelines", "jobs", "labels", "members", "namespaces", "discussions", "notes", "artifacts"] },
+  { id: "docker", name: "Docker", services: ["docker", "docker-mcp", "docker_mcp"], category: "terminal", kind: "generic", collections: ["containers", "images", "networks", "volumes"] },
+  { id: "k8s", name: "Kubernetes", services: ["kubernetes", "k8s", "kubernetes-mcp", "k8s-mcp"], category: "terminal", kind: "generic", collections: ["pods", "nodes", "namespaces", "events", "contexts", "targets", "resources", "deployments", "services", "configmaps", "secrets"] },
+  { id: "notion", name: "Notion", services: ["notion", "notion-mcp", "notion_mcp"], category: "outline", kind: "generic", collections: ["results", "pages", "blocks", "comments", "users", "databases", "data_sources"] }
 ];
 var normalizeName = (name) => name.replace(/_/g, "-");
 var prefixMap = [];

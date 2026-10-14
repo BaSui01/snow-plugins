@@ -20,10 +20,33 @@ export type ToolCallContext = Readonly<{
   messageId?: string;
   toolCall: ToolCallInfo;
 }>;
+// Mirrors the host ToolNameBadge ToolCategory union so cards can pick a fitting
+// icon; the host falls back to a generic icon for unknown values.
+export type ToolCategory =
+  | "read"
+  | "edit"
+  | "create"
+  | "copy"
+  | "search"
+  | "terminal"
+  | "web"
+  | "git"
+  | "outline"
+  | "todo"
+  | "interaction"
+  | "agent"
+  | "workflow"
+  | "lens"
+  | "image"
+  | "skill"
+  | "database"
+  | "telemetry"
+  | "generic";
+
 export type ToolCallNodeProps = {
   toolName: string;
   badgeName?: string;
-  category?: "web" | "database";
+  category?: ToolCategory;
   displayName?: React.ReactNode;
   displayNameTitle?: string;
   status: ToolCallInfo["status"];

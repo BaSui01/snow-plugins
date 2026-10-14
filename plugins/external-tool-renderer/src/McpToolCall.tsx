@@ -5,7 +5,10 @@ import type { Provider } from "./providers";
 import { PAGE_SIZE, TEXT_PAGE_SIZE, BINARY, HIDDEN, candidates, hiddenKey, inlineImage, isRecord, parseJson, parseMcp, preview, safeText, safeUrl, searchGroups } from "./mcp";
 import type { ContentBlock } from "./mcp";
 import { exaParameters, exaSummary, exaView } from "./Exa";
-import { parseSearchFeed, searchProviderSummary } from "./searchFeeds";
+import { parseSearchFeed } from "./searchFeeds";
+import { providerSummary } from "./summaries";
+import { checklistFromRecords, parseDiff, parseLogs, parseSnapshot, parseTree, progressFromRecords, treeFromRecords } from "./shapes";
+import { ChecklistView, DiffView, LogView, ProgressView, SnapshotView, TreeView } from "./ShapeViews";
 
 function Pager({ total, page, onPage, size = PAGE_SIZE }: { total: number; page: number; onPage: (page: number) => void; size?: number }) {
   const { t } = useApi();
@@ -131,11 +134,11 @@ const RecordTable = React.memo(function RecordTable({ rows, label }: { rows: unk
   </section>;
 });
 
-function BrowserView({ records, blocks }: { records: Record<string, unknown>[]; blocks: ContentBlock[] }) {
+function BrowserView({ records, collections, blocks }: { records: Record<string, unknown>[]; collections: readonly string[]; blocks: ContentBlock[] }) {
   const { t } = useApi();
   const tables: { label: string; rows: unknown[] }[] = [];
   const seen = new Set<unknown>();
-  for (const record of records) for (const key of ["pages", "messages", "requests", "entries", "insights", "metrics"]) {
+  for (const record of records) for (const key of collections) {
     const rows = record[key];
     if (Array.isArray(rows) && !seen.has(rows)) { seen.add(rows); tables.push({ label: key, rows }); }
   }
@@ -158,7 +161,7 @@ function BrowserView({ records, blocks }: { records: Record<string, unknown>[]; 
   return <>{tables.slice(0, 8).map((table, index) => <RecordTable key={index} {...table} />)}</>;
 }
 
-function GenericView({ records, blocks }: { records: Record<string, unknown>[]; blocks: ContentBlock[] }) {
+function GenericView({ records, collections, blocks }: { records: Record<string, unknown>[]; collections: readonly string[]; blocks: ContentBlock[] }) {
   const { t } = useApi();
   const tables: { label: string; rows: unknown[] }[] = [];
   const seen = new Set<unknown>();
@@ -167,13 +170,7 @@ function GenericView({ records, blocks }: { records: Record<string, unknown>[]; 
       seen.add(block.value); tables.push({ label: t("toolCall.mcp.records"), rows: block.value });
     }
   }
-  for (const record of records) for (const key of [
-    "libraries", "repositories", "items", "files", "commits", "results",
-    "collections", "environments", "requests", "responses",
-    "issues", "projects", "comments", "users", "teams", "events", "traces",
-    "containers", "images", "volumes", "pods", "services", "deployments",
-    "schemas", "tables", "columns", "pages", "databases", "blocks"
-  ]) {
+  for (const record of records) for (const key of collections) {
     const rows = record[key];
     if (Array.isArray(rows) && !seen.has(rows)) {
       seen.add(rows); tables.push({ label: t(`toolCall.mcp.collection.${key}`, { defaultValue: key }), rows });
@@ -231,30 +228,40 @@ export function McpToolCall({ toolCall, provider, operation }: { toolCall: ToolC
   const status = toolCall.status === "error" || parsed.failed || exa?.partialError ? "error" : toolCall.status;
   const ToolCallNode = api.ui.ToolCallNode;
   const op = api.t(`toolCall.mcp.op.${operation}`, { defaultValue: operation });
-  const summaryKeys = React.useMemo(() => provider.kind === "browser"
-    ? ["url", "pageId", "uid", "target", "ref", "index", "part", "key", "action", "type", "filename", "format", "fullPage"]
-    : ["query", "url", "libraryName", "libraryId", "language", "owner", "repo", "project", "issue", "issue_id", "issueId", "collection", "container", "pod", "namespace", "database", "table", "method", "status", "action", "id", "formats", "limit"], [provider.kind]);
-  const parts = React.useMemo(() => {
-    if (!isRecord(args)) return [];
-    const list = summaryKeys.filter((key) => args[key] !== undefined && !hiddenKey(key, true)).map((key) => `${key}: ${preview(args[key], key, true)}`);
-    for (const key of ["elements", "fields", "text", "value", "function", "script", "prompt", "code", "paths", "data"]) {
-      const value = args[key];
-      if (Array.isArray(value)) list.push(`${key}.count: ${value.length}`);
-      else if (typeof value === "string") list.push(`${key}.length: ${value.length}`);
-      else if (isRecord(value)) list.push(`${key}.count: ${Object.keys(value).length}`);
-    }
-    return list;
-  }, [args, summaryKeys]);
+  // Provider-aware summary: real schema field names first, everything else
+  // stays reachable in the expanded parameter tree.
   const summary = React.useMemo(() => {
-    if (provider.id === "exa" && isRecord(args)) {
-      return exaSummary(args, api.t);
+    if (!isRecord(args)) return "";
+    if (provider.id === "exa") return exaSummary(args, api.t);
+    return providerSummary(provider.id, args, api.t);
+  }, [provider.id, args, api.t]);
+  // Shape sniffing runs on the raw text blocks + records, independent of which
+  // tool produced them: a diff looks like a diff whoever returns it. When no
+  // shape matches, `shape` stays null and the generic views render as before.
+  const shape = React.useMemo(() => {
+    const texts: string[] = [];
+    for (const block of parsed.blocks) {
+      if (typeof block.value === "string") texts.push(block.value);
+      else if (isRecord(block.value) && typeof block.value.text === "string") texts.push(block.value.text);
     }
-    if (feed && isRecord(args)) {
-      return searchProviderSummary(provider.id, args, api.t);
+    const joined = texts.join("\n");
+    if (joined.length <= 400000) {
+      const diff = parseDiff(joined);
+      if (diff) return <DiffView shape={diff} />;
+      const snapshot = parseSnapshot(joined);
+      if (snapshot) return <SnapshotView shape={snapshot} />;
+      const tree = parseTree(joined) ?? treeFromRecords(records);
+      if (tree) return <TreeView shape={tree} />;
+      const log = parseLogs(joined);
+      if (log) return <LogView shape={log} />;
     }
-    return parts.join(" · ").slice(0, 400);
-  }, [provider.id, feed, args, api.t, parts]);
-  return <ToolCallNode toolName={toolCall.name} status={status} lazyBody category={provider.category} badgeName={provider.name} displayName={summary ? `${op} · ${summary}` : op} displayNameTitle={toolCall.name} className="snow-external-tool-renderer" meta={<span>{parsed.blocks.length ? api.t("toolCall.mcp.blockCount", { values: { count: parsed.blocks.length } }) : api.t(`toolCall.mcp.status.${status}`)}</span>}>
+    const checklist = checklistFromRecords(records);
+    if (checklist) return <ChecklistView shape={checklist} />;
+    const progress = progressFromRecords(records);
+    if (progress) return <ProgressView shape={progress} />;
+    return null;
+  }, [parsed.blocks, records]);
+  return <ToolCallNode toolName={toolCall.name} status={status} lazyBody category={provider.category} badgeName={provider.name} displayName={summary ? `${op} · ${summary}` : op} displayNameTitle={toolCall.name} className="sno************************" meta={<span>{parsed.blocks.length ? api.t("toolCall.mcp.blockCount", { values: { count: parsed.blocks.length } }) : api.t(`toolCall.mcp.status.${status}`)}</span>}>
     <div className="mcp-card">
       {summary && <p className="mcp-summary">{summary}</p>}
       {status === "error" && <p role="status" className="mcp-error">{api.t("toolCall.mcp.failed")}</p>}
@@ -262,11 +269,13 @@ export function McpToolCall({ toolCall, provider, operation }: { toolCall: ToolC
       {parametersOpen && <section><p className="mcp-muted">{api.t("toolCall.mcp.parameterPrivacy")}</p>{isRecord(args) ? <Value value={provider.id === "exa" ? exaParameters(args) : args} parameters /> : <span className="mcp-muted">{HIDDEN}</span>}</section>}
       <Metrics records={records} />
       {feed?.answer && <div className="mcp-answer"><strong>{api.t("toolCall.search.answer")}:</strong><p>{preview(feed.answer)}</p></div>}
+      {feed?.sources && feed.sources.length > 0 && <div className="mcp-sources"><strong>{api.t("toolCall.search.sources")} · {feed.sources.length}</strong><ul>{feed.sources.slice(0, 20).map((url, index) => <li key={`${url}-${index}`}><SafeLink value={url} /></li>)}</ul></div>}
       {exa?.textPreview && <p className="mcp-muted">{api.t("toolCall.exa.previewOnly")}</p>}
       {feed?.textPreview && <p className="mcp-muted">{api.t("toolCall.search.textPreview")}</p>}
       {groups.length > 0 && <SearchResults groups={groups} showPublished={provider.id === "exa" || provider.id === "brave"} />}
-      {provider.kind === "browser" && <BrowserView records={records} blocks={parsed.blocks} />}
-      {provider.kind === "generic" && <GenericView records={records} blocks={parsed.blocks} />}
+      {shape}
+      {provider.kind === "browser" && <BrowserView records={records} collections={provider.collections} blocks={parsed.blocks} />}
+      {provider.kind === "generic" && <GenericView records={records} collections={provider.collections} blocks={parsed.blocks} />}
       {parsed.bounded && <p className="mcp-muted">{api.t("toolCall.mcp.parseLimit")}</p>}
       {parsed.blocks.length > 0 ? <Blocks blocks={parsed.blocks} /> : <span className="mcp-muted">{api.t(`toolCall.mcp.status.${status}`)}</span>}
       {toolCall.streamingStdout && <section><h4>stdout</h4><TextValue value={toolCall.streamingStdout} /></section>}

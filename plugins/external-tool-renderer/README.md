@@ -2,7 +2,7 @@
 
 - ID：`com.snow.external-tool-renderer`（保持稳定，未随显示名变更）
 - 显示名：`工具画廊` / `Tool Gallery` / `工具畫廊`
-- 独立版本：`0.2.1`
+- 独立版本：`0.3.0`
 - 作者：`BaSui`
 - 安装目录：`plugins/external-tool-renderer`（直接包含 `plugin.json`），不能安装仓库根目录。
 
@@ -20,28 +20,47 @@
 | --- | --- | --- |
 | 原 Anysearch | `anysearch-`, `anysearch_` | 独立工厂 `renderAnysearch`，搜索/批量/网页提取/能力发现，原文 fallback |
 | 原 DBX | `dbx-`, `dbx_` | 独立工厂 `renderDbx`，覆盖 DBX MCP 0.4.x 全部 22 个工具（连接/数据库/表/存储过程/SQL 与批量脚本/会话/Redis/Salesforce 两步写入/Kafka 消息/桌面 UI），SQL 与 Markdown 表格多格式兼容；`confirm_token` 与消息体不落卡片 |
-| Firecrawl | `firecrawl-`, `firecrawl_` | 网页/新闻/图片分组，抓取/解析 markdown/html/JSON，研究任务 ID 与状态进度 |
-| Chrome DevTools | `chrome-devtools-`, `chrome-devtools_`, `chrome_devtools-`, `chrome_devtools_` | 页面列表、快照、控制台消息、网络请求详情与表格、性能追踪、堆快照、截图 |
-| Playwright | `playwright-`, `playwright_` | 浏览器点击/输入/拖拽/选项/等待/媒体模拟/网络/快照/截图，敏感输入遮掩 |
-| Context7 | `context7-`, `context7_` | 库标识解析、文档与代码检索、库列表展示、参数 language 摘要 |
-| GitHub | `github-`, `github_` | 仓库/文件/提交/PR/Issue/Actions/讨论/Gist，参数 owner/repo 摘要与多集合列表 |
+| Firecrawl | `firecrawl-`, `firecrawl_` | 30 个官方工具（含 monitor/research/feedback 系列）全覆盖（scrape/search/map/crawl/check_crawl_status/parse/agent/agent_status/interact/interact_stop/find_tools/developer_search/gov_search/credit_usage/extract）；网页/新闻/图片分组、研究任务状态与额度用量 |
+| Chrome DevTools | `chrome-devtools-`, `chrome-devtools_`, `chrome_devtools-`, `chrome_devtools_` | 59 个工具：输入自动化、导航与页面、模拟、性能追踪、网络、调试与快照、堆快照与录屏；`pageId`/`uid` 摘要 |
+| Playwright | `playwright-`, `playwright_` | 72 个 `browser_*` 工具（含 network/storage/testing/devtools/vision caps）：导航/快照/查找/点击/悬停/拖拽/输入/表单/按键/截图/标签页/网络/脚本/媒体模拟；敏感输入遮掩 |
+| Context7 | `context7-`, `context7_` | `resolve-library-id` 与 `query-docs`（旧名 `get-library-docs` 已由官方移除），库列表与文档正文展示 |
+| GitHub | `github-`, `github_` | 官方工具集 repos/issues/pull_requests/actions/discussions/gists/context/labels/notifications 等 96 项；`owner`/`repo`/`method` 摘要与多集合表格 |
 | Exa | `exa-`, `exa_` | 网页搜索/抓取/高级/代理，标题/URL/日期/高亮正文结构化预览与原文兜底 |
-| Brave Search | `brave-search-`, `brave_search-`, `brave-` 等 | 网页/本地商户/视频/图片/新闻/地点/总结/LLM 上下文，支持地点与日期识别 |
-| Tavily | `tavily-`, `tavily-mcp-`, `tavily_mcp-` 等 | 实时搜索、智能回答 (answer)、网页内容提取、网站站点地图 (map)、深度爬取 (crawl) |
-| Perplexity | `perplexity-`, `perplexity_` | 实时搜索、快速问答、深度研究、逻辑推理，突出展示结构化引用与回答正文 |
-| Parallel | `parallel-`, `parallel-search-`, `parallel_search-` 等 | 多查询摘要、来源策略、网页正文提取 (web_fetch) 摘录展示 |
-| SerpApi | `serpapi-`, `serpapi_` | 多引擎通用检索 (Google/Bing/Yahoo/YT/eBay 等)、分类结果、参数 engine/location 摘要 |
-| Kagi | `kagi-`, `kagimcp-` 等 | 综合搜索与镜头过滤 (kagi_search_fetch)、Markdown 正文提取 (kagi_extract) |
-| Linkup | `linkup-`, `linkup_` | 标准与深度搜索、页面抓取、异步多步骤深度研究任务与生成回答 |
-| SearXNG | `searxng-`, `mcp-searxng-`, `mcp_searxng-` 等 | 尊重隐私的自建/公开实例多引擎搜索、搜索联想词、实例配置信息、网址正文阅读 |
-| **Supabase** | `supabase-`, `mcp-server-supabase-`, `mcp-server-postgrest-` | 云数据库管理、执行 SQL、表结构迁移、模式与表格交互展示 |
-| **Postman** | `postman-`, `postman-mcp-`, `postman_mcp-` | API 集合、测试工作流、环境变量、工作区管理与运行结果 |
-| **Linear** | `linear-`, `linear-mcp-`, `linear_mcp-` | 项目与工单管理、新建与搜索 Issue、状态变更与指派人面板 |
-| **Sentry** | `sentry-`, `sentry-mcp-`, `sentry_mcp-` | 生产报错追踪、异常详情读取、堆栈回溯与错误频次指标统计 |
-| **GitLab** | `gitlab-`, `gitlab-mcp-`, `gitlab_mcp-` | 企业代码仓库、合并请求 (MR)、Issue、流水线与项目列表 |
-| **Docker** | `docker-`, `docker-mcp-`, `docker_mcp-` | 本地容器管理、镜像/数据卷查询、容器运行与日志状态 |
-| **Kubernetes** | `kubernetes-`, `k8s-`, `kubernetes-mcp-`, `k8s-mcp-` | 集群控制面、Pod 状态列表、日志流与命名空间资源 |
-| **Notion** | `notion-`, `notion-mcp-`, `notion_mcp-` | 知识库检索、页面读取与更新、数据库多维表格内容块展示 |
+| Brave Search | `brave-search-`, `brave_search-`, `brave-` 等 | 8 个官方工具；逐条单结果 JSON 文本合并为结果列表，`brave_llm_context` 的 `grounding`/`sources` 结构化展示 |
+| Tavily | `tavily-`, `tavily-mcp-`, `tavily_mcp-` 等 | 5 个工具（search/extract/crawl/map/research）；`Answer` + `Title/URL/Content` 纯文本报告解析为结果列表 |
+| Perplexity | `perplexity-`, `perplexity_` | 4 个工具；从回答正文尾部拆出 `Citations:` 引用块并单列来源链接 |
+| Parallel | `parallel-`, `parallel-search-`, `parallel_search-` 等 | `web_search`/`web_fetch`，`results[].excerpts[]` 结构化结果与 `errors` 失败项 |
+| SerpApi | `serpapi-`, `serpapi_` | `search` 覆盖全引擎（参数在 `params` 内，摘要自动解包）；`organic_results`/`news_results`/`local_results`/`shopping_results`/`top_stories`/`related_questions` 等分组 |
+| Kagi | `kagi-`, `kagimcp-` 等 | `kagi_search_fetch` 与 `kagi_extract`（`kagi_fastgpt`/`kagi_summarizer` 已由官方移除） |
+| Linkup | `linkup-`, `linkup_` | `linkup-search`/`linkup-research`/`linkup-get-research`/`linkup-fetch`；异步研究任务状态 |
+| SearXNG | `searxng-`, `mcp-searxng-`, `mcp_searxng-` 等 | `searxng_web_search`/`searxng_search_suggestions`/`searxng_instance_info`/`web_url_read`；`results`/`suggestions`/`answers`/`infoboxes` 分组 |
+| **Supabase** | `supabase-`, `mcp-server-supabase-`, `mcp-server-postgrest-` | 33 个工具：数据库（`list_tables`/`list_extensions`/`list_migrations`/`apply_migration`/`execute_sql`）、调试（`query_logs`/`get_advisors`）、开发、Edge Functions、账户、分支、Storage |
+| **Postman** | `postman-`, `postman-mcp-`, `postman_mcp-` | 42 个工具；官方工具名为 **camelCase**（`getCollections`/`runCollection`/`getWorkspaces`…），与旧 kebab-case 文档不同 |
+| **Linear** | `linear-`, `linear-mcp-`, `linear_mcp-` | 24 项：工单/项目/团队/用户/评论/周期/标签/状态（官方为托管服务，未枚举工具名，按规范化操作名渲染） |
+| **Sentry** | `sentry-`, `sentry-mcp-`, `sentry_mcp-` | 76 个工具（15 顶层 + 61 catalog）：`find_organizations`/`find_projects`/`search_issues`/`search_errors`/`search_traces`/`search_logs`/`search_metrics`/`search_replays`/`search_profiles`/`find_dropped_events`/`analyze_issue_with_seer`/`get_sentry_resource`/`search_sentry_tools`/`execute_sentry_tool`/`update_issue` |
+| **GitLab** | `gitlab-`, `gitlab-mcp-`, `gitlab_mcp-` | 275 项：合并请求、工单、仓库文件与分支、项目/组、CI 流水线与作业、标签、`my_issues`/`whoami`/`health_check` |
+| **Docker** | `docker-`, `docker-mcp-`, `docker_mcp-` | 19 项：官方 `docker` 单工具（`args` 子命令）+ 容器/镜像/网络/数据卷操作 |
+| **Kubernetes** | `kubernetes-`, `k8s-`, `kubernetes-mcp-`, `k8s-mcp-` | 53 项：`pods_*`/`nodes_*`/`namespaces_list`/`events_list`/`resources_*`/`configuration_*`/`targets_list`/`helm_*`；兼容 kubectl 风格命名 |
+| **Notion** | `notion-`, `notion-mcp-`, `notion_mcp-` | 24 项：页面、数据源、内容块、评论、用户、`post-search`；文本内 JSON 结构解析 |
+
+以上操作名与参数均按各服务**官方仓库源码 / 官方文档**核实。覆盖率以**官方工具清单为驱动**统计：22 个通用 provider 共 **841 个官方工具**，本地化操作名词条覆盖 **841 / 841 = 100%**（缺失 0）。三语词典 1264 条等键（en / zh-CN / zh-TW，`missing 0 / extra 0`）。
+
+> 该 100% 指**操作名本地化覆盖**：每个官方工具名都能显示中文/繁中操作标签，不会回退为英文规范化名（如 `get-heapsnapshot-retaining-paths`）。**不等于**每个工具都有专属结果解析器——结果解析仍按 `kind`（search / browser / generic）与 `collections` 分流，未核实返回结构的工具走通用内容渲染。
+
+## 形态视图（0.3.0 新增）
+
+除按 provider 分流的通用卡片外，插件还会对结果**内容**做形态嗅探：不看是哪个工具，只看输出长什么样。因此未核实 schema 的服务（GitLab / Docker / Linear 等）同样受益，且匹配失败时安全回退到通用渲染。
+
+| 形态 | 触发条件 | 视图 |
+| --- | --- | --- |
+| 差异 | 出现 `diff --git` / `@@` 块 | 文件分组、+/− 着色、增删统计 |
+| 目录树 | box-drawing 树（`├──`）或 GitHub `tree[]` JSON | 缩进列表、目录高亮、目录/文件计数 |
+| 日志 | `msgid=`/`reqid=` 行，或时间戳/级别前缀占多数 | 级别着色、级别筛选 chips、分页 |
+| 无障碍快照 | Chrome `uid=1_0 Role name` 或 Playwright `- role name [ref=eN]` | 缩进树、role 徽章、ref 显示 |
+| 进度 | 存在 `status` 或 `completed/total` 比值 | 进度条、指标列表 |
+| 检查清单 | `vulnerabilities`/`alerts`/`findings`/`lints` 等数组 ≥2 项 | 级别色标、级别计数、详情链接 |
+
+解析器均在**官方来源的真实样例**上验证：Chrome DevTools 官方 `McpResponse` 快照测试、Playwright 官方无障碍快照、标准 unified diff、GitLab 目录树、pod 日志。共 15 项验证全部通过，其中 5 项为**误报防护**（散文不得被判定为 diff/日志/树/清单/进度）。
 
 服务与操作名兼容 `-` / `_` 规范化及重复服务前缀；例如 `firecrawl-firecrawl_scrape` → `scrape`、`chrome_devtools-take_snapshot` → `take-snapshot`、`playwright-browser_snapshot` → `browser-snapshot`。未知操作显示规范化名称，并保留通用内容回退。
 
@@ -55,9 +74,36 @@
 - **O(1) 路由与前缀查找缓存**：插件内部维护预排序的 `prefixMap`，避免单次工具调用多次动态构建别名数组；并配置 LRU 缓存以实现多次调用免重复计算。
 - **宿主级匹配记忆化**：宿主 `PluginToolCall` 维护工具名匹配缓存（Match Cache），在长消息流式渲染过程中避免重复扫描全部插件的定义树。
 - **长文本与大 JSON 熔断**：单条文本超过 8 MiB 时自动熔断降级为流式有界纯文本预览，严防卡顿；文本与集合均实施受控分页（大文本按 12,000 字符分页，集合按 20 条分页），收起状态下启用宿主 `lazyBody` 彻底避免 DOM 节点泛滥。
-- **React 组件粒度记忆化**：在卡片内部对 `summaryKeys`、`parts`、`summary` 与多引擎结果提取全面进行 `React.useMemo` 细粒度包裹，参数未变更时跳过虚拟 DOM 重新比对。
+- **React 组件粒度记忆化**：在卡片内部对 `summary`、`groups`、`records`、`parsed` 与多引擎结果提取全面进行 `React.useMemo` 细粒度包裹，参数未变更时跳过虚拟 DOM 重新比对。
+- **按 provider 的字段优先级表**：`src/summaries.ts` 为 22 个 provider 各自维护真实参数名顺序表（如 GitHub 的 `owner/repo/method`、K8s 的 `namespace/pod/apiVersion/kind`、SerpApi 的 `q/engine/location`），摘要只读取该表前 8 个命中字段，避免全量遍历参数对象。
 
-操作名和参数按当前暴露的 Schema 与官方资料核实：浏览器交互与快照 [Playwright MCP](https://github.com/microsoft/playwright-mcp "官方清单列出 browser_* 工具及 target 等参数")、库标识和文档查询 [Context7](https://github.com/upstash/context7 "官方清单确认 resolve-library-id 与 query-docs 的参数")、仓库与 Issue/PR 操作 [GitHub MCP](https://github.com/github/github-mcp-server "官方清单说明 GitHub 工具名称与结构化内容返回")。不将文档中的全部工具视为当前用户已启用能力。
+操作名、参数名与结果结构均按各服务官方仓库源码 / 官方文档核实，覆盖 22 个通用 provider（Anysearch 与 DBX 为独立渲染器）：
+
+| 服务 | 官方来源 |
+| --- | --- |
+| Firecrawl | [firecrawl/firecrawl-mcp-server](https://github.com/firecrawl/firecrawl-mcp-server "官方 README 与 tools 文档列出 29 个已注册工具名") |
+| Chrome DevTools | [ChromeDevTools/chrome-devtools-mcp](https://github.com/ChromeDevTools/chrome-devtools-mcp "官方 tool-reference 按 Input/Navigation/Emulation/Performance/Network/Debugging/Memory 分类") |
+| Playwright | [microsoft/playwright-mcp](https://github.com/microsoft/playwright-mcp "官方 caps 表格列出 24 个 core 与可选 browser_* 工具及 target 等参数") |
+| Context7 | [upstash/context7](https://github.com/upstash/context7 "官方源码确认仅 resolve-library-id 与 query-docs，get-library-docs 已移除") |
+| GitHub | [github/github-mcp-server](https://github.com/github/github-mcp-server "官方 README 自动化区块列出各 toolset 工具名，返回紧凑 JSON 字符串") |
+| Brave | [brave/brave-search-mcp-server](https://github.com/brave/brave-search-mcp-server "官方源码确认 8 个工具，web/news 搜索逐条返回单结果 JSON 文本") |
+| Tavily | [tavily-ai/tavily-mcp](https://github.com/tavily-ai/tavily-mcp "官方源码 name 为 tavily_search 等下划线形式，返回纯文本报告") |
+| Perplexity | [perplexityai/modelcontextprotocol](https://github.com/perplexityai/modelcontextprotocol "官方 registerTool 确认 4 个工具，引用以 Citations 文本块内嵌于 response") |
+| Parallel | [parallel-web/search-mcp](https://github.com/parallel-web/search-mcp "官方文档确认仅 web_search 与 web_fetch，参数为 objective/search_queries") |
+| SerpApi | [serpapi/serpapi-mcp](https://github.com/serpapi/serpapi-mcp "官方仓库确认 search 主工具，参数在 params 对象内") |
+| Kagi | [kagisearch/kagimcp](https://github.com/kagisearch/kagimcp "官方仓库确认仅 kagi_search_fetch 与 kagi_extract") |
+| Linkup | [LinkupPlatform/linkup-mcp-server](https://github.com/LinkupPlatform/linkup-mcp-server "官方仓库确认 4 个工具及 depth/mode 参数") |
+| SearXNG | [ihor-sokoliuk/mcp-searxng](https://github.com/ihor-sokoliuk/mcp-searxng "官方 docs/tools.md 确认 searxng_ 前缀的 4 个工具") |
+| Supabase | [supabase/mcp](https://github.com/supabase/mcp "官方文档按 Database/Debugging/Development/Edge Functions/Account/Branching 分组列出 29 个工具") |
+| Postman | [postmanlabs/postman-mcp-server](https://github.com/postmanlabs/postman-mcp-server "官方工具名为 camelCase，旧 kebab-case 已废弃") |
+| Linear | [Linear MCP 官方文档](https://linear.app/docs/mcp "官方托管服务未枚举工具名，按规范化操作名渲染") |
+| Sentry | [getsentry/sentry-mcp](https://github.com/getsentry/sentry-mcp "官方 TOP_LEVEL_TOOL_NAMES 列出 15 个顶层工具") |
+| GitLab | [zereight/gitlab-mcp](https://github.com/zereight/gitlab-mcp "官方工具目录按 MR/Issue/仓库/项目/CI 分组") |
+| Docker | [Docker MCP Catalog](https://hub.docker.com/mcp "官方 docker:cli 仅暴露单个 docker(args) 工具，其余为社区服务器") |
+| Kubernetes | [containers/kubernetes-mcp-server](https://github.com/containers/kubernetes-mcp-server "官方 toolset 确认 pods_*/nodes_*/resources_* 等命名") |
+| Notion | [makenotion/notion-mcp-server](https://github.com/makenotion/notion-mcp-server "官方 v2.0.0 为 22 个工具，content[0].text 为 JSON 字符串") |
+
+不将文档中的全部工具视为当前用户已启用能力；未核实的返回结构不做专属解析，一律回退通用内容渲染。
 
 
 - `src/mcp.ts` 保留 JSON、MCP `structuredContent`、**全部** `content` 多块及 envelope/transport 辅助字段；文本块可解析嵌套 JSON，resource 保留 URI/MIME/text，未知块回退受控树。结构化副本与文本副本均保留，不悄悄去重或丢块。
@@ -100,10 +146,19 @@ python scripts/release.py validate
 
 `npm run check` 是现有生产校验（`tsc --noEmit` 与内存重建比较 `index.js`），不新增测试。仅编辑 `src/`，`index.js` 由 build 生成，Blob ESM 无相对运行时 import；依赖仍仅本地 esbuild/typescript/@types/react，不打包第二份 React 或宿主源码。
 
-三语词条在原有 83 条 Anysearch/DBX 基础上补齐 DBX 新增工具名与操作名（共 347 条等键，`dbx-dbx_<tool>` 与 `dbx_<tool>` 两种公开名形式都覆盖）；未知操作以规范化名显示。`style.css` 仅在 `.sno************************` 根下补充通用卡片，继续使用宿主主题变量，不改变原卡片规则。MIT 来源、版权见 [NOTICE](NOTICE)、[LICENSE](LICENSE)。
+三语词条在原有 83 条 Anysearch/DBX 基础上，本轮补齐 22 个 provider 的**真实**操作名、字段标签、集合名与分组名，共 **1264 条等键**（en / zh-CN / zh-TW，`missing 0 / extra 0`）。已删除与官方工具名不符且不可达的旧词条（如 `sentry-list-issues`、`list-pods`、`perplexity-search` 等）。未知操作以规范化名显示，不会空白。`style.css` 仅在 `.sno************************` 根下补充通用卡片与美化规则（101 条选择器全部限定在该根类下，仅使用宿主主题变量），不改变原 Anysearch/DBX 卡片规则。MIT 来源、版权见 [NOTICE](NOTICE)、[LICENSE](LICENSE)。
+
+## 本轮（0.3.0）改动摘要
+
+- `src/providers.ts`：新增 `collections` 字段（每个 provider 的真实结果集合名），`category` 改用宿主完整 `ToolCategory` 联合类型，使徽章图标贴合语义（GitHub/GitLab→git、Sentry→telemetry、Docker/K8s→terminal、Linear→todo、Notion→outline）。
+- `src/summaries.ts`（新增）：按 provider 的真实参数名生成折叠态摘要，SerpApi 自动解包 `params`。
+- `src/searchFeeds.ts`：`providerId` 形参**真正生效**——按服务分支抽取 `organic_results`/`news_results`/`suggestions`/`infoboxes`/`failed_results` 等；新增 Brave 逐条单结果 JSON 合并、Tavily 纯文本报告解析、Perplexity `Citations:` 引用拆分，并新增 `sources` 来源清单展示。
+- `src/McpToolCall.tsx`：`BrowserView`/`GenericView` 改为使用 provider 各自的集合键列表（不再共用一份硬编码键）。
+- `style.css`：新增卡片排版统一与美化（章节标签、药丸指标、来源清单、悬停反馈、等宽数字分页）。
+- 词条：三语从 347 条扩至 1264 条，覆盖官方工具名、字段标签、集合名与分组名。
 
 ## 发布与验证边界
 
 正式最低宿主版本尚未确定；desktop 真机交互、三语/主题、链接用户激活、图片解码、大结果与各 MCP 服务版本返回格式须由配套宿主实际验收。静态构建不等于 UI 验收；不宣称所有 MCP 协议都具备专属字段展示。
 
-独立标签/安装包按 `<slug>/v<version>` 约定，本版本为 `external-tool-renderer/v0.2.1`。开发/文档/词条改动不会自动更新宿主或已安装插件。
+独立标签/安装包按 `<slug>/v<version>` 约定，本版本为 `external-tool-renderer/v0.3.0`。开发/文档/词条改动不会自动更新宿主或已安装插件。
