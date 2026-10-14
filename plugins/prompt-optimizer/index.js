@@ -33,7 +33,6 @@ var createDefaults = (t) => ({
   model: "",
   length: "preserve",
   structure: "natural",
-  autoApply: true,
   codebaseContext: normalizeCodebaseContext({})
 });
 var asString = (value) => typeof value === "string" ? value : "";
@@ -50,8 +49,7 @@ var normalizePreferences = (t, raw) => {
     apiProfile: typeof value.apiProfile === "string" ? value.apiProfile : base.apiProfile,
     model: typeof value.model === "string" ? value.model : base.model,
     length: hasOwn(LENGTHS, asString(value.length)) ? value.length : base.length,
-    structure: hasOwn(STRUCTURES, asString(value.structure)) ? value.structure : base.structure,
-    autoApply: typeof value.autoApply === "boolean" ? value.autoApply : base.autoApply
+    structure: hasOwn(STRUCTURES, asString(value.structure)) ? value.structure : base.structure
   };
 };
 var InstructionBuildError = class extends Error {
@@ -439,7 +437,7 @@ async function runOptimization({ api, signal }, forceProjectContext) {
         }
       };
     };
-    return prefs.autoApply ? await apply() : { preview, apply, details };
+    return await apply();
   };
   try {
     return await finish(await optimize(options));
@@ -1103,15 +1101,6 @@ function PromptOptimizerSettings({ api }) {
         disabled: !loaded || saving
       }
     ),
-    /* @__PURE__ */ h("div", { className: "po-card" }, /* @__PURE__ */ h("div", { className: "po-card-head" }, /* @__PURE__ */ h("h3", null, t("fillTitle"))), /* @__PURE__ */ h("label", { className: "po-check" }, /* @__PURE__ */ h(
-      "input",
-      {
-        type: "checkbox",
-        checked: prefs.autoApply,
-        disabled: !loaded || saving,
-        onChange: (event) => change({ autoApply: event.target.checked })
-      }
-    ), /* @__PURE__ */ h("span", null, t("autoApply"))), /* @__PURE__ */ h("p", { className: "po-muted" }, t("autoApplyHelp"))),
     /* @__PURE__ */ h("details", { className: "po-details" }, /* @__PURE__ */ h("summary", null, t("workflowTitle")), /* @__PURE__ */ h("div", { className: "po-details-body" }, /* @__PURE__ */ h("p", null, t("workflow")), /* @__PURE__ */ h("p", null, t("safety")))),
     /* @__PURE__ */ h("details", { className: "po-details" }, /* @__PURE__ */ h("summary", null, t("effectiveInstructions")), /* @__PURE__ */ h("div", { className: "po-details-body" }, /* @__PURE__ */ h("pre", { className: "po-preview" }, preview.text))),
     /* @__PURE__ */ h("div", { className: "po-card po-card-soft" }, /* @__PURE__ */ h("label", { className: "po-check" }, /* @__PURE__ */ h(

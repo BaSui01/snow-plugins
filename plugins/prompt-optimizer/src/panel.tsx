@@ -590,24 +590,6 @@ export default function PromptOptimizerSettings({ api }: PanelProps) {
         disabled={!loaded || saving}
       />
 
-      <div className="po-card">
-        <div className="po-card-head">
-          <h3>{t("fillTitle")}</h3>
-        </div>
-        <label className="po-check">
-          <input
-            type="checkbox"
-            checked={prefs.autoApply}
-            disabled={!loaded || saving}
-            onChange={(event: { target: { checked: boolean } }) =>
-              change({ autoApply: event.target.checked })
-            }
-          />
-          <span>{t("autoApply")}</span>
-        </label>
-        <p className="po-muted">{t("autoApplyHelp")}</p>
-      </div>
-
       <details className="po-details">
         <summary>{t("workflowTitle")}</summary>
         <div className="po-details-body">

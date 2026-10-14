@@ -48,7 +48,6 @@ export type Preferences = {
   model: string;
   length: LengthId;
   structure: StructureId;
-  autoApply: boolean;
   codebaseContext: PromptCodebaseContextOptions;
 };
 
@@ -78,7 +77,6 @@ export const createDefaults = (t: Translate): Preferences => ({
   model: "",
   length: "preserve",
   structure: "natural",
-  autoApply: true,
   codebaseContext: normalizeCodebaseContext({}),
 });
 
@@ -116,8 +114,6 @@ export const normalizePreferences = (
     structure: hasOwn(STRUCTURES, asString(value.structure))
       ? (value.structure as StructureId)
       : base.structure,
-    autoApply:
-      typeof value.autoApply === "boolean" ? value.autoApply : base.autoApply,
   };
 };
 

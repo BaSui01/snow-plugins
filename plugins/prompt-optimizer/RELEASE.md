@@ -1,3 +1,30 @@
+# 提示词优化 1.4.2 输入栏精简与还原入口调整
+
+本版本按使用反馈精简输入栏占用：常驻的「优化差异」「预览」「应用」界面全部移除，「还原」收进魔杖右侧的「更多操作」下拉菜单。
+
+## 更新内容
+
+- **移除常驻优化差异**：输入栏不再渲染「优化差异」diff 折叠框；宿主仅在需要来源复核（`reviewRequired`）时保留审阅入口，普通优化结果完全不占输入栏。
+- **移除常驻预览与应用**：删除输入栏的纯文本预览框、复制与「应用」按钮。Action 返回的 `preview` 只作为结果数据保留，不再有独立的应用 / 复制入口。
+- **「还原」收进下拉菜单**：还原不再是输入栏常驻按钮，改为魔杖右侧「更多操作」下拉中的菜单项（带 `Undo2` 图标），仅在存在可还原结果时出现；执行成功后该入口即时可用，还原成功后自动消失。
+- **去掉「成功后自动回填」开关**：面板删除「结果回填」卡片，优化成功后**始终自动回填**输入框。旧配置里的 `autoApply: false` 会被忽略（该字段已从偏好 schema 移除）。
+- **词条同步**：三语删除 `autoApply` / `autoApplyHelp` / `fillTitle`，`resetWarning` 不再提及「回填偏好」。
+
+## 配套宿主改动
+
+本版本需要配套宿主构建，改动位于宿主 `src/renderer/components/mainContent/chatInput/`：
+
+- `ChatInputPluginAction.tsx`：删除常驻预览 details 块、应用按钮与还原按钮；新增下拉菜单项 `host:restore`（还原）与 `restoreDraft` 处理器；`copyPreview` 与 apply 分支移除。
+- `PromptContextReview.tsx`：移除「优化差异」diff 区块、`diff`/`lines` 词条与 `diffLines` 依赖；仅在 `result.sourceSelection` 存在时渲染。
+
+这是**通用插件输入栏契约**的调整（`chatInputAction` 的 `preview` 不再有 UI，无 `undo` 时结果只读）。旧宿主仍会按原样渲染差异 / 预览 / 应用界面，插件本身不因此报错；仅更新插件不会移除旧宿主的常驻界面。
+
+## 实际验证边界
+
+本轮已实际通过插件 `npm run build`、`npm run check`（TypeScript 与入口产物一致性）及 `python ../../scripts/release.py validate`；配套宿主已通过 `npx tsc --noEmit`、`node scripts/check-docs.cjs` 与完整构建 `CARGO_NET_OFFLINE=true npm run build`。未新增测试或安装依赖。**未进行真实宿主 UI 验收**：下拉菜单项位置与键盘可达性、还原后面板状态、来源复核弹层、跨会话切换与重启持久化均需部署配套宿主后单独验收。静态检查与构建通过不代表交互验收或部署完成。
+
+---
+
 # 提示词优化 1.4.1 跨会话后台优化与草稿智能安全就绪
 
 本版本完善了跨会话状态协同与后台优化体验。

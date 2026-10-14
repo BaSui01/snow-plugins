@@ -55,9 +55,10 @@ const silentFailure = (): Error => new Error("");
  * The input toolbar shows only a spinner for this action.
  *
  * Every status sentence is cleared, including failures: the toolbar is too
- * narrow to read them, and the host still renders its own prominent Undo button
- * on success. Problems stay discoverable from the configuration panel, which
- * reports `unavailable`, `settingsError` and selection errors in place.
+ * narrow to read them, and the host exposes its own Undo entry in the plugin's
+ * "more" dropdown on success. Problems stay discoverable from the
+ * configuration panel, which reports `unavailable`, `settingsError` and
+ * selection errors in place.
  *
  * Receipts are returned in details for the host result UI; no draft, source
  * handle, report or provider error payload is written to plugin logs/storage.
@@ -297,7 +298,8 @@ async function runOptimization(
         return { preview, details };
       }
       let restored = false;
-      // No message on success: the host shows its own prominent Undo button.
+      // No message on success: the host exposes its own Undo entry in the
+      // plugin's "more" dropdown instead of the input toolbar.
       return {
         preview,
         details,
@@ -313,7 +315,8 @@ async function runOptimization(
       };
     };
 
-    return prefs.autoApply ? await apply() : { preview, apply, details };
+    // Always auto-fill: the input toolbar no longer offers a preview/apply step.
+    return await apply();
   };
   try {
     return await finish(await optimize(options));
