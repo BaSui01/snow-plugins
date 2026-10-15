@@ -2,13 +2,17 @@
 
 - ID：`com.snow.external-tool-renderer`（保持稳定，未随显示名变更）
 - 显示名：`工具画廊` / `Tool Gallery` / `工具畫廊`
-- 独立版本：`0.3.0`
+- 独立版本：`0.3.1`
 - 作者：`BaSui`
 - 安装目录：`plugins/external-tool-renderer`（直接包含 `plugin.json`），不能安装仓库根目录。
 
 ## 宿主要求与范围
 
-当前 Snow App **0.4.23 本地源码已配套** `contributions.toolCallRenderers` 与受限桌面 v1 API；该插槽已随上游 PR [#201](https://github.com/MayDay-wpf/snow-app/pull/201 "插件工具调用渲染插槽贡献已合并") 合并进上游 `main`（提交 `408f1fb2`），但**尚未随任何正式标签发布**——已发布的正式版 `0.4.23` 不含该插槽。仅提供 `api.ui.toolCallRendererVersion === 1`、共享 `ui.React` 的桌面构建才能渲染。开发清单不伪造正式最低宿主版本。安装或更新插件不会更新 Snow App。
+该插槽已随上游 PR [#201](https://github.com/MayDay-wpf/snow-app/pull/201 "插件工具调用渲染插槽贡献已合并") 合并进上游 `main`（提交 `408f1fb2`），并**自正式标签 `v0.4.24` 起随发行版发布**（`v0.4.24` / `v0.4.25` 均包含）。仅提供 `api.ui.toolCallRendererVersion === 1`、共享 `ui.React` 的桌面构建才能渲染。
+
+**最低宿主版本为 `0.4.24`**（`plugin.json` 与 `market.json` 一致声明）。原因是宿主对 `contributions.toolCallRenderers` 的清单扫描上限在 `v0.4.23` 及更早版本为 **16 项 / 32 前缀**，本插件声明了 **24 项 / 86 前缀**，在旧宿主上会被静默截断到前 16 项（`exa`、`brave`、`tavily` 及其后 8 个 provider 的专属卡片不会生效）。该上限自 `v0.4.24` 起放宽到 **64 项 / 128 前缀**，同版本还加入了工具名匹配记忆化缓存。安装或更新插件不会更新 Snow App。
+
+> `0.4.23` 及更早版本**完全不含**该插槽，卡片不会渲染（回退通用卡片）；`0.4.24`+ 可完整渲染 24 项。宿主对该字段目前只记录与展示，不做安装拦截，因此旧宿主上仍是「能装但卡片不全」。
 
 工厂同步返回绑定当前卡 API 的 `ApiContext.Provider`；无 hooks、Promise 或加载期 API 捕获。非 v1、已中止 API、React 不一致、插槽错误或不匹配工具返回 `null`，由宿主回退通用卡片。仅桌面；mobile 不在本轮范围。无独立面板、常驻任务或自动执行工具。
 
@@ -148,7 +152,15 @@ python scripts/release.py validate
 
 三语词条在原有 83 条 Anysearch/DBX 基础上，本轮补齐 22 个 provider 的**真实**操作名、字段标签、集合名与分组名，共 **1264 条等键**（en / zh-CN / zh-TW，`missing 0 / extra 0`）。已删除与官方工具名不符且不可达的旧词条（如 `sentry-list-issues`、`list-pods`、`perplexity-search` 等）。未知操作以规范化名显示，不会空白。`style.css` 仅在 `.sno************************` 根下补充通用卡片与美化规则（101 条选择器全部限定在该根类下，仅使用宿主主题变量），不改变原 Anysearch/DBX 卡片规则。MIT 来源、版权见 [NOTICE](NOTICE)、[LICENSE](LICENSE)。
 
-## 本轮（0.3.0）改动摘要
+## 本轮（0.3.1）改动摘要
+
+本版为宿主兼容性声明对齐，不改动任何卡片渲染逻辑与词条：
+
+- 新增 `market.json`（`{"minAppVersion": "0.4.24"}`），`plugin.json` 同步补 `minAppVersion`；版本升至 `0.3.1`。
+- 更正宿主要求说明：插槽**自 `v0.4.24` 起已随正式标签发布**（原文写「尚未随任何正式标签发布」已过时），并补充 `0.4.24` 起 64 项 / 128 前缀上限这一代际差。
+- 其余源码、`index.js`、`style.css`、三语词条与 0.3.0 完全一致。
+
+## 0.3.0 改动摘要
 
 - `src/providers.ts`：新增 `collections` 字段（每个 provider 的真实结果集合名），`category` 改用宿主完整 `ToolCategory` 联合类型，使徽章图标贴合语义（GitHub/GitLab→git、Sentry→telemetry、Docker/K8s→terminal、Linear→todo、Notion→outline）。
 - `src/summaries.ts`（新增）：按 provider 的真实参数名生成折叠态摘要，SerpApi 自动解包 `params`。
@@ -159,6 +171,6 @@ python scripts/release.py validate
 
 ## 发布与验证边界
 
-正式最低宿主版本尚未确定；desktop 真机交互、三语/主题、链接用户激活、图片解码、大结果与各 MCP 服务版本返回格式须由配套宿主实际验收。静态构建不等于 UI 验收；不宣称所有 MCP 协议都具备专属字段展示。
+最低宿主版本 `0.4.24` 已由 `market.json` 与 `plugin.json` 一致声明，但 desktop 真机交互、三语/主题、链接用户激活、图片解码、大结果与各 MCP 服务版本返回格式仍须由配套宿主实际验收。静态构建不等于 UI 验收；不宣称所有 MCP 协议都具备专属字段展示。
 
-独立标签/安装包按 `<slug>/v<version>` 约定，本版本为 `external-tool-renderer/v0.3.0`。开发/文档/词条改动不会自动更新宿主或已安装插件。
+独立标签/安装包按 `<slug>/v<version>` 约定，本版本为 `external-tool-renderer/v0.3.1`。开发/文档/词条改动不会自动更新宿主或已安装插件。

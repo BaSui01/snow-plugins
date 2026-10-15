@@ -1,3 +1,31 @@
+# 0.3.1 — 工具画廊：宿主兼容性声明对齐（minAppVersion 0.4.24）
+
+独立插件 `com.snow.external-tool-renderer` 版本升至 `0.3.1`。不是宿主更新；不自动安装。**本版不改动任何卡片渲染逻辑、源码、`index.js`、`style.css` 与三语词条**，仅对齐宿主兼容性声明。
+
+## 本版改动
+
+### 1. 明确最低宿主版本 0.4.24
+
+- 新增 `market.json`（`{"minAppVersion": "0.4.24"}`），`plugin.json` 同步补 `minAppVersion`，两处一致。
+- 依据：宿主对 `contributions.toolCallRenderers` 的清单扫描上限在 `v0.4.23` 及更早版本为 **16 项 / 32 前缀**，本插件声明 **24 项 / 86 前缀**，旧宿主会静默截断到前 16 项；该上限自 `v0.4.24` 起放宽到 **64 项 / 128 前缀**，同版本另加入工具名匹配记忆化缓存。
+
+### 2. 更正宿主要求说明
+
+此前文档写「尚未随任何正式标签发布」已过时。实测 `git tag --contains 408f1fb2` 结果为 `v0.4.24`、`v0.4.25`：该插槽**自 `v0.4.24` 起已随正式标签发布**。`0.4.23` 及更早版本完全不含该插槽（`manifest.ts` 无 `toolCallRenderers`、无 `pluginToolCall.tsx`），卡片不会渲染。
+
+### 宿主要求与兼容性
+
+- 最低宿主 **0.4.24**；仅提供 `ui.toolCallRendererVersion === 1`、共享 `ui.React` 的桌面构建才能渲染。
+- `0.4.23` 及更早：无插槽，卡片不渲染（宿主回退通用卡片）。
+- `0.4.24` / `0.4.25`：插槽可用，64 项 / 128 前缀上限，24 项贡献完整生效。
+- 宿主当前对 `minAppVersion` 只记录与展示，不做安装拦截；旧宿主上仍可能「装得上但卡片不全」。
+- 插件不更新宿主；mobile 未迁移。
+
+### 验证
+
+- `python scripts/release.py validate`（根目录）通过。
+- `npm run check`（`tsc --noEmit` 与内存重建比较 `index.js`）通过，确认产物与 0.3.0 一致。
+
 # 0.3.0 — 工具画廊：24 类外部 MCP 全量核对与卡片美化
 
 独立插件 `com.snow.external-tool-renderer` 版本升至 `0.3.0`。不是宿主更新；不自动安装。
@@ -76,7 +104,7 @@
 ### 宿主要求与兼容性
 
 - 仍需提供 `ui.toolCallRendererVersion === 1`、共享 `ui.React` 的桌面构建才能渲染。
-- 该插槽已随上游 [PR #201](https://github.com/MayDay-wpf/snow-app/pull/201 "插件工具调用渲染插槽贡献已合并") 合并进上游 `main`（提交 `408f1fb2`），但**尚未随任何正式标签发布**：已发布的正式版 `0.4.23` 不含该插槽。
+- 该插槽已随上游 [PR #201](https://github.com/MayDay-wpf/snow-app/pull/201 "插件工具调用渲染插槽贡献已合并") 合并进上游 `main`（提交 `408f1fb2`）；0.3.0 发布时尚未随正式标签发布（当时的正式版 `0.4.23` 不含该插槽）。**该陈述已由 0.3.1 更正：插槽自 `v0.4.24` 起已随正式标签发布。**
 - 插件不更新宿主，不伪造 `minAppVersion`。mobile 未迁移。
 
 ### 安全边界
@@ -134,7 +162,7 @@
 #### 宿主要求与兼容性
 
 - 仍需提供 `ui.toolCallRendererVersion === 1`、共享 `ui.React` 的桌面构建才能渲染。
-- 该插槽已随上游 [PR #201](https://github.com/MayDay-wpf/snow-app/pull/201 "插件工具调用渲染插槽贡献已合并") 合并进上游 `main`（提交 `408f1fb2`），但**尚未随任何正式标签发布**：已发布的正式版 `0.4.23` 不含该插槽。
+- 该插槽已随上游 [PR #201](https://github.com/MayDay-wpf/snow-app/pull/201 "插件工具调用渲染插槽贡献已合并") 合并进上游 `main`（提交 `408f1fb2`）；0.2.1 发布时尚未随正式标签发布。**该陈述已由 0.3.1 更正：插槽自 `v0.4.24` 起已随正式标签发布。**
 - 插件不更新宿主，不伪造 `minAppVersion`。mobile 未迁移。
 
 #### 安全边界
