@@ -520,6 +520,18 @@ var parseArgs2 = (args) => {
     return null;
   }
 };
+var contentErrorText = (data) => {
+  const content = Array.isArray(data.content) ? data.content : [];
+  for (const part of content) {
+    if (isRecord2(part) && part.type === "text") {
+      const text = asString2(part.text);
+      if (text && /^Error\s*\[/.test(text)) {
+        return text;
+      }
+    }
+  }
+  return void 0;
+};
 var parseResult2 = (result) => {
   if (!result) {
     return { type: "empty" };
@@ -531,6 +543,9 @@ var parseResult2 = (result) => {
     }
     if (typeof parsed.error === "string") {
       return { type: "error", message: parsed.error };
+    }
+    if (parsed.isError === true) {
+      return { type: "error", message: contentErrorText(parsed) ?? result };
     }
     return { type: "success", data: parsed };
   } catch {
@@ -697,6 +712,26 @@ var DbxToolCall = ({
       const sessionId = asString2(parsedArgs?.session_id);
       displayName = sessionId ? truncate2(sessionId, 32) : void 0;
       meta = data && data.closed !== false ? /* @__PURE__ */ React.createElement("span", { className: "tool-call-dbx-meta tool-call-dbx-meta-ok" }, /* @__PURE__ */ React.createElement(CheckCircle2, { size: 10, "aria-hidden": "true" }), t("toolCall.dbx.closed")) : null;
+      break;
+    }
+    // 事务控制三件套（DBX MCP 0.4.102 起注册，仅在启用事务的原生 MySQL
+    // 会话上可用）：都以 session_id 为唯一参数，摘要展示会话标识。
+    case "begin-transaction": {
+      const sessionId = asString2(parsedArgs?.session_id);
+      displayName = sessionId ? truncate2(sessionId, 32) : void 0;
+      meta = data ? /* @__PURE__ */ React.createElement("span", { className: "tool-call-dbx-meta tool-call-dbx-meta-ok" }, /* @__PURE__ */ React.createElement(Play, { size: 10, "aria-hidden": "true" }), t("toolCall.dbx.started")) : null;
+      break;
+    }
+    case "commit-transaction": {
+      const sessionId = asString2(parsedArgs?.session_id);
+      displayName = sessionId ? truncate2(sessionId, 32) : void 0;
+      meta = data && data.committed !== false ? /* @__PURE__ */ React.createElement("span", { className: "tool-call-dbx-meta tool-call-dbx-meta-ok" }, /* @__PURE__ */ React.createElement(CheckCircle2, { size: 10, "aria-hidden": "true" }), t("toolCall.dbx.committed")) : null;
+      break;
+    }
+    case "rollback-transaction": {
+      const sessionId = asString2(parsedArgs?.session_id);
+      displayName = sessionId ? truncate2(sessionId, 32) : void 0;
+      meta = data ? /* @__PURE__ */ React.createElement("span", { className: "tool-call-dbx-meta tool-call-dbx-meta-ok" }, /* @__PURE__ */ React.createElement(CheckCircle2, { size: 10, "aria-hidden": "true" }), t("toolCall.dbx.rolledBack")) : null;
       break;
     }
     case "add-connection": {

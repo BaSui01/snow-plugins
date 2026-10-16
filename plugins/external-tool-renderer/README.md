@@ -2,7 +2,7 @@
 
 - ID：`com.snow.external-tool-renderer`（保持稳定，未随显示名变更）
 - 显示名：`工具画廊` / `Tool Gallery` / `工具畫廊`
-- 独立版本：`0.3.1`
+- 独立版本：`0.3.2`
 - 作者：`BaSui`
 - 安装目录：`plugins/external-tool-renderer`（直接包含 `plugin.json`），不能安装仓库根目录。
 
@@ -23,7 +23,7 @@
 | 类别 / Provider | 覆盖前缀与服务 | 核心交互与展示特性 |
 | --- | --- | --- |
 | 原 Anysearch | `anysearch-`, `anysearch_` | 独立工厂 `renderAnysearch`，搜索/批量/网页提取/能力发现，原文 fallback |
-| 原 DBX | `dbx-`, `dbx_` | 独立工厂 `renderDbx`，覆盖 DBX MCP 0.4.x 全部 22 个工具（连接/数据库/表/存储过程/SQL 与批量脚本/会话/Redis/Salesforce 两步写入/Kafka 消息/桌面 UI），SQL 与 Markdown 表格多格式兼容；`confirm_token` 与消息体不落卡片 |
+| 原 DBX | `dbx-`, `dbx_` | 独立工厂 `renderDbx`，覆盖 DBX MCP 0.4.102 `tools/list` **实测注册的全部 25 个工具**（连接/数据库/表/存储过程/SQL 与批量脚本/会话/事务控制/Redis/Salesforce 两步写入/Kafka 消息/桌面 UI），SQL 与 Markdown 表格多格式兼容；`confirm_token` 与消息体不落卡片 |
 | Firecrawl | `firecrawl-`, `firecrawl_` | 30 个官方工具（含 monitor/research/feedback 系列）全覆盖（scrape/search/map/crawl/check_crawl_status/parse/agent/agent_status/interact/interact_stop/find_tools/developer_search/gov_search/credit_usage/extract）；网页/新闻/图片分组、研究任务状态与额度用量 |
 | Chrome DevTools | `chrome-devtools-`, `chrome-devtools_`, `chrome_devtools-`, `chrome_devtools_` | 59 个工具：输入自动化、导航与页面、模拟、性能追踪、网络、调试与快照、堆快照与录屏；`pageId`/`uid` 摘要 |
 | Playwright | `playwright-`, `playwright_` | 72 个 `browser_*` 工具（含 network/storage/testing/devtools/vision caps）：导航/快照/查找/点击/悬停/拖拽/输入/表单/按键/截图/标签页/网络/脚本/媒体模拟；敏感输入遮掩 |
@@ -47,7 +47,7 @@
 | **Kubernetes** | `kubernetes-`, `k8s-`, `kubernetes-mcp-`, `k8s-mcp-` | 53 项：`pods_*`/`nodes_*`/`namespaces_list`/`events_list`/`resources_*`/`configuration_*`/`targets_list`/`helm_*`；兼容 kubectl 风格命名 |
 | **Notion** | `notion-`, `notion-mcp-`, `notion_mcp-` | 24 项：页面、数据源、内容块、评论、用户、`post-search`；文本内 JSON 结构解析 |
 
-以上操作名与参数均按各服务**官方仓库源码 / 官方文档**核实。覆盖率以**官方工具清单为驱动**统计：22 个通用 provider 共 **841 个官方工具**，本地化操作名词条覆盖 **841 / 841 = 100%**（缺失 0）。三语词典 1264 条等键（en / zh-CN / zh-TW，`missing 0 / extra 0`）。
+以上操作名与参数均按各服务**官方仓库源码 / 官方文档**核实。覆盖率以**官方工具清单为驱动**统计：22 个通用 provider 共 **841 个官方工具**，本地化操作名词条覆盖 **841 / 841 = 100%**（缺失 0）。三语词典 1298 条等键（en / zh-CN / zh-TW，`missing 0 / extra 0`）。
 
 > 该 100% 指**操作名本地化覆盖**：每个官方工具名都能显示中文/繁中操作标签，不会回退为英文规范化名（如 `get-heapsnapshot-retaining-paths`）。**不等于**每个工具都有专属结果解析器——结果解析仍按 `kind`（search / browser / generic）与 `collections` 分流，未核实返回结构的工具走通用内容渲染。
 
@@ -150,7 +150,16 @@ python scripts/release.py validate
 
 `npm run check` 是现有生产校验（`tsc --noEmit` 与内存重建比较 `index.js`），不新增测试。仅编辑 `src/`，`index.js` 由 build 生成，Blob ESM 无相对运行时 import；依赖仍仅本地 esbuild/typescript/@types/react，不打包第二份 React 或宿主源码。
 
-三语词条在原有 83 条 Anysearch/DBX 基础上，本轮补齐 22 个 provider 的**真实**操作名、字段标签、集合名与分组名，共 **1264 条等键**（en / zh-CN / zh-TW，`missing 0 / extra 0`）。已删除与官方工具名不符且不可达的旧词条（如 `sentry-list-issues`、`list-pods`、`perplexity-search` 等）。未知操作以规范化名显示，不会空白。`style.css` 仅在 `.sno************************` 根下补充通用卡片与美化规则（101 条选择器全部限定在该根类下，仅使用宿主主题变量），不改变原 Anysearch/DBX 卡片规则。MIT 来源、版权见 [NOTICE](NOTICE)、[LICENSE](LICENSE)。
+三语词条在原有 83 条 Anysearch/DBX 基础上，0.3.0 补齐 22 个 provider 的**真实**操作名、字段标签、集合名与分组名，0.3.2 再补 DBX 事务三件套的 9 条，共 **1298 条等键**（en / zh-CN / zh-TW，`missing 0 / extra 0`）。已删除与官方工具名不符且不可达的旧词条（如 `sentry-list-issues`、`list-pods`、`perplexity-search` 等）。未知操作以规范化名显示，不会空白。`style.css` 仅在 `.sno************************` 根下补充通用卡片与美化规则（101 条选择器全部限定在该根类下，仅使用宿主主题变量），不改变原 Anysearch/DBX 卡片规则。MIT 来源、版权见 [NOTICE](NOTICE)、[LICENSE](LICENSE)。
+
+## 本轮（0.3.2）改动摘要
+
+对齐 **DBX MCP 0.4.102 实测注册的 25 个工具**（此前按官方 README 表格的 22 个实现）：
+
+- 新增 `begin-transaction` / `commit-transaction` / `rollback-transaction` 三个 switch 分支：折叠态显示 `session_id` 摘要与「已开启 / 已提交 / 已回滚」状态；`commit` 仅在 `committed !== false` 时报告提交成功。
+- 修正 `parseResult`：识别 MCP 标准错误信封（`isError: true` + `content[].text` 里的 `Error [CODE]: ...`）。旧实现只判断 `parsed.error`，会把这类失败渲染成成功并附上成功徽章。
+- 三语各补 9 条词条（3 操作名 + 3 状态 + 每个工具名的 `dbx_*` / `dbx-dbx_*` 两种形态），1286 → 1298 条等键。
+- 验证：`npm run check`、`python scripts/release.py validate` 通过；以官方工具清单为基准核对 25/25 操作名与 3 个状态词条 `missing 0`；用宿主真实 React 静态渲染新增分支与错误信封样例，输出符合预期。**未做真机 UI 验收。**
 
 ## 本轮（0.3.1）改动摘要
 

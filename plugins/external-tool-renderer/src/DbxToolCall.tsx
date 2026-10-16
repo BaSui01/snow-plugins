@@ -5,11 +5,12 @@
  * 工具名统一以 `dbx-` 前缀暴露（如 dbx-execute-query），因此前端
  * 可以按前缀稳定匹配并渲染，与内置工具保持同一套 ToolCallNode 风格。
  *
- * 覆盖操作（对齐 DBX MCP 0.4.x 的 22 个工具）：list-connections /
- * list-databases / add-connection / duplicate-connection / remove-connection /
- * list-tables / describe-table / list-routines / get-routine-source /
- * get-schema-context / execute-query / execute-batch / open-session /
- * close-session / execute-redis-command / salesforce-current-user /
+ * 覆盖操作（对齐 DBX MCP 0.4.102 `tools/list` 实测注册的 25 个工具）：
+ * list-connections / list-databases / add-connection / duplicate-connection /
+ * remove-connection / list-tables / describe-table / list-routines /
+ * get-routine-source / get-schema-context / execute-query / execute-batch /
+ * open-session / close-session / begin-transaction / commit-transaction /
+ * rollback-transaction / execute-redis-command / salesforce-current-user /
  * salesforce-prepare-write / salesforce-apply-write / peek-messages /
  * send-message / open-table / execute-and-show。
  *
@@ -58,6 +59,28 @@ const parseArgs = (args: string): Record<string, unknown> | null => {
   }
 };
 
+/**
+ * 从 MCP content 信封中提取失败文本。
+ *
+ * DBX 的失败以标准 MCP 信封返回（`{ isError: true, content: [{ type: "text",
+ * text: "Error [SESSION_NOT_FOUND]: ..." }] }`），顶层没有 `error` 字段；
+ * 只按 `parsed.error` 判断会把失败当成功渲染。
+ */
+const contentErrorText = (
+  data: Record<string, unknown>,
+): string | undefined => {
+  const content = Array.isArray(data.content) ? data.content : [];
+  for (const part of content) {
+    if (isRecord(part) && part.type === "text") {
+      const text = asString(part.text);
+      if (text && /^Error\s*\[/.test(text)) {
+        return text;
+      }
+    }
+  }
+  return undefined;
+};
+
 const parseResult = (result: string | undefined): ParsedResult => {
   if (!result) {
     return { type: "empty" };
@@ -69,6 +92,10 @@ const parseResult = (result: string | undefined): ParsedResult => {
     }
     if (typeof parsed.error === "string") {
       return { type: "error", message: parsed.error };
+    }
+    if (parsed.isError === true) {
+      // 优先展示信封里的 `Error [CODE]: ...` 文本，缺失时才回退原始报文。
+      return { type: "error", message: contentErrorText(parsed) ?? result };
     }
     return { type: "success", data: parsed };
   } catch {
@@ -398,6 +425,45 @@ export const DbxToolCall = ({
             {t("toolCall.dbx.closed")}
           </span>
         ) : null;
+      break;
+    }
+    // 事务控制三件套（DBX MCP 0.4.102 起注册，仅在启用事务的原生 MySQL
+    // 会话上可用）：都以 session_id 为唯一参数，摘要展示会话标识。
+    case "begin-transaction": {
+      const sessionId = asString(parsedArgs?.session_id);
+      displayName = sessionId ? truncate(sessionId, 32) : undefined;
+      // 无结构化输出字段；无 error 信封即视为已开始。
+      meta = data ? (
+        <span className="tool-call-dbx-meta tool-call-dbx-meta-ok">
+          <Play size={10} aria-hidden="true" />
+          {t("toolCall.dbx.started")}
+        </span>
+      ) : null;
+      break;
+    }
+    case "commit-transaction": {
+      const sessionId = asString(parsedArgs?.session_id);
+      displayName = sessionId ? truncate(sessionId, 32) : undefined;
+      // 官方说明：只有 MySQL 确认 COMMIT 后结果才报告 committed；
+      // 字段缺失时不谎报已提交。
+      meta =
+        data && data.committed !== false ? (
+          <span className="tool-call-dbx-meta tool-call-dbx-meta-ok">
+            <CheckCircle2 size={10} aria-hidden="true" />
+            {t("toolCall.dbx.committed")}
+          </span>
+        ) : null;
+      break;
+    }
+    case "rollback-transaction": {
+      const sessionId = asString(parsedArgs?.session_id);
+      displayName = sessionId ? truncate(sessionId, 32) : undefined;
+      meta = data ? (
+        <span className="tool-call-dbx-meta tool-call-dbx-meta-ok">
+          <CheckCircle2 size={10} aria-hidden="true" />
+          {t("toolCall.dbx.rolledBack")}
+        </span>
+      ) : null;
       break;
     }
     case "add-connection": {

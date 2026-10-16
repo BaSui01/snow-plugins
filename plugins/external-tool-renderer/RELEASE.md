@@ -1,3 +1,51 @@
+# 0.3.2 — 工具画廊：补齐 DBX 事务控制三件套与 MCP 错误信封识别
+
+独立插件 `com.snow.external-tool-renderer` 版本升至 `0.3.2`。不是宿主更新；不自动安装。本版只改 DBX 渲染器与其三语词条，其余 23 项 provider 卡片、`style.css` 与清单贡献声明未动。
+
+## 本版改动
+
+### 1. 补齐 DBX 事务控制三件套（22 → 25 个工具）
+
+依据**实测**而非文档推定：直接向运行中的 `@dbx-app/mcp-server` 0.4.102 二进制发送 `initialize` + `tools/list`，得到该版本实际注册的 **25 个工具**，比 README 表格列出的 22 个多出三个事务控制工具：
+
+| 工具 | 描述（官方 schema） | 参数 |
+| --- | --- | --- |
+| `dbx_begin_transaction` | Begin a transaction on a transaction-enabled native MySQL session | `session_id`（required） |
+| `dbx_commit_transaction` | Commit the active transaction; committed is reported only after MySQL acknowledges COMMIT | `session_id`（required） |
+| `dbx_rollback_transaction` | Roll back the active transaction. Cleanup remains available after write-policy revocation. | `session_id`（required） |
+
+此前 `src/DbxToolCall.tsx` 的 switch 只有 22 个 `case`，这三个工具落入 `default` 分支——虽然前缀仍能命中渲染器，但摘要只显示规范化操作名，不显示会话与状态。本版新增三个 `case`：折叠态展示 `session_id`（截断 32 字符）+ 状态徽章（已开启 / 已提交 / 已回滚）。
+
+`commit-transaction` 的状态徽章沿用官方语义：只有结果里 `committed !== false` 才显示「已提交」，字段缺失时不谎报提交成功。
+
+### 2. 修正 MCP 错误信封被当作成功渲染
+
+DBX 的失败以标准 MCP 信封返回：
+
+```json
+{ "isError": true, "content": [{ "type": "text", "text": "Error [SESSION_NOT_FOUND]: Session \"x\" not found or expired." }] }
+```
+
+顶层没有 `error` 字段，而旧 `parseResult` 只判断 `parsed.error`，因此这类失败会被当成 `success`：错误提示不显示，`data` 又非空，`meta` 反而渲染出「已开启 / 已回滚」等成功徽章。本版新增 `contentErrorText()`，识别 `isError === true` 并优先提取信封内的 `Error [CODE]: ...` 文本，缺失时才回退原始报文。
+
+### 3. 词条补齐
+
+三语（en / zh-CN / zh-TW）各新增 9 条：3 个操作名（`toolCall.dbx.op.begin-transaction` / `commit-transaction` / `rollback-transaction`）、3 个状态（`started` / `committed` / `rolledBack`），以及每个工具名的两种形态（`toolNames.dbx_*` 与 `toolNames.dbx-dbx_*`）。三语词条数由 1286 → 1298，等键。
+
+## 验证
+
+- `npm run check`（`tsc --noEmit` + 内存重建比对 `index.js`）通过。
+- `python scripts/release.py validate`（根目录）通过：`Validated 3 plugins`。
+- 以官方工具清单为基准的脚本核对：25/25 操作名 + 3 个状态词条在三语中均存在，`missing 0`。
+- 用宿主真实 React（`D:/code/snow-app/node_modules/react`）静态渲染新增三个分支：分别输出「开启事务 / 已开启」「提交事务 / 已提交」「回滚事务 / 已回滚」，错误信封样例正确落入错误分支。
+- **未做真机 UI 验收**：需在 Snow App 内实际调用事务工具后目视确认。
+
+## 遗留与边界
+
+- 三个事务工具仅在**启用事务的原生 MySQL 会话**上可用；其他连接类型调用会返回 `SESSION_NOT_FOUND` 等错误，本版已能正确显示为错误。
+- 官方 README 表格未列这三个工具，属于文档滞后于二进制；若后续 DBX 版本再增删工具，`default` 分支仍会以规范化操作名兜底显示，不会空白。
+- `dbx_execute_redis_comman`（缺失末位字母）的历史拼写映射保留为兜底，实测 0.4.102 已为完整拼写。
+
 # 0.3.1 — 工具画廊：宿主兼容性声明对齐（minAppVersion 0.4.24）
 
 独立插件 `com.snow.external-tool-renderer` 版本升至 `0.3.1`。不是宿主更新；不自动安装。**本版不改动任何卡片渲染逻辑、源码、`index.js`、`style.css` 与三语词条**，仅对齐宿主兼容性声明。
