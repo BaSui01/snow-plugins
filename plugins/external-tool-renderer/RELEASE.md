@@ -1,3 +1,23 @@
+# 0.3.3 — 工具画廊：搜索类与通用 MCP 动态结果元信息与摘要展示优化
+
+独立插件 `com.snow.external-tool-renderer` 版本升至 `0.3.3`。
+
+## 本版改动
+
+### 1. 动态结果指标替换生硬的「1个内容块」
+- **搜索类（kind: "search"）**：依据提取到的搜索结果条数动态展示 `N 条结果`（有结果高亮），无结果时明确展示 `无结果`，不再让用户面对冷冰冰的底层协议细节「1个内容块」。
+- **表格/集合类**：依据记录行数展示 `N 条记录`。
+- **正文/抓取类**：单页文本提取展示字符数（如 `12.5k 字符`）。
+- **兜底**：仅在无特定业务结构时回退内容块数。
+
+### 2. 搜索参数摘要与截断优化
+- 参数 query 压缩换行与多余空白，单行适度有界截断并附加省略号，消除双引号等标点粗暴截断。
+- 完善 Tavily 文本报告解析（提取 Answer，增强 `\r?\n` 与大小写不敏感匹配）。
+- 扩展 Tavily 支持 `tavily-backup` / `tavily_backup` 前缀。
+
+### 3. 三语词条
+- 补充 `toolCall.mcp.resultCount`、`toolCall.mcp.noResults`、`toolCall.mcp.rowCount`、`toolCall.mcp.charCount` 三语等键（zh-CN / en / zh-TW 均 1302 键）。
+
 # 0.3.2 — 工具画廊：补齐 DBX 事务控制三件套与 MCP 错误信封识别
 
 独立插件 `com.snow.external-tool-renderer` 版本升至 `0.3.2`。不是宿主更新；不自动安装。本版只改 DBX 渲染器与其三语词条，其余 23 项 provider 卡片、`style.css` 与清单贡献声明未动。

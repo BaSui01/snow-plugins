@@ -1194,14 +1194,18 @@ function parseSearchFeed(providerId, blocks, records) {
     for (const block of blocks.slice(0, 10)) {
       const text = textOf2(block);
       if (!text) continue;
-      for (const chunk of text.split(/\n(?=Title:\s)/)) {
-        const url = /URL:\s*(\S+)/.exec(chunk)?.[1];
+      const answerMatch = /(?:^|\r?\n)Answer:\s*([\s\S]*?)(?=\r?\n(?:Detailed Results:|Title:|$))/i.exec(text);
+      if (answerMatch && !answer) {
+        answer = answerMatch[1].trim();
+      }
+      for (const chunk of text.split(/\r?\n(?=Title:\s)/i)) {
+        const url = /URL:\s*(\S+)/i.exec(chunk)?.[1];
         const safe = url ? safeUrl(url) : null;
         if (!safe) continue;
         fallback.push({
-          title: /Title:\s*([^\n]*)/.exec(chunk)?.[1]?.trim() ?? "",
+          title: /Title:\s*([^\r\n]*)/i.exec(chunk)?.[1]?.trim() ?? "",
           url: safe,
-          snippet: /Content:\s*([\s\S]*)/.exec(chunk)?.[1]?.trim().slice(0, MAX_BODY_CHARS2) ?? ""
+          snippet: /Content:\s*([\s\S]*)/i.exec(chunk)?.[1]?.trim().slice(0, MAX_BODY_CHARS2) ?? ""
         });
         if (fallback.length >= MAX_ITEMS2) break;
       }
@@ -1813,6 +1817,64 @@ var Blocks = React.memo(function Blocks2({ blocks }) {
   const currentBlocks = React.useMemo(() => blocks.slice(page * 5, (page + 1) * 5), [blocks, page]);
   return /* @__PURE__ */ React.createElement("section", { className: "mcp-blocks" }, /* @__PURE__ */ React.createElement("h4", null, t("toolCall.mcp.contentBlocks"), " · ", blocks.length), currentBlocks.map((block, index) => /* @__PURE__ */ React.createElement("div", { className: "mcp-block", key: `${page}:${index}` }, /* @__PURE__ */ React.createElement("h5", null, block.label), block.kind === "image" ? /* @__PURE__ */ React.createElement(ImageBlock, { value: block.value }) : /* @__PURE__ */ React.createElement(Value, { value: block.value }))), /* @__PURE__ */ React.createElement(Pager2, { total: blocks.length, page, size: 5, onPage: setPage }));
 });
+function computeMeta({
+  status,
+  provider,
+  groups,
+  records,
+  blocks,
+  api
+}) {
+  if (status === "error") {
+    return /* @__PURE__ */ React.createElement("span", { className: "mcp-meta-badge mcp-meta-error" }, api.t("toolCall.mcp.failed", { defaultValue: "Failed" }));
+  }
+  if (status === "running") {
+    return /* @__PURE__ */ React.createElement("span", { className: "mcp-meta-badge mcp-meta-running" }, api.t("toolCall.mcp.status.running", { defaultValue: "Running" }));
+  }
+  if (status === "pending") {
+    return /* @__PURE__ */ React.createElement("span", { className: "mcp-meta-badge mcp-meta-pending" }, api.t("toolCall.mcp.status.pending", { defaultValue: "Pending" }));
+  }
+  if (provider.kind === "search" || groups.length > 0) {
+    const totalResults = groups.reduce((acc, g) => acc + (Array.isArray(g.items) ? g.items.length : 0), 0);
+    if (totalResults > 0) {
+      return /* @__PURE__ */ React.createElement("span", { className: "mcp-meta-badge mcp-meta-active" }, api.t("toolCall.mcp.resultCount", {
+        defaultValue: "{{count}} 条结果",
+        values: { count: totalResults }
+      }));
+    }
+    return /* @__PURE__ */ React.createElement("span", { className: "mcp-meta-badge mcp-meta-muted" }, api.t("toolCall.mcp.noResults", { defaultValue: "无结果" }));
+  }
+  if (records.length > 0) {
+    let collectionCount = 0;
+    for (const record of records) {
+      for (const col of provider.collections) {
+        const val = record[col];
+        if (Array.isArray(val) && val.length > 0) {
+          collectionCount = Math.max(collectionCount, val.length);
+        }
+      }
+    }
+    const count = collectionCount || records.length;
+    if (count > 0) {
+      return /* @__PURE__ */ React.createElement("span", { className: "mcp-meta-badge mcp-meta-active" }, api.t("toolCall.mcp.rowCount", {
+        defaultValue: "{{count}} 条记录",
+        values: { count }
+      }));
+    }
+  }
+  if (blocks.length === 1 && typeof blocks[0].value === "string" && blocks[0].value.length > 100) {
+    const len = blocks[0].value.length;
+    const formatted = len >= 1e3 ? `${(len / 1e3).toFixed(1)}k` : String(len);
+    return /* @__PURE__ */ React.createElement("span", { className: "mcp-meta-badge mcp-meta-muted" }, api.t("toolCall.mcp.charCount", {
+      defaultValue: "{{count}} 字符",
+      values: { count: formatted }
+    }));
+  }
+  if (blocks.length > 0) {
+    return /* @__PURE__ */ React.createElement("span", { className: "mcp-meta-badge" }, api.t("toolCall.mcp.blockCount", { values: { count: blocks.length } }));
+  }
+  return /* @__PURE__ */ React.createElement("span", { className: "mcp-meta-badge" }, api.t(`toolCall.mcp.status.${status}`, { defaultValue: status }));
+}
 function McpToolCall({ toolCall, provider, operation }) {
   const api = useApi();
   const parsed = React.useMemo(() => parseMcp(toolCall.result), [toolCall.result]);
@@ -1853,7 +1915,15 @@ function McpToolCall({ toolCall, provider, operation }) {
     if (progress) return /* @__PURE__ */ React.createElement(ProgressView, { shape: progress });
     return null;
   }, [parsed.blocks, records]);
-  return /* @__PURE__ */ React.createElement(ToolCallNode, { toolName: toolCall.name, status, lazyBody: true, category: provider.category, badgeName: provider.name, displayName: summary ? `${op} · ${summary}` : op, displayNameTitle: toolCall.name, className: "sno************************", meta: /* @__PURE__ */ React.createElement("span", null, parsed.blocks.length ? api.t("toolCall.mcp.blockCount", { values: { count: parsed.blocks.length } }) : api.t(`toolCall.mcp.status.${status}`)) }, /* @__PURE__ */ React.createElement("div", { className: "mcp-card" }, summary && /* @__PURE__ */ React.createElement("p", { className: "mcp-summary" }, summary), status === "error" && /* @__PURE__ */ React.createElement("p", { role: "status", className: "mcp-error" }, api.t("toolCall.mcp.failed")), /* @__PURE__ */ React.createElement("button", { type: "button", "aria-expanded": parametersOpen, onClick: () => setParametersOpen(!parametersOpen) }, api.t("toolCall.mcp.parameters")), parametersOpen && /* @__PURE__ */ React.createElement("section", null, /* @__PURE__ */ React.createElement("p", { className: "mcp-muted" }, api.t("toolCall.mcp.parameterPrivacy")), isRecord3(args) ? /* @__PURE__ */ React.createElement(Value, { value: provider.id === "exa" ? exaParameters(args) : args, parameters: true }) : /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, HIDDEN)), /* @__PURE__ */ React.createElement(Metrics, { records }), feed?.answer && /* @__PURE__ */ React.createElement("div", { className: "mcp-answer" }, /* @__PURE__ */ React.createElement("strong", null, api.t("toolCall.search.answer"), ":"), /* @__PURE__ */ React.createElement("p", null, preview(feed.answer))), feed?.sources && feed.sources.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mcp-sources" }, /* @__PURE__ */ React.createElement("strong", null, api.t("toolCall.search.sources"), " · ", feed.sources.length), /* @__PURE__ */ React.createElement("ul", null, feed.sources.slice(0, 20).map((url, index) => /* @__PURE__ */ React.createElement("li", { key: `${url}-${index}` }, /* @__PURE__ */ React.createElement(SafeLink, { value: url }))))), exa?.textPreview && /* @__PURE__ */ React.createElement("p", { className: "mcp-muted" }, api.t("toolCall.exa.previewOnly")), feed?.textPreview && /* @__PURE__ */ React.createElement("p", { className: "mcp-muted" }, api.t("toolCall.search.textPreview")), groups.length > 0 && /* @__PURE__ */ React.createElement(SearchResults, { groups, showPublished: provider.id === "exa" || provider.id === "brave" }), shape, provider.kind === "browser" && /* @__PURE__ */ React.createElement(BrowserView, { records, collections: provider.collections, blocks: parsed.blocks }), provider.kind === "generic" && /* @__PURE__ */ React.createElement(GenericView, { records, collections: provider.collections, blocks: parsed.blocks }), parsed.bounded && /* @__PURE__ */ React.createElement("p", { className: "mcp-muted" }, api.t("toolCall.mcp.parseLimit")), parsed.blocks.length > 0 ? /* @__PURE__ */ React.createElement(Blocks, { blocks: parsed.blocks }) : /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, api.t(`toolCall.mcp.status.${status}`)), toolCall.streamingStdout && /* @__PURE__ */ React.createElement("section", null, /* @__PURE__ */ React.createElement("h4", null, "stdout"), /* @__PURE__ */ React.createElement(TextValue, { value: toolCall.streamingStdout })), toolCall.streamingStderr && /* @__PURE__ */ React.createElement("section", null, /* @__PURE__ */ React.createElement("h4", null, "stderr"), /* @__PURE__ */ React.createElement(TextValue, { value: toolCall.streamingStderr }))));
+  const meta = React.useMemo(() => computeMeta({
+    status,
+    provider,
+    groups,
+    records,
+    blocks: parsed.blocks,
+    api
+  }), [status, provider, groups, records, parsed.blocks, api]);
+  return /* @__PURE__ */ React.createElement(ToolCallNode, { toolName: toolCall.name, status, lazyBody: true, category: provider.category, badgeName: provider.name, displayName: summary ? `${op} · ${summary}` : op, displayNameTitle: toolCall.name, className: "sno************************", meta }, /* @__PURE__ */ React.createElement("div", { className: "mcp-card" }, summary && /* @__PURE__ */ React.createElement("p", { className: "mcp-summary" }, summary), status === "error" && /* @__PURE__ */ React.createElement("p", { role: "status", className: "mcp-error" }, api.t("toolCall.mcp.failed")), /* @__PURE__ */ React.createElement("button", { type: "button", "aria-expanded": parametersOpen, onClick: () => setParametersOpen(!parametersOpen) }, api.t("toolCall.mcp.parameters")), parametersOpen && /* @__PURE__ */ React.createElement("section", null, /* @__PURE__ */ React.createElement("p", { className: "mcp-muted" }, api.t("toolCall.mcp.parameterPrivacy")), isRecord3(args) ? /* @__PURE__ */ React.createElement(Value, { value: provider.id === "exa" ? exaParameters(args) : args, parameters: true }) : /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, HIDDEN)), /* @__PURE__ */ React.createElement(Metrics, { records }), feed?.answer && /* @__PURE__ */ React.createElement("div", { className: "mcp-answer" }, /* @__PURE__ */ React.createElement("strong", null, api.t("toolCall.search.answer"), ":"), /* @__PURE__ */ React.createElement("p", null, preview(feed.answer))), feed?.sources && feed.sources.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mcp-sources" }, /* @__PURE__ */ React.createElement("strong", null, api.t("toolCall.search.sources"), " · ", feed.sources.length), /* @__PURE__ */ React.createElement("ul", null, feed.sources.slice(0, 20).map((url, index) => /* @__PURE__ */ React.createElement("li", { key: `${url}-${index}` }, /* @__PURE__ */ React.createElement(SafeLink, { value: url }))))), exa?.textPreview && /* @__PURE__ */ React.createElement("p", { className: "mcp-muted" }, api.t("toolCall.exa.previewOnly")), feed?.textPreview && /* @__PURE__ */ React.createElement("p", { className: "mcp-muted" }, api.t("toolCall.search.textPreview")), groups.length > 0 && /* @__PURE__ */ React.createElement(SearchResults, { groups, showPublished: provider.id === "exa" || provider.id === "brave" }), shape, provider.kind === "browser" && /* @__PURE__ */ React.createElement(BrowserView, { records, collections: provider.collections, blocks: parsed.blocks }), provider.kind === "generic" && /* @__PURE__ */ React.createElement(GenericView, { records, collections: provider.collections, blocks: parsed.blocks }), parsed.bounded && /* @__PURE__ */ React.createElement("p", { className: "mcp-muted" }, api.t("toolCall.mcp.parseLimit")), parsed.blocks.length > 0 ? /* @__PURE__ */ React.createElement(Blocks, { blocks: parsed.blocks }) : /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, api.t(`toolCall.mcp.status.${status}`)), toolCall.streamingStdout && /* @__PURE__ */ React.createElement("section", null, /* @__PURE__ */ React.createElement("h4", null, "stdout"), /* @__PURE__ */ React.createElement(TextValue, { value: toolCall.streamingStdout })), toolCall.streamingStderr && /* @__PURE__ */ React.createElement("section", null, /* @__PURE__ */ React.createElement("h4", null, "stderr"), /* @__PURE__ */ React.createElement(TextValue, { value: toolCall.streamingStderr }))));
 }
 
 // src/providers.ts
@@ -1865,7 +1935,7 @@ var providers = [
   { id: "github", name: "GitHub", services: ["github"], category: "git", kind: "generic", collections: ["repositories", "issues", "pull_requests", "commits", "branches", "releases", "files", "gists", "discussions", "notifications", "users", "teams", "jobs", "workflow_runs", "items"] },
   { id: "exa", name: "Exa", services: ["exa"], category: "search", kind: "search", collections: ["results"] },
   { id: "brave", name: "Brave Search", services: ["brave-search", "brave_search", "brave"], category: "search", kind: "search", collections: ["results", "items", "grounding", "sources"] },
-  { id: "tavily", name: "Tavily", services: ["tavily", "tavily-mcp", "tavily_mcp"], category: "search", kind: "search", collections: ["results", "failed_results", "images"] },
+  { id: "tavily", name: "Tavily", services: ["tavily", "tavily-mcp", "tavily_mcp", "tavily-backup", "tavily_backup"], category: "search", kind: "search", collections: ["results", "failed_results", "images"] },
   { id: "perplexity", name: "Perplexity", services: ["perplexity"], category: "search", kind: "search", collections: ["results"] },
   { id: "parallel", name: "Parallel", services: ["parallel", "parallel-search", "parallel_search"], category: "search", kind: "search", collections: ["results", "errors"] },
   { id: "serpapi", name: "SerpApi", services: ["serpapi"], category: "search", kind: "search", collections: ["organic_results", "news_results", "local_results", "images_results", "shopping_results", "video_results", "top_stories", "related_questions", "related_searches", "perspectives", "immersive_products", "knowledge_graph", "pagination"] },

@@ -2,7 +2,7 @@
 
 - ID：`com.snow.external-tool-renderer`（保持稳定，未随显示名变更）
 - 显示名：`工具画廊` / `Tool Gallery` / `工具畫廊`
-- 独立版本：`0.3.2`
+- 独立版本：`0.3.3`
 - 作者：`BaSui`
 - 安装目录：`plugins/external-tool-renderer`（直接包含 `plugin.json`），不能安装仓库根目录。
 

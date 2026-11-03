@@ -165,14 +165,19 @@ export function parseSearchFeed(
     for (const block of blocks.slice(0, 10)) {
       const text = textOf(block);
       if (!text) continue;
-      for (const chunk of text.split(/\n(?=Title:\s)/)) {
-        const url = /URL:\s*(\S+)/.exec(chunk)?.[1];
+      // 提取 Tavily 文本报告中的 Answer
+      const answerMatch = /(?:^|\r?\n)Answer:\s*([\s\S]*?)(?=\r?\n(?:Detailed Results:|Title:|$))/i.exec(text);
+      if (answerMatch && !answer) {
+        answer = answerMatch[1].trim();
+      }
+      for (const chunk of text.split(/\r?\n(?=Title:\s)/i)) {
+        const url = /URL:\s*(\S+)/i.exec(chunk)?.[1];
         const safe = url ? safeUrl(url) : null;
         if (!safe) continue;
         fallback.push({
-          title: /Title:\s*([^\n]*)/.exec(chunk)?.[1]?.trim() ?? "",
+          title: /Title:\s*([^\r\n]*)/i.exec(chunk)?.[1]?.trim() ?? "",
           url: safe,
-          snippet: /Content:\s*([\s\S]*)/.exec(chunk)?.[1]?.trim().slice(0, MAX_BODY_CHARS) ?? "",
+          snippet: /Content:\s*([\s\S]*)/i.exec(chunk)?.[1]?.trim().slice(0, MAX_BODY_CHARS) ?? "",
         });
         if (fallback.length >= MAX_ITEMS) break;
       }
@@ -215,11 +220,17 @@ export function parseSearchFeed(
   };
 }
 
+function cleanSummaryText(text: string, maxLen = 120): string {
+  const normalized = safeText(text).replace(/\s+/g, " ").trim();
+  if (normalized.length <= maxLen) return normalized;
+  return `${normalized.slice(0, maxLen).trimEnd()}…`;
+}
+
 /** Bounded parameter summary shared by the search-class providers. */
 export function searchProviderSummary(providerId: string, args: Record<string, unknown>, t: Translate): string {
   const parts: string[] = [];
   const q = args.query ?? args.q ?? args.search_query;
-  if (typeof q === "string") parts.push(`${t("toolCall.search.query")}: ${preview(q, "query", true)}`);
+  if (typeof q === "string") parts.push(`${t("toolCall.search.query")}: ${cleanSummaryText(q)}`);
 
   if (typeof args.url === "string") parts.push(`url: ${preview(args.url, "url", true)}`);
   else if (Array.isArray(args.urls)) parts.push(`urls: ${args.urls.length}`);

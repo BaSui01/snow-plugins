@@ -217,8 +217,29 @@
   flex-shrink: 0;
 }
 
-.snow-external-tool-renderer .tool-call-dbx-meta-ok {
+.sno************************ .tool-call-dbx-meta-ok {
   color: var(--accent-green-text);
+}
+
+.sno************************ .mcp-meta-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+}
+.sno************************ .mcp-meta-active {
+  color: var(--accent-blue-text);
+  font-weight: 500;
+}
+.sno************************ .mcp-meta-error {
+  color: var(--accent-red-text);
+  font-weight: 500;
+}
+.sno************************ .mcp-meta-muted {
+  color: var(--text-tertiary);
+}
+.sno************************ .mcp-meta-running {
+  color: var(--accent-blue-text);
 }
 
 /* Common MCP cards: keep every rule below the verified plugin root. */

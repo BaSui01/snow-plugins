@@ -23,7 +23,7 @@ export const providers: readonly Provider[] = [
   { id: "github", name: "GitHub", services: ["github"], category: "git", kind: "generic", collections: ["repositories", "issues", "pull_requests", "commits", "branches", "releases", "files", "gists", "discussions", "notifications", "users", "teams", "jobs", "workflow_runs", "items"] },
   { id: "exa", name: "Exa", services: ["exa"], category: "search", kind: "search", collections: ["results"] },
   { id: "brave", name: "Brave Search", services: ["brave-search", "brave_search", "brave"], category: "search", kind: "search", collections: ["results", "items", "grounding", "sources"] },
-  { id: "tavily", name: "Tavily", services: ["tavily", "tavily-mcp", "tavily_mcp"], category: "search", kind: "search", collections: ["results", "failed_results", "images"] },
+  { id: "tavily", name: "Tavily", services: ["tavily", "tavily-mcp", "tavily_mcp", "tavily-backup", "tavily_backup"], category: "search", kind: "search", collections: ["results", "failed_results", "images"] },
   { id: "perplexity", name: "Perplexity", services: ["perplexity"], category: "search", kind: "search", collections: ["results"] },
   { id: "parallel", name: "Parallel", services: ["parallel", "parallel-search", "parallel_search"], category: "search", kind: "search", collections: ["results", "errors"] },
   { id: "serpapi", name: "SerpApi", services: ["serpapi"], category: "search", kind: "search", collections: ["organic_results", "news_results", "local_results", "images_results", "shopping_results", "video_results", "top_stories", "related_questions", "related_searches", "perspectives", "immersive_products", "knowledge_graph", "pagination"] },

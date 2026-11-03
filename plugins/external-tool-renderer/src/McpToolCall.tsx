@@ -216,6 +216,105 @@ const Blocks = React.memo(function Blocks({ blocks }: { blocks: ContentBlock[] }
   </section>;
 });
 
+function computeMeta({
+  status,
+  provider,
+  groups,
+  records,
+  blocks,
+  api,
+}: {
+  status: "pending" | "running" | "completed" | "error";
+  provider: Provider;
+  groups: ReturnType<typeof searchGroups>;
+  records: Record<string, unknown>[];
+  blocks: ContentBlock[];
+  api: ReturnType<typeof useApi>;
+}): React.JSX.Element {
+  if (status === "error") {
+    return <span className="mcp-meta-badge mcp-meta-error">{api.t("toolCall.mcp.failed", { defaultValue: "Failed" })}</span>;
+  }
+  if (status === "running") {
+    return <span className="mcp-meta-badge mcp-meta-running">{api.t("toolCall.mcp.status.running", { defaultValue: "Running" })}</span>;
+  }
+  if (status === "pending") {
+    return <span className="mcp-meta-badge mcp-meta-pending">{api.t("toolCall.mcp.status.pending", { defaultValue: "Pending" })}</span>;
+  }
+
+  // 1. 搜索类（kind: "search" 或解析出了 groups）优先展示结果数
+  if (provider.kind === "search" || groups.length > 0) {
+    const totalResults = groups.reduce((acc, g) => acc + (Array.isArray(g.items) ? g.items.length : 0), 0);
+    if (totalResults > 0) {
+      return (
+        <span className="mcp-meta-badge mcp-meta-active">
+          {api.t("toolCall.mcp.resultCount", {
+            defaultValue: "{{count}} 条结果",
+            values: { count: totalResults },
+          })}
+        </span>
+      );
+    }
+    return (
+      <span className="mcp-meta-badge mcp-meta-muted">
+        {api.t("toolCall.mcp.noResults", { defaultValue: "无结果" })}
+      </span>
+    );
+  }
+
+  // 2. 结构化记录与表格集合
+  if (records.length > 0) {
+    let collectionCount = 0;
+    for (const record of records) {
+      for (const col of provider.collections) {
+        const val = record[col];
+        if (Array.isArray(val) && val.length > 0) {
+          collectionCount = Math.max(collectionCount, val.length);
+        }
+      }
+    }
+    const count = collectionCount || records.length;
+    if (count > 0) {
+      return (
+        <span className="mcp-meta-badge mcp-meta-active">
+          {api.t("toolCall.mcp.rowCount", {
+            defaultValue: "{{count}} 条记录",
+            values: { count },
+          })}
+        </span>
+      );
+    }
+  }
+
+  // 3. 抓取与文本类：若有较长文本内容，显示字符数
+  if (blocks.length === 1 && typeof blocks[0].value === "string" && blocks[0].value.length > 100) {
+    const len = blocks[0].value.length;
+    const formatted = len >= 1000 ? `${(len / 1000).toFixed(1)}k` : String(len);
+    return (
+      <span className="mcp-meta-badge mcp-meta-muted">
+        {api.t("toolCall.mcp.charCount", {
+          defaultValue: "{{count}} 字符",
+          values: { count: formatted },
+        })}
+      </span>
+    );
+  }
+
+  // 4. 兜底内容块数
+  if (blocks.length > 0) {
+    return (
+      <span className="mcp-meta-badge">
+        {api.t("toolCall.mcp.blockCount", { values: { count: blocks.length } })}
+      </span>
+    );
+  }
+
+  return (
+    <span className="mcp-meta-badge">
+      {api.t(`toolCall.mcp.status.${status}`, { defaultValue: status })}
+    </span>
+  );
+}
+
 export function McpToolCall({ toolCall, provider, operation }: { toolCall: ToolCallInfo; provider: Provider; operation: string }) {
   const api = useApi();
   const parsed = React.useMemo(() => parseMcp(toolCall.result), [toolCall.result]);
@@ -261,7 +360,15 @@ export function McpToolCall({ toolCall, provider, operation }: { toolCall: ToolC
     if (progress) return <ProgressView shape={progress} />;
     return null;
   }, [parsed.blocks, records]);
-  return <ToolCallNode toolName={toolCall.name} status={status} lazyBody category={provider.category} badgeName={provider.name} displayName={summary ? `${op} · ${summary}` : op} displayNameTitle={toolCall.name} className="sno************************" meta={<span>{parsed.blocks.length ? api.t("toolCall.mcp.blockCount", { values: { count: parsed.blocks.length } }) : api.t(`toolCall.mcp.status.${status}`)}</span>}>
+  const meta = React.useMemo(() => computeMeta({
+    status,
+    provider,
+    groups,
+    records,
+    blocks: parsed.blocks,
+    api,
+  }), [status, provider, groups, records, parsed.blocks, api]);
+  return <ToolCallNode toolName={toolCall.name} status={status} lazyBody category={provider.category} badgeName={provider.name} displayName={summary ? `${op} · ${summary}` : op} displayNameTitle={toolCall.name} className="sno************************" meta={meta}>
     <div className="mcp-card">
       {summary && <p className="mcp-summary">{summary}</p>}
       {status === "error" && <p role="status" className="mcp-error">{api.t("toolCall.mcp.failed")}</p>}
