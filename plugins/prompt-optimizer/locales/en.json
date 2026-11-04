@@ -58,7 +58,6 @@
   "confirmReset": "Confirm reset and save",
   "cancel": "Cancel",
   "effectiveInstructions": "View optimization rules",
-  "ready": "Configure and save here; use the input-toolbar wand for everyday optimization.",
   "unsaved": "Unsaved changes. The input action still uses the last saved settings.",
   "saved": "Settings saved. The next input-toolbar click uses them immediately.",
   "settingsError": "Could not read or save settings. No optimization request is started with uncertain preferences. Retry.",

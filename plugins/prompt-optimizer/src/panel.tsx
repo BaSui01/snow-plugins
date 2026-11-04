@@ -405,7 +405,6 @@ export default function PromptOptimizerSettings({ api }: PanelProps) {
         </span>
         <div className="po-header-text">
           <h2>{t("title")}</h2>
-          <p className="po-muted">{t("ready")}</p>
         </div>
       </header>
 
@@ -669,14 +668,6 @@ export default function PromptOptimizerSettings({ api }: PanelProps) {
               <span className="po-savebar-text">
                 {footerStatus}
                 {dirty && status !== "unsaved" ? ` · ${t("unsaved")}` : ""}
-              </span>
-            </div>
-            <div className="po-savebar-meta">
-              <span>
-                {t("apiProfile")}：{profile?.displayName ?? "—"}
-              </span>
-              <span>
-                {t("model")}：{models.includes(prefs.model) ? prefs.model : "—"}
               </span>
             </div>
             <div className="po-actions">

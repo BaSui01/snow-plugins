@@ -4,7 +4,7 @@
   margin: 12px 0 4px;
   width: 100%;
   min-width: 0;
-  border: 1px solid var(--border-color, currentColor);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-lg, 12px);
   background: var(--bg-secondary, transparent);
   color: var(--text-primary, inherit);
@@ -26,7 +26,7 @@
   gap: 10px;
   align-items: center;
   padding: 11px 12px;
-  border-bottom: 1px solid var(--border-color, currentColor);
+  border-bottom: 1px solid var(--border-color);
 }
 .sfc-inline .sfc-inline-icon {
   display: grid;
@@ -34,10 +34,10 @@
   flex: 0 0 36px;
   width: 36px;
   height: 36px;
-  border: 1px solid var(--border-color, currentColor);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-md, 8px);
   background: var(--accent-blue-bg, transparent);
-  color: var(--accent-blue-text, var(--accent-blue, currentColor));
+  color: var(--accent-blue-text);
   line-height: 0;
   align-self: center;
 }
@@ -70,10 +70,10 @@
   min-width: 0;
 }
 .sfc-inline .sfc-inline-add {
-  color: var(--accent-green-text, var(--accent-green, currentColor));
+  color: var(--accent-green-text);
 }
 .sfc-inline .sfc-inline-delete {
-  color: var(--accent-red-text, var(--accent-red, currentColor));
+  color: var(--accent-red-text);
 }
 .sfc-inline .sfc-inline-muted {
   color: var(--text-tertiary, var(--text-secondary, inherit));
@@ -88,7 +88,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: thin;
-  scrollbar-color: var(--scrollbar-thumb, var(--border-color, currentColor)) transparent;
+  scrollbar-color: var(--scrollbar-thumb, var(--border-color)) transparent;
   transition: max-height 0.24s cubic-bezier(0.33, 0, 0.2, 1);
 }
 .sfc-inline .sfc-inline-list:has(.sfc-inline-diff-collapse:not(.is-collapsed)) {
@@ -147,11 +147,11 @@
   text-overflow: ellipsis;
 }
 .sfc-inline .sfc-inline-path:not(:disabled):hover .sfc-inline-path-text {
-  color: var(--accent-blue-text, var(--accent-blue, currentColor));
+  color: var(--accent-blue-text);
   text-decoration: underline;
 }
 .sfc-inline .sfc-inline-path:focus-visible {
-  outline: 1px solid var(--accent-blue-text, var(--accent-blue, currentColor));
+  outline: 1px solid var(--accent-blue-text);
   outline-offset: 2px;
   background: var(--accent-blue-bg, var(--bg-hover, transparent));
 }
@@ -197,7 +197,7 @@
 }
 .sfc-inline .sfc-inline-icon svg { width: 22px; height: 22px; }
 .sfc-inline .sfc-inline-toggle:focus-visible {
-  outline: 2px solid var(--accent-blue, currentColor);
+  outline: 2px solid var(--accent-blue);
   outline-offset: -2px;
   border-radius: var(--radius-sm, 6px);
 }
@@ -207,6 +207,58 @@
   font-size: 12px;
   overflow-wrap: anywhere;
 }
+/* 窄栏降级：容器过窄时左右双栏只剩两条细缝并被迫横向滚动，
+   改为按行堆叠（删除行在上、新增行在下），单列可读且不丢任何一侧内容。 */
+@container sfc (max-width: 520px) {
+  .sfc-inline .sfc-split-diff-table {
+    display: block;
+    min-width: 0;
+  }
+  .sfc-inline .sfc-split-diff-table thead {
+    display: none;
+  }
+  .sfc-inline .sfc-split-diff-table tbody {
+    display: block;
+  }
+  .sfc-inline .sfc-split-row {
+    display: grid;
+    grid-template-columns: 4em minmax(0, 1fr);
+    border-top: 1px solid var(--border-color);
+  }
+  .sfc-inline .sfc-split-row > td {
+    display: block;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    border-right: 0;
+  }
+  .sfc-inline .sfc-split-row > td.sfc-diff-empty {
+    display: none;
+  }
+  /* 上下文行与 EOF 提示行两侧内容相同，只保留一侧避免重复。 */
+  .sfc-inline .sfc-split-row.sfc-split-context > td:nth-child(n + 3),
+  .sfc-inline .sfc-split-row.sfc-diff-eof > td:nth-child(n + 3) {
+    display: none;
+  }
+  .sfc-inline .sfc-split-row > .sfc-split-num {
+    padding-inline-end: 4px;
+    border-inline-end: 1px solid var(--border-color);
+  }
+  .sfc-inline .sfc-split-row > .sfc-split-code {
+    padding-inline-start: 6px;
+  }
+  .sfc-inline .sfc-split-hunk-row,
+  .sfc-inline .sfc-split-meta-row {
+    display: block;
+  }
+  .sfc-inline .sfc-split-hunk-cell,
+  .sfc-inline .sfc-split-meta-cell {
+    display: block;
+    width: auto;
+    white-space: pre-wrap;
+  }
+}
+
 @container sfc (max-width: 360px) {
   .sfc-inline .sfc-inline-file {
     padding: 7px 6px;
@@ -255,7 +307,7 @@
   max-width: 100%;
   cursor: auto;
   margin-top: 6px;
-  border: 1px solid var(--border-color, currentColor);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-sm, 6px);
   background: var(--bg-primary, transparent);
   overflow: hidden;
@@ -266,7 +318,7 @@
   scrollbar-width: thin;
 }
 .sfc-inline .sfc-inline-diff-scroll:focus-visible {
-  outline: 2px solid var(--accent-blue, currentColor);
+  outline: 2px solid var(--accent-blue);
   outline-offset: -2px;
 }
 
@@ -274,7 +326,7 @@
 .sfc-inline .sfc-split-diff-table {
   border-collapse: collapse;
   width: 100%;
-  min-width: 580px;
+  min-width: 0;
   table-layout: fixed;
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 11px;
@@ -282,7 +334,7 @@
 }
 .sfc-inline .sfc-split-diff-table thead tr {
   background: var(--bg-tertiary, transparent);
-  border-bottom: 1px solid var(--border-color, currentColor);
+  border-bottom: 1px solid var(--border-color);
 }
 .sfc-inline .sfc-split-diff-table th {
   padding: 3px 6px;
@@ -298,7 +350,7 @@
   max-width: 4em;
   text-align: end;
   color: var(--text-tertiary, var(--text-secondary, inherit));
-  border-right: 1px solid var(--border-color, currentColor);
+  border-right: 1px solid var(--border-color);
   overflow: hidden;
   white-space: nowrap;
 }
@@ -323,7 +375,7 @@
   white-space: nowrap;
   user-select: none;
   font-variant-numeric: tabular-nums;
-  border-right: 1px solid var(--border-color, currentColor);
+  border-right: 1px solid var(--border-color);
   color: var(--text-tertiary, var(--text-secondary, inherit));
   vertical-align: top;
   overflow: hidden;
@@ -339,17 +391,17 @@
 }
 /* Center divider separating left (before) and right (after) */
 .sfc-inline .sfc-split-divider {
-  border-right: 2px solid var(--border-color, currentColor);
+  border-right: 2px solid var(--border-color);
 }
 /* Hunk header row */
 .sfc-inline .sfc-split-hunk-cell {
   background: var(--bg-tertiary, transparent);
-  color: var(--accent-blue-text, var(--accent-blue, currentColor));
+  color: var(--accent-blue-text);
   font-size: 10px;
   font-weight: 500;
   padding: 3px 8px;
-  border-top: 1px solid var(--border-color, currentColor);
-  border-bottom: 1px solid var(--border-color, currentColor);
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -375,12 +427,12 @@
 /* Left deleted side */
 .sfc-inline td.sfc-diff-del {
   background: var(--accent-red-bg, transparent);
-  color: var(--accent-red-text, var(--accent-red, currentColor));
+  color: var(--accent-red-text);
 }
 /* Right added side */
 .sfc-inline td.sfc-diff-add {
   background: var(--accent-green-bg, transparent);
-  color: var(--accent-green-text, var(--accent-green, currentColor));
+  color: var(--accent-green-text);
 }
 /* Empty cell */
 .sfc-inline td.sfc-diff-empty {

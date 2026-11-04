@@ -995,7 +995,7 @@ function PromptOptimizerSettings({ api }) {
       "aria-label": t("title"),
       "aria-busy": busy
     },
-    /* @__PURE__ */ h("header", { className: "po-header" }, /* @__PURE__ */ h("span", { className: "po-icon", "aria-hidden": "true" }, renderableIcon ? h(brandIcon, { size: 20 }) : "✦"), /* @__PURE__ */ h("div", { className: "po-header-text" }, /* @__PURE__ */ h("h2", null, t("title")), /* @__PURE__ */ h("p", { className: "po-muted" }, t("ready")))),
+    /* @__PURE__ */ h("header", { className: "po-header" }, /* @__PURE__ */ h("span", { className: "po-icon", "aria-hidden": "true" }, renderableIcon ? h(brandIcon, { size: 20 }) : "✦"), /* @__PURE__ */ h("div", { className: "po-header-text" }, /* @__PURE__ */ h("h2", null, t("title")))),
     !supported && /* @__PURE__ */ h("div", { className: "po-status po-warning", role: "alert" }, t("unavailable")),
     /* @__PURE__ */ h("p", { className: "po-note" }, t("privacy")),
     /* @__PURE__ */ h("div", { className: "po-card" }, /* @__PURE__ */ h("div", { className: "po-card-head" }, /* @__PURE__ */ h("h3", null, t("rulesTitle")), /* @__PURE__ */ h("p", { className: "po-muted" }, t("strategyHelp"))), /* @__PURE__ */ h("label", { className: "po-field" }, /* @__PURE__ */ h("span", null, t("strategy")), select("strategy", Object.keys(STRATEGIES))), /* @__PURE__ */ h("details", { className: "po-details" }, /* @__PURE__ */ h("summary", null, /* @__PURE__ */ h("span", { className: "po-label" }, /* @__PURE__ */ h("span", null, t("promptDetailsTitle")), /* @__PURE__ */ h(
@@ -1143,7 +1143,7 @@ function PromptOptimizerSettings({ api }) {
         onClick: () => setResetPending(false)
       },
       t("cancel")
-    ))) : /* @__PURE__ */ h("div", { className: "po-savebar-body" }, /* @__PURE__ */ h("div", { className: "po-savebar-status", role: "status", "aria-live": "polite" }, /* @__PURE__ */ h("span", { className: dirty ? "po-dot po-dot-dirty" : "po-dot" }), /* @__PURE__ */ h("span", { className: "po-savebar-text" }, footerStatus, dirty && status !== "unsaved" ? ` · ${t("unsaved")}` : "")), /* @__PURE__ */ h("div", { className: "po-savebar-meta" }, /* @__PURE__ */ h("span", null, t("apiProfile"), "：", profile?.displayName ?? "—"), /* @__PURE__ */ h("span", null, t("model"), "：", models.includes(prefs.model) ? prefs.model : "—")), /* @__PURE__ */ h("div", { className: "po-actions" }, !loaded && status === "settingsError" && /* @__PURE__ */ h(
+    ))) : /* @__PURE__ */ h("div", { className: "po-savebar-body" }, /* @__PURE__ */ h("div", { className: "po-savebar-status", role: "status", "aria-live": "polite" }, /* @__PURE__ */ h("span", { className: dirty ? "po-dot po-dot-dirty" : "po-dot" }), /* @__PURE__ */ h("span", { className: "po-savebar-text" }, footerStatus, dirty && status !== "unsaved" ? ` · ${t("unsaved")}` : "")), /* @__PURE__ */ h("div", { className: "po-actions" }, !loaded && status === "settingsError" && /* @__PURE__ */ h(
       "button",
       {
         type: "button",

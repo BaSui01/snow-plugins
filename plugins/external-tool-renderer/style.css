@@ -47,7 +47,7 @@
   gap: 4px;
   min-width: 0;
   padding: 8px 10px;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   background: var(--bg-primary);
 }
@@ -134,7 +134,7 @@
 
 .snow-external-tool-renderer .tool-call-dbx-table-wrap {
   overflow: auto;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
 }
 
@@ -147,7 +147,7 @@
 .snow-external-tool-renderer .tool-call-dbx-table th,
 .snow-external-tool-renderer .tool-call-dbx-table td {
   padding: 4px 8px;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-color);
   text-align: left;
   white-space: nowrap;
   max-width: 220px;
@@ -183,7 +183,7 @@
   align-items: center;
   gap: 6px;
   padding: 8px 10px;
-  border: 1px dashed var(--border-light);
+  border: 1px dashed var(--border-color);
   border-radius: var(--radius-sm);
   font-size: 11.5px;
   color: var(--text-tertiary);
@@ -204,7 +204,7 @@
   font-size: 10.5px;
   color: var(--text-tertiary);
   background: var(--bg-tertiary);
-  border-top: 1px solid var(--border-light);
+  border-top: 1px solid var(--border-color);
 }
 
 .snow-external-tool-renderer .tool-call-dbx-meta {
@@ -242,27 +242,65 @@
   color: var(--accent-blue-text);
 }
 
-/* Common MCP cards: keep every rule below the verified plugin root. */
+/* Common MCP cards. Every rule stays below the verified plugin root and uses
+   host theme tokens only, so the cards follow light/dark and every preset. */
 .snow-external-tool-renderer .mcp-card,
 .snow-external-tool-renderer .mcp-blocks,
-.snow-external-tool-renderer .mcp-search,
-.snow-external-tool-renderer .mcp-fields {
+.snow-external-tool-renderer .mcp-search {
   display: flex;
   flex-direction: column;
   gap: 8px;
   min-width: 0;
 }
-.snow-external-tool-renderer .mcp-card { font-size: 12px; color: var(--text-secondary); }
+.snow-external-tool-renderer .mcp-card {
+  gap: 10px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+.snow-external-tool-renderer .mcp-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 0 0 9px;
+  border-left: 1px solid var(--border-color);
+}
+.snow-external-tool-renderer .mcp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
 .snow-external-tool-renderer .mcp-card h4,
 .snow-external-tool-renderer .mcp-card h5,
 .snow-external-tool-renderer .mcp-card p { margin: 0; }
-.snow-external-tool-renderer .mcp-card h4 { font-size: 12px; }
-.snow-external-tool-renderer .mcp-card h5 { font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); }
+
+/* 章节标题：小号字距标签，弱化层级但保持可扫读 */
+.snow-external-tool-renderer .mcp-card h4 {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.snow-external-tool-renderer .mcp-card h5 {
+  margin: 0 0 2px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
 .snow-external-tool-renderer .mcp-card button {
   max-width: 100%;
   width: fit-content;
   padding: 3px 7px;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   background: var(--bg-tertiary);
   color: var(--text-secondary);
@@ -274,90 +312,7 @@
 .snow-external-tool-renderer .mcp-card button:hover { background: var(--bg-primary); }
 .snow-external-tool-renderer .mcp-card button:focus-visible { outline: 2px solid var(--accent-blue-text); outline-offset: 2px; }
 .snow-external-tool-renderer .mcp-card button:disabled { opacity: 0.5; cursor: default; }
-.snow-external-tool-renderer .mcp-card .mcp-link { color: var(--accent-blue-text); }
 .snow-external-tool-renderer .mcp-muted { color: var(--text-tertiary); }
-.snow-external-tool-renderer .mcp-error { color: var(--accent-red-text); }
-.snow-external-tool-renderer .mcp-summary { overflow-wrap: anywhere; user-select: text; }
-.snow-external-tool-renderer .mcp-block,
-.snow-external-tool-renderer .mcp-search article {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  min-width: 0;
-  padding: 8px;
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-sm);
-  background: var(--bg-primary);
-  overflow-wrap: anywhere;
-}
-.snow-external-tool-renderer .mcp-text pre {
-  margin: 0 0 5px;
-  max-height: 320px;
-  overflow: auto;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  line-height: 1.55;
-  user-select: text;
-}
-.snow-external-tool-renderer .mcp-fields { padding: 6px 0 0 10px; border-left: 1px solid var(--border-light); }
-.snow-external-tool-renderer .mcp-field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.snow-external-tool-renderer .mcp-key { font: 11px var(--font-mono); color: var(--text-tertiary); overflow-wrap: anywhere; }
-.snow-external-tool-renderer .mcp-pager { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 5px; color: var(--text-tertiary); }
-.snow-external-tool-renderer .mcp-image { display: flex; flex-direction: column; gap: 6px; }
-.snow-external-tool-renderer .mcp-image img { max-width: 100%; max-height: 360px; object-fit: contain; align-self: flex-start; }
-.snow-external-tool-renderer .mcp-table { min-width: 0; overflow: auto; }
-.snow-external-tool-renderer .mcp-metrics { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0; }
-.snow-external-tool-renderer .mcp-metrics div { display: flex; gap: 4px; min-width: 0; }
-.snow-external-tool-renderer .mcp-metrics dt { color: var(--text-tertiary); }
-.snow-external-tool-renderer .mcp-metrics dd { margin: 0; overflow-wrap: anywhere; }
-.snow-external-tool-renderer .mcp-answer { padding: 8px 10px; border-radius: var(--radius-sm); background: var(--bg-primary); border-left: 3px solid var(--accent-blue-text); }
-.snow-external-tool-renderer .mcp-answer p { margin-top: 4px; font-size: 12px; line-height: 1.5; color: var(--text-primary); }
-/* ── 卡片排版统一与美化 ───────────────────────────────────────────────────
-   全部规则限定在插件根类下，只使用宿主主题变量，随主题（含亮/暗与预设主题）
-   自动适配；不引入固定色值，避免与宿主主题冲突。 */
-.snow-external-tool-renderer .mcp-card { gap: 10px; line-height: 1.55; }
-
-/* 章节标题：小号字距标签，弱化层级但保持可扫读 */
-.snow-external-tool-renderer .mcp-card h4 {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  margin: 0;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-}
-.snow-external-tool-renderer .mcp-card h5 {
-  margin: 0 0 2px;
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-}
-
-/* 摘要与说明：正文色但更紧凑，长词强制换行不撑破卡片 */
-.snow-external-tool-renderer .mcp-summary {
-  padding: 7px 9px;
-  border-left: 2px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  background: var(--bg-tertiary);
-  font-size: 12px;
-  overflow-wrap: anywhere;
-  user-select: text;
-}
-.snow-external-tool-renderer .mcp-error {
-  padding: 7px 9px;
-  border-left: 2px solid var(--accent-red-text);
-  border-radius: var(--radius-sm);
-  background: var(--bg-tertiary);
-  font-size: 12px;
-  overflow-wrap: anywhere;
-}
 
 /* 参数开关：贴近宿主按钮风格，展开态给出明确反馈 */
 .snow-external-tool-renderer .mcp-card > button[aria-expanded] {
@@ -373,14 +328,44 @@
   color: var(--accent-blue-text);
 }
 
+/* 摘要与错误：左侧语义色细边标出内容性质，长词强制换行不撑破卡片 */
+.snow-external-tool-renderer .mcp-summary,
+.snow-external-tool-renderer .mcp-error {
+  padding: 7px 9px;
+  border-left: 2px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+.snow-external-tool-renderer .mcp-error {
+  border-left-color: var(--accent-red-text);
+  color: var(--accent-red-text);
+}
+.snow-external-tool-renderer .mcp-block,
+.snow-external-tool-renderer .mcp-search article {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  overflow-wrap: anywhere;
+}
+.snow-external-tool-renderer .mcp-block { border-left: 2px solid var(--border-color); }
+.snow-external-tool-renderer .mcp-block > h5 { margin-bottom: 0; }
+.snow-external-tool-renderer .mcp-blocks > h4 { margin-bottom: 2px; }
+
 /* 检索结果：整卡可点区域视觉分组，悬停轻微提亮 */
 .snow-external-tool-renderer .mcp-search > h4 { margin-bottom: 2px; }
 .snow-external-tool-renderer .mcp-search article {
   gap: 4px;
-  padding: 9px 10px;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
-.snow-external-tool-renderer .mcp-search article:hover { border-color: var(--border-color); }
+.snow-external-tool-renderer .mcp-search article:hover { border-color: var(--accent-blue-text); }
 .snow-external-tool-renderer .mcp-search article > .mcp-muted:first-child {
   font-size: 10px;
   letter-spacing: 0.05em;
@@ -398,6 +383,65 @@
   color: var(--text-secondary);
   overflow-wrap: anywhere;
 }
+.snow-external-tool-renderer .mcp-text pre {
+  margin: 0 0 5px;
+  max-height: 320px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.55;
+  user-select: text;
+}
+.snow-external-tool-renderer .mcp-text > button { font-size: 11px; }
+.snow-external-tool-renderer .mcp-key {
+  font: 10.5px var(--font-mono);
+  color: var(--text-tertiary);
+  overflow-wrap: anywhere;
+}
+.snow-external-tool-renderer .mcp-tree > button { font-family: var(--font-mono); font-size: 11px; }
+
+/* 分页：等宽数字，按钮紧凑 */
+.snow-external-tool-renderer .mcp-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 5px;
+  padding-top: 2px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-tertiary);
+}
+.snow-external-tool-renderer .mcp-pager button { padding: 2px 8px; font-size: 11px; }
+.snow-external-tool-renderer .mcp-image { display: flex; flex-direction: column; gap: 6px; }
+.snow-external-tool-renderer .mcp-image img { max-width: 100%; max-height: 360px; object-fit: contain; align-self: flex-start; }
+
+/* 表格容器：标题与提示分层，避免撑破卡片 */
+.snow-external-tool-renderer .mcp-table { min-width: 0; overflow: auto; }
+.snow-external-tool-renderer .mcp-table > h4 { margin-bottom: 4px; }
+.snow-external-tool-renderer .mcp-table > .mcp-muted { font-size: 10.5px; }
+
+/* 指标：药丸状标签，数值与名称分层 */
+.snow-external-tool-renderer .mcp-metrics { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+.snow-external-tool-renderer .mcp-metrics div {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+  padding: 3px 9px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
+  background: var(--bg-tertiary);
+  font-size: 11px;
+}
+.snow-external-tool-renderer .mcp-metrics dt { color: var(--text-tertiary); font-size: 10.5px; }
+.snow-external-tool-renderer .mcp-metrics dd { margin: 0; color: var(--text-primary); font-family: var(--font-mono); overflow-wrap: anywhere; }
+.snow-external-tool-renderer .mcp-answer { padding: 8px 10px; border-radius: var(--radius-sm); background: var(--bg-primary); border-left: 3px solid var(--accent-blue-text); }
+.snow-external-tool-renderer .mcp-answer p { margin-top: 4px; font-size: 12px; line-height: 1.5; color: var(--text-primary); }
+
+/* 引用来源：紧凑的链接清单 */
 .snow-external-tool-renderer .mcp-link {
   width: fit-content;
   max-width: 100%;
@@ -411,11 +455,11 @@
   overflow-wrap: anywhere;
 }
 .snow-external-tool-renderer .mcp-link:hover { background: none; text-decoration-thickness: 2px; }
-
-/* 引用来源：紧凑的链接清单 */
+/* 链接按钮位于 .mcp-card 内，需提高权重压过 .mcp-card button 的文字色。 */
+.snow-external-tool-renderer .mcp-card .mcp-link { color: var(--accent-blue-text); }
 .snow-external-tool-renderer .mcp-sources {
   padding: 8px 10px;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   background: var(--bg-primary);
 }
@@ -430,49 +474,6 @@
 }
 .snow-external-tool-renderer .mcp-sources ul { margin: 0; padding-left: 16px; }
 .snow-external-tool-renderer .mcp-sources li { margin: 2px 0; font-size: 11px; }
-
-/* 指标：药丸状标签，数值与名称分层 */
-.snow-external-tool-renderer .mcp-metrics { gap: 6px; }
-.snow-external-tool-renderer .mcp-metrics div {
-  align-items: baseline;
-  gap: 5px;
-  padding: 3px 9px;
-  border: 1px solid var(--border-light);
-  border-radius: 999px;
-  background: var(--bg-tertiary);
-  font-size: 11px;
-}
-.snow-external-tool-renderer .mcp-metrics dt { font-size: 10.5px; }
-.snow-external-tool-renderer .mcp-metrics dd { color: var(--text-primary); font-family: var(--font-mono); }
-
-/* 内容块：带标题的独立面板 */
-.snow-external-tool-renderer .mcp-blocks > h4 { margin-bottom: 2px; }
-.snow-external-tool-renderer .mcp-block {
-  gap: 6px;
-  padding: 9px 10px;
-  border-left: 2px solid var(--border-color);
-}
-.snow-external-tool-renderer .mcp-block > h5 { margin-bottom: 0; }
-
-/* 分页：等宽数字，按钮紧凑 */
-.snow-external-tool-renderer .mcp-pager {
-  gap: 8px;
-  padding-top: 2px;
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-}
-.snow-external-tool-renderer .mcp-pager button { padding: 2px 8px; font-size: 11px; }
-
-/* 折叠树：连接线更轻，键名与值区分明确 */
-.snow-external-tool-renderer .mcp-fields { padding-left: 9px; }
-.snow-external-tool-renderer .mcp-field { gap: 2px; }
-.snow-external-tool-renderer .mcp-key { font-size: 10.5px; }
-.snow-external-tool-renderer .mcp-tree > button { font-family: var(--font-mono); font-size: 11px; }
-.snow-external-tool-renderer .mcp-text > button { font-size: 11px; }
-
-/* 表格容器：标题与提示分层，避免撑破卡片 */
-.snow-external-tool-renderer .mcp-table > h4 { margin-bottom: 4px; }
-.snow-external-tool-renderer .mcp-table > .mcp-muted { font-size: 10.5px; }
 /* ── 形态视图（diff / tree / log / snapshot / progress / checklist）──────── */
 .snow-external-tool-renderer .mcp-shape {
   display: flex;
@@ -498,14 +499,14 @@
 .snow-external-tool-renderer .mcp-diff-del { color: var(--accent-red-text); font-family: var(--font-mono); }
 .snow-external-tool-renderer .mcp-diff-file {
   min-width: 0;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   background: var(--bg-primary);
   overflow: hidden;
 }
 .snow-external-tool-renderer .mcp-diff-file-head {
   padding: 5px 9px;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-color);
   background: var(--bg-tertiary);
   font-family: var(--font-mono);
   font-size: 11px;
@@ -538,8 +539,8 @@
 /* log */
 .snow-external-tool-renderer .mcp-log-chip {
   padding: 2px 8px;
-  border: 1px solid var(--border-light);
-  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
   background: var(--bg-tertiary);
   font: inherit;
   font-size: 10.5px;
@@ -552,7 +553,7 @@
   max-height: 420px;
   overflow: auto;
   padding: 6px 0;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   background: var(--bg-primary);
   font-family: var(--font-mono);
@@ -582,7 +583,7 @@
 .snow-external-tool-renderer .mcp-progress-item { display: flex; align-items: center; gap: 8px; font-size: 11.5px; }
 .snow-external-tool-renderer .mcp-progress-item dt { flex-shrink: 0; min-width: 84px; color: var(--text-tertiary); }
 .snow-external-tool-renderer .mcp-progress-item dd { display: flex; align-items: center; gap: 8px; margin: 0; overflow-wrap: anywhere; }
-.snow-external-tool-renderer .mcp-progress-bar { position: relative; width: 120px; height: 6px; border-radius: 999px; background: var(--bg-tertiary); overflow: hidden; }
+.snow-external-tool-renderer .mcp-progress-bar { position: relative; width: 120px; height: 6px; border-radius: var(--radius-pill); background: var(--bg-tertiary); overflow: hidden; }
 .snow-external-tool-renderer .mcp-progress-fill { display: block; height: 100%; background: var(--accent-blue-text); }
 .snow-external-tool-renderer .mcp-progress-value { font-family: var(--font-mono); color: var(--text-secondary); }
 .snow-external-tool-renderer .mcp-progress-value.is-done { color: var(--accent-green-text); }
@@ -595,7 +596,7 @@
   gap: 7px;
   min-width: 0;
   padding: 5px 9px;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
   border-inline-start-width: 2px;
   border-radius: var(--radius-sm);
   background: var(--bg-primary);
@@ -604,3 +605,9 @@
 .snow-external-tool-renderer .mcp-checklist-level { flex-shrink: 0; font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; }
 .snow-external-tool-renderer .mcp-checklist-title { min-width: 0; color: var(--text-primary); overflow-wrap: anywhere; user-select: text; }
 .snow-external-tool-renderer .mcp-checklist-detail { min-width: 0; font-family: var(--font-mono); font-size: 10.5px; overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: reduce) {
+  .snow-external-tool-renderer .mcp-card button,
+  .snow-external-tool-renderer .mcp-search article {
+    transition: none;
+  }
+}
