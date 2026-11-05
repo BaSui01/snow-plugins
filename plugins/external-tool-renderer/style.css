@@ -217,28 +217,28 @@
   flex-shrink: 0;
 }
 
-.sno************************ .tool-call-dbx-meta-ok {
+.snow-external-tool-renderer .tool-call-dbx-meta-ok {
   color: var(--accent-green-text);
 }
 
-.sno************************ .mcp-meta-badge {
+.snow-external-tool-renderer .mcp-meta-badge {
   display: inline-flex;
   align-items: center;
   gap: 3px;
   font-size: 11px;
 }
-.sno************************ .mcp-meta-active {
+.snow-external-tool-renderer .mcp-meta-active {
   color: var(--accent-blue-text);
   font-weight: 500;
 }
-.sno************************ .mcp-meta-error {
+.snow-external-tool-renderer .mcp-meta-error {
   color: var(--accent-red-text);
   font-weight: 500;
 }
-.sno************************ .mcp-meta-muted {
+.snow-external-tool-renderer .mcp-meta-muted {
   color: var(--text-tertiary);
 }
-.sno************************ .mcp-meta-running {
+.snow-external-tool-renderer .mcp-meta-running {
   color: var(--accent-blue-text);
 }
 
@@ -610,4 +610,1082 @@
   .snow-external-tool-renderer .mcp-search article {
     transition: none;
   }
+}
+
+/* ── 搜索类结果卡片升级（对齐原生 WebSearch 高精样式） ─────────────── */
+.tool-call-gallery .tool-call-websearch-results,
+.tool-call-websearch .tool-call-websearch-results {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 460px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.tool-call-gallery .tool-call-websearch-result,
+.tool-call-websearch .tool-call-websearch-result {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.tool-call-gallery .tool-call-websearch-result:hover,
+.tool-call-websearch .tool-call-websearch-result:hover {
+  border-color: var(--accent-blue-text);
+  background: var(--bg-tertiary);
+}
+
+.tool-call-gallery .tool-call-websearch-result-head,
+.tool-call-websearch .tool-call-websearch-result-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.tool-call-gallery .tool-call-websearch-result-index,
+.tool-call-websearch .tool-call-websearch-result-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  user-select: none;
+}
+
+.tool-call-gallery .tool-call-websearch-result-title,
+.tool-call-websearch .tool-call-websearch-result-title {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  display: inline-flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  color: var(--accent-blue-text);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.tool-call-gallery .tool-call-websearch-result-title-text,
+.tool-call-websearch .tool-call-websearch-result-title-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tool-call-gallery .tool-call-websearch-result-title:hover .tool-call-websearch-result-title-text,
+.tool-call-websearch .tool-call-websearch-result-title:hover .tool-call-websearch-result-title-text {
+  text-decoration: underline;
+}
+
+.tool-call-gallery .tool-call-websearch-external,
+.tool-call-websearch .tool-call-websearch-external {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.tool-call-gallery .tool-call-websearch-result:hover .tool-call-websearch-external,
+.tool-call-websearch .tool-call-websearch-result:hover .tool-call-websearch-external,
+.tool-call-gallery .tool-call-websearch-external:focus-visible,
+.tool-call-websearch .tool-call-websearch-external:focus-visible {
+  opacity: 1;
+}
+
+.tool-call-gallery .tool-call-websearch-external:hover,
+.tool-call-websearch .tool-call-websearch-external:hover {
+  background: var(--bg-tertiary);
+  color: var(--accent-blue-text);
+}
+
+.tool-call-gallery .tool-call-websearch-result-url,
+.tool-call-websearch .tool-call-websearch-result-url {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  margin-left: 23px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}
+
+.tool-call-gallery .tool-call-websearch-result-url svg,
+.tool-call-websearch .tool-call-websearch-result-url svg {
+  display: block;
+  flex-shrink: 0;
+  color: var(--accent-green-text);
+}
+
+.tool-call-gallery .tool-call-websearch-result-url span,
+.tool-call-websearch .tool-call-websearch-result-url span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: text;
+}
+
+.tool-call-gallery .mcp-date-tag,
+.tool-call-websearch .mcp-date-tag,
+.tool-call-gallery .mcp-group-tag,
+.tool-call-websearch .mcp-group-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
+  font-size: 10px;
+}
+
+.tool-call-gallery .tool-call-websearch-result-snippet,
+.tool-call-websearch .tool-call-websearch-result-snippet {
+  margin: 2px 0 0 23px;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  user-select: text;
+}
+
+/* 搜索参数条 */
+.snow-external-tool-renderer .mcp-search-params-bar,
+.tool-call-websearch .mcp-search-params-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+}
+
+.tool-call-gallery .tool-call-websearch-param-item,
+.tool-call-websearch .tool-call-websearch-param-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.tool-call-gallery .tool-call-websearch-param-item svg,
+.tool-call-websearch .tool-call-websearch-param-item svg {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.tool-call-gallery .tool-call-websearch-param-label,
+.tool-call-websearch .tool-call-websearch-param-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.tool-call-gallery .tool-call-websearch-param-value,
+.tool-call-websearch .tool-call-websearch-param-value {
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tool-call-gallery .tool-call-websearch-param-tags,
+.tool-call-websearch .tool-call-websearch-param-tags {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.tool-call-gallery .tool-call-websearch-param-tag,
+.tool-call-websearch .tool-call-websearch-param-tag {
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
+  font-size: 10.5px;
+}
+
+/* 提示横条 */
+.tool-call-gallery .mcp-hint-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.tool-call-gallery .mcp-hint-banner svg {
+  flex-shrink: 0;
+  color: var(--accent-blue-text);
+}
+
+/* 原始数据折叠面板：脚注式层级，弱于正文结果 */
+.snow-external-tool-renderer .mcp-raw-blocks-toggle {
+  margin-top: 2px;
+  padding-top: 7px;
+  border: none;
+  border-top: 1px solid var(--border-color);
+  border-radius: 0;
+}
+
+.snow-external-tool-renderer .mcp-raw-blocks-toggle > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 0;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+
+.snow-external-tool-renderer .mcp-raw-blocks-toggle > summary::-webkit-details-marker {
+  display: none;
+}
+
+.snow-external-tool-renderer .mcp-raw-blocks-toggle > summary::before {
+  content: "";
+  width: 0;
+  height: 0;
+  border-left: 4px solid currentColor;
+  border-top: 3.5px solid transparent;
+  border-bottom: 3.5px solid transparent;
+  transition: transform 0.15s ease;
+}
+
+.snow-external-tool-renderer .mcp-raw-blocks-toggle[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.snow-external-tool-renderer .mcp-raw-blocks-toggle > summary:hover {
+  color: var(--text-secondary);
+}
+
+.snow-external-tool-renderer .mcp-raw-blocks-toggle .mcp-blocks {
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.snow-external-tool-renderer .mcp-raw-blocks-toggle .mcp-block {
+  padding: 2px 0 2px 10px;
+  border: none;
+  border-left: 1px solid var(--border-color);
+  border-radius: 0;
+  background: transparent;
+}
+
+.snow-external-tool-renderer .mcp-raw-blocks-toggle .mcp-block > h5 {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  font-size: 9.5px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+/* MCP 文本块：正文 + 扁平元信息标签，避免多一层对象折叠 */
+.snow-external-tool-renderer .mcp-text-part {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.snow-external-tool-renderer .mcp-text-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+.snow-external-tool-renderer .mcp-text-meta > span {
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  user-select: text;
+}
+
+.snow-external-tool-renderer .mcp-text-meta b {
+  margin-right: 5px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+
+/* 执行提示：宿主流式写入 stdout/stderr 的 checkpoint 说明 */
+.snow-external-tool-renderer .mcp-notice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.snow-external-tool-renderer .mcp-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 6px 9px;
+  border: 1px solid var(--border-color);
+  border-inline-start: 2px solid var(--accent-amber-text);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.snow-external-tool-renderer .mcp-notice svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--accent-amber-text);
+}
+
+.snow-external-tool-renderer .mcp-notice span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+/* 普通 stdout / stderr 输出 */
+.snow-external-tool-renderer .mcp-output {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.snow-external-tool-renderer .mcp-output > .mcp-text pre {
+  max-height: 240px;
+}
+
+/* ── 实体列表（GitHub / GitLab / Sentry / Docker / K8s 等） ─────────── */
+.tool-call-gallery .mcp-entity-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tool-call-gallery .mcp-entity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 420px;
+  overflow: auto;
+}
+
+.tool-call-gallery .mcp-entity-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 7px 9px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.tool-call-gallery .mcp-entity-card:hover {
+  border-color: var(--accent-blue-text);
+  background: var(--bg-tertiary);
+}
+
+.tool-call-gallery .mcp-entity-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.tool-call-gallery .mcp-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.tool-call-gallery .mcp-status-success {
+  background: color-mix(in srgb, var(--accent-green-text) 15%, transparent);
+  color: var(--accent-green-text);
+}
+
+.tool-call-gallery .mcp-status-error {
+  background: color-mix(in srgb, var(--accent-red-text) 15%, transparent);
+  color: var(--accent-red-text);
+}
+
+.tool-call-gallery .mcp-status-warning {
+  background: color-mix(in srgb, var(--accent-orange-text, #eab308) 15%, transparent);
+  color: var(--accent-orange-text, #eab308);
+}
+
+.tool-call-gallery .mcp-status-purple {
+  background: color-mix(in srgb, #a855f7 15%, transparent);
+  color: #a855f7;
+}
+
+.tool-call-gallery .mcp-status-neutral {
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
+}
+
+.tool-call-gallery .mcp-entity-id {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.tool-call-gallery .mcp-entity-title {
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tool-call-gallery .mcp-entity-title-btn {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent-blue-text);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tool-call-gallery .mcp-entity-title-btn:hover {
+  text-decoration: underline;
+}
+
+.tool-call-gallery .mcp-entity-sub {
+  font-size: 10.5px;
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── 网页抓取视图 ─────────────────────────────────────────────────── */
+.tool-call-gallery .mcp-scrape-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tool-call-gallery .mcp-scrape-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 9px 11px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+}
+
+.tool-call-gallery .tool-call-websearch-page-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.tool-call-gallery .tool-call-websearch-page-link-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tool-call-gallery .tool-call-websearch-page-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--accent-blue-text);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  cursor: pointer;
+}
+
+.tool-call-gallery .tool-call-websearch-preview-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.tool-call-gallery .tool-call-websearch-preview {
+  margin: 0;
+  max-height: 200px;
+  overflow: auto;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-secondary);
+}
+
+.tool-call-gallery .tool-call-websearch-preview.is-expanded {
+  max-height: 480px;
+}
+
+.tool-call-gallery .mcp-expand-btn {
+  align-self: flex-start;
+  padding: 3px 8px;
+  font-size: 11px;
+}
+
+/* Anysearch Score 回执卡片 */
+.tool-call-anysearch-score-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+}
+
+.tool-call-anysearch-score-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+}
+
+.tool-call-anysearch-score-id {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  min-width: 120px;
+}
+
+.tool-call-anysearch-score-stars {
+  color: #f59e0b;
+  font-size: 12px;
+  letter-spacing: 2px;
+}
+
+.tool-call-anysearch-score-val {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+/* ── 站点链接清单与学术标签 ─────────────────────────────────────────── */
+.tool-call-gallery .mcp-url-list-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tool-call-gallery .mcp-url-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 420px;
+  overflow: auto;
+}
+
+.tool-call-gallery .mcp-url-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  font-size: 11px;
+}
+
+.tool-call-gallery .mcp-url-item:hover {
+  border-color: var(--accent-blue-text);
+  background: var(--bg-tertiary);
+}
+
+.tool-call-gallery .mcp-url-index {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-tertiary);
+  min-width: 16px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.tool-call-gallery .mcp-url-link-btn {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  color: var(--accent-blue-text);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.tool-call-gallery .mcp-url-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tool-call-gallery .mcp-url-link-btn:hover .mcp-url-text {
+  text-decoration: underline;
+}
+
+.tool-call-gallery .mcp-pdf-tag {
+  margin: 0;
+  padding: 1px 5px;
+  border: 1px solid color-mix(in srgb, var(--accent-red-text) 30%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--accent-red-text) 10%, transparent);
+  color: var(--accent-red-text);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tool-call-gallery .mcp-pdf-tag:hover {
+  background: color-mix(in srgb, var(--accent-red-text) 20%, transparent);
+}
+
+.tool-call-gallery .mcp-author-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
+  font-size: 10px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 参数开关：与原始数据折叠共用同一种三角指示 */
+.snow-external-tool-renderer button[aria-expanded]::before {
+  content: "";
+  width: 0;
+  height: 0;
+  border-left: 4px solid currentColor;
+  border-top: 3.5px solid transparent;
+  border-bottom: 3.5px solid transparent;
+  transition: transform 0.15s ease;
+}
+
+.snow-external-tool-renderer button[aria-expanded="true"]::before {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .snow-external-tool-renderer button[aria-expanded]::before,
+  .snow-external-tool-renderer .mcp-raw-blocks-toggle > summary::before {
+    transition: none;
+  }
+}
+
+/* ── 卡片顶部：参数条与工具按钮 ─────────────────────────────────── */
+/* 宿主给 code 参数值设了 white-space: normal，这里恢复单行省略 */
+.snow-external-tool-renderer .mcp-search-params-bar {
+  flex-wrap: nowrap;
+  padding: 5px 9px;
+}
+
+.snow-external-tool-renderer .mcp-search-params-bar .tool-call-websearch-param-item {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.tool-call-gallery.tool-call-websearch code.tool-call-websearch-param-value,
+.tool-call-gallery code.tool-call-websearch-param-value {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  padding: 1px 7px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  white-space: nowrap;
+  word-break: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.snow-external-tool-renderer .mcp-search-params-bar .tool-call-websearch-param-tags {
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  margin-top: 0;
+  margin-left: auto;
+}
+
+.snow-external-tool-renderer .mcp-search-params-bar .tool-call-websearch-param-tag {
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+/* 参数开关：默认 ghost，展开时才占用视觉重量 */
+.snow-external-tool-renderer button[aria-expanded] {
+  padding: 2px 7px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 11px;
+}
+
+.snow-external-tool-renderer button[aria-expanded]:hover {
+  border-color: transparent;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.snow-external-tool-renderer button[aria-expanded="true"] {
+  border-color: transparent;
+  background: var(--bg-tertiary);
+  color: var(--accent-blue-text);
+}
+
+/* 文本预览说明：脚注形式，不再占一整条横幅 */
+.tool-call-gallery .mcp-hint-banner {
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+.tool-call-gallery .mcp-hint-banner svg {
+  width: 11px;
+  height: 11px;
+}
+
+/* ── 参数面板：字段表 ─────────────────────────────────────────── */
+.snow-external-tool-renderer .mcp-params-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.snow-external-tool-renderer .mcp-params {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 2px 9px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+}
+
+.snow-external-tool-renderer .mcp-param {
+  display: grid;
+  grid-template-columns: minmax(72px, 132px) minmax(0, 1fr);
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 0;
+  min-width: 0;
+}
+
+.snow-external-tool-renderer .mcp-param + .mcp-param {
+  border-top: 1px solid color-mix(in srgb, var(--border-color) 60%, transparent);
+}
+
+.snow-external-tool-renderer .mcp-param dt {
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--text-tertiary);
+  overflow-wrap: anywhere;
+}
+
+.snow-external-tool-renderer .mcp-param dd {
+  margin: 0;
+  min-width: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.snow-external-tool-renderer .mcp-param-text {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+  user-select: text;
+}
+
+.snow-external-tool-renderer .mcp-param-code,
+.snow-external-tool-renderer .mcp-param-chips code {
+  padding: 0 5px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}
+
+.snow-external-tool-renderer .mcp-param-link,
+.snow-external-tool-renderer .mcp-cell-link {
+  max-width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--accent-blue-text);
+  font: inherit;
+  font-size: 11.5px;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.snow-external-tool-renderer .mcp-param-link:hover,
+.snow-external-tool-renderer .mcp-cell-link:hover {
+  background: transparent;
+  text-decoration: underline;
+}
+
+.snow-external-tool-renderer .mcp-param-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  min-width: 0;
+}
+
+.snow-external-tool-renderer .mcp-param-count {
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+.snow-external-tool-renderer .mcp-param-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+
+.snow-external-tool-renderer .mcp-param-chips code {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.snow-external-tool-renderer .mcp-param-more {
+  color: var(--text-tertiary);
+  font-size: 10px;
+}
+
+.snow-external-tool-renderer .mcp-param-details > summary {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  color: var(--accent-blue-text);
+  font-size: 10.5px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.snow-external-tool-renderer .mcp-param-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.snow-external-tool-renderer .mcp-param-details > summary::before {
+  content: "▸";
+  margin-right: 3px;
+  font-size: 9px;
+}
+
+.snow-external-tool-renderer .mcp-param-details[open] > summary::before {
+  content: "▾";
+}
+
+.snow-external-tool-renderer .mcp-params-raw {
+  margin-top: 2px;
+}
+
+/* ── 记录表：关键列 + 行展开 ─────────────────────────────────── */
+.snow-external-tool-renderer .mcp-record-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+}
+
+.snow-external-tool-renderer .mcp-record-table {
+  width: 100%;
+  min-width: 420px;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+
+.snow-external-tool-renderer .mcp-record-table th {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.snow-external-tool-renderer .mcp-record-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 55%, transparent);
+  vertical-align: top;
+  min-width: 0;
+}
+
+.snow-external-tool-renderer .mcp-record-table tr:last-child td {
+  border-bottom: none;
+}
+
+.snow-external-tool-renderer .mcp-record-row:hover td {
+  background: var(--bg-tertiary);
+}
+
+.snow-external-tool-renderer .mcp-record-table th.mcp-record-expander,
+.snow-external-tool-renderer .mcp-record-table td.mcp-record-expander {
+  width: 24px;
+  padding-right: 0;
+}
+
+.snow-external-tool-renderer .mcp-record-table .mcp-record-expander button {
+  padding: 0 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.snow-external-tool-renderer .mcp-record-table .mcp-record-expander button:hover {
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.snow-external-tool-renderer .mcp-cell-text {
+  display: block;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  user-select: text;
+}
+
+.snow-external-tool-renderer .mcp-record-detail td {
+  padding: 6px 9px 8px;
+  background: var(--bg-tertiary);
+}
+
+.snow-external-tool-renderer .mcp-record-detail .mcp-tree,
+.snow-external-tool-renderer .mcp-record-detail .mcp-text {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.snow-external-tool-renderer .mcp-record-detail .mcp-params {
+  padding: 0;
+  border: none;
+  background: transparent;
 }

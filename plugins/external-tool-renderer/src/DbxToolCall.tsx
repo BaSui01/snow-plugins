@@ -20,7 +20,7 @@
  * 做了多格式容错（rows / result / values / queryResult），解析失败时
  * 自动回退为原始 JSON 展示，保证任何情况下都有内容可看。
  */
-import { React, useMemo, type ReactNode } from "./runtime";
+import { React, useMemo, useState, type ReactNode } from "./runtime";
 import {
   AlertCircle,
   CheckCircle2,
@@ -33,6 +33,7 @@ import {
   useApi,
 } from "./api";
 import type { ToolCallInfo } from "./types";
+import { ParamTable, OutputSection, TextValue, Value } from "./components";
 
 type DbxToolCallProps = {
   toolCall: ToolCallInfo;
@@ -262,6 +263,7 @@ export const DbxToolCall = ({
     () => parseResult(toolCall.result),
     [toolCall.result],
   );
+  const [parametersOpen, setParametersOpen] = useState(false);
 
   const effectiveStatus =
     parsedResult.type === "error" ? "error" : toolCall.status;
@@ -715,6 +717,31 @@ export const DbxToolCall = ({
           </div>
         ) : null}
 
+        {parsedArgs ? (
+          <button
+            type="button"
+            aria-expanded={parametersOpen}
+            onClick={() => setParametersOpen(!parametersOpen)}
+          >
+            {t("toolCall.mcp.parameters", { defaultValue: "参数" })}
+          </button>
+        ) : null}
+
+        {parametersOpen && parsedArgs ? (
+          <section className="mcp-params-section">
+            <p className="mcp-muted">
+              {t("toolCall.mcp.parameterPrivacy", { defaultValue: "敏感参数已隐藏。" })}
+            </p>
+            <ParamTable providerId="dbx" args={parsedArgs} />
+            <details className="mcp-param-details mcp-params-raw">
+              <summary>
+                {t("toolCall.mcp.rawParameters", { defaultValue: "原始参数" })}
+              </summary>
+              <Value value={parsedArgs} parameters />
+            </details>
+          </section>
+        ) : null}
+
         {queryTable ? (
           <div className="tool-call-dbx-table-wrap">
             <DataTableViewer
@@ -737,14 +764,26 @@ export const DbxToolCall = ({
           </div>
         ) : null}
 
+        {queryTable && resultText ? (
+          <details className="mcp-raw-blocks-toggle">
+            <summary>
+              {t("toolCall.mcp.viewRawBlocks", { defaultValue: "查看原始响应数据" })}
+            </summary>
+            <TextValue value={resultText} />
+          </details>
+        ) : null}
+
         {resultText && !queryTable ? (
           <section className="tool-call-section">
             <span className="tool-call-section-label">
               {t("toolCall.common.result")}
             </span>
-            <pre className="tool-call-section-pre">{resultText}</pre>
+            <TextValue value={resultText} />
           </section>
         ) : null}
+
+        {toolCall.streamingStdout && <OutputSection label="stdout" value={toolCall.streamingStdout} />}
+        {toolCall.streamingStderr && <OutputSection label="stderr" value={toolCall.streamingStderr} />}
       </div>
     </ToolCallNode>
   );

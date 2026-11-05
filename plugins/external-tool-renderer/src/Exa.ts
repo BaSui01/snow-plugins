@@ -1,5 +1,4 @@
-import type { Translate } from "./types";
-import { HIDDEN, isRecord, preview, safeUrl, searchGroups } from "./mcp";
+import { HIDDEN, isRecord, safeUrl, searchGroups } from "./mcp";
 import type { ContentBlock, SearchGroup } from "./mcp";
 
 const MAX_TEXT_CHARS = 200000;
@@ -71,16 +70,6 @@ export function exaView(blocks: readonly ContentBlock[], records: readonly Recor
     }
   }
   return { groups, textPreview, partialError };
-}
-
-export function exaSummary(args: Record<string, unknown>, t: Translate): string {
-  const parts: string[] = [];
-  if (typeof args.query === "string") parts.push(`${t("toolCall.exa.query")}: ${preview(args.query, "query", true)}`);
-  if (typeof args.numResults === "number" && Number.isFinite(args.numResults)) parts.push(`${t("toolCall.exa.numResults")}: ${args.numResults}`);
-  if (typeof args.objective === "string") parts.push(`${t("toolCall.exa.objectiveLength")}: ${args.objective.length}`);
-  if (Array.isArray(args.urls)) parts.push(`${t("toolCall.exa.urlCount")}: ${args.urls.length}`);
-  if (typeof args.maxCharacters === "number" && Number.isFinite(args.maxCharacters)) parts.push(`${t("toolCall.exa.maxCharacters")}: ${args.maxCharacters}`);
-  return parts.join(" · ").slice(0, 400);
 }
 
 export function exaParameters(args: Record<string, unknown>): Record<string, unknown> {

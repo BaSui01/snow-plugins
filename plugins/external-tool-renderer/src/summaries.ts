@@ -21,6 +21,8 @@ const COUNT_KEYS = new Set([
 
 /** Ordered, provider-specific fields surfaced first in the summary. */
 const PROVIDER_FIELDS: Record<string, readonly string[]> = {
+  anysearch: ["query", "q", "url", "urls", "domains", "domain", "sub_domain", "sub_domain_params", "feedbacks", "count", "max_results", "search_depth"],
+  dbx: ["sql", "command", "script", "connection_id", "connection_name", "database", "schema", "table", "object", "topic", "limit"],
   firecrawl: ["url", "query", "formats", "limit", "sources", "categories", "onlyMainContent", "maxAge", "filePath", "prompt", "view", "id"],
   chrome: ["pageId", "uid", "url", "type", "text", "value", "reqid", "function", "format", "fullPage", "resourceTypes", "timeout"],
   playwright: ["url", "target", "action", "text", "index", "level", "static", "filename", "fullPage", "depth", "function"],
@@ -28,9 +30,10 @@ const PROVIDER_FIELDS: Record<string, readonly string[]> = {
   github: ["owner", "repo", "path", "query", "method", "resource_id", "issue_number", "pull_number", "branch", "ref", "sha", "state", "perPage", "type"],
   exa: ["query", "numResults", "objective", "urls", "maxCharacters", "category"],
   brave: ["query", "count", "country", "search_lang", "freshness", "key", "latitude", "longitude", "location"],
-  tavily: ["query", "url", "urls", "search_depth", "topic", "max_results", "model", "input", "extract_depth", "format"],
-  perplexity: ["query", "messages", "max_results", "search_recency_filter", "country"],
-  parallel: ["objective", "search_queries", "urls", "full_content", "session_id", "model_name"],
+  duckduckgo: ["query", "count", "safeSearch"],
+  jina: ["query", "url", "question", "num", "page", "ocr", "withAllImages", "withAllLinks"],
+  tavily: ["query", "url", "urls", "input", "instructions", "search_depth", "topic", "max_results", "model", "extract_depth", "format", "limit", "max_depth"],
+  parallel: ["objective", "search_queries", "urls", "full_content", "allow_live_fetch", "model_name"],
   serpapi: ["q", "engine", "location", "num", "output"],
   kagi: ["query", "workflow", "limit", "extract_count", "url", "lens_id", "time_relative"],
   linkup: ["query", "depth", "maxResults", "mode", "reasoningDepth", "id", "url", "fromDate", "toDate"],
@@ -65,6 +68,19 @@ function describe(t: Translate, key: string, value: unknown): string | null {
   }
   if (COUNT_KEYS.has(key)) return `${fieldLabel(t, key)}: ${String(value).length}`;
   return `${fieldLabel(t, key)}: ${preview(value, key, true)}`;
+}
+
+/**
+ * Argument order for the expanded parameter table: provider-relevant fields
+ * first (verified schemas), everything else alphabetical. Unknown/future keys
+ * are never dropped.
+ */
+export function orderedArgumentKeys(providerId: string, args: Record<string, unknown>): string[] {
+  const fields = PROVIDER_FIELDS[providerId] ?? GENERIC_FIELDS;
+  const keys = Object.keys(args);
+  const head = fields.filter((key) => keys.includes(key));
+  const rest = keys.filter((key) => !head.includes(key)).sort();
+  return [...head, ...rest];
 }
 
 /**

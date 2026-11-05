@@ -3,7 +3,7 @@
 
 // src/runtime.ts
 var React = window.SnowAppPlugin.React;
-var { useMemo, createContext, useContext } = React;
+var { useMemo, useState, createContext, useContext } = React;
 
 // src/api.tsx
 var ApiContext = createContext(null);
@@ -34,13 +34,487 @@ var Play = icon("Play");
 var Table2 = icon("Table2");
 var TerminalSquare = icon("TerminalSquare");
 
+// src/mcp.ts
+var PAGE_SIZE = 20;
+var TEXT_PAGE_SIZE = 12e3;
+var MAX_JSON_CHARS = 8 * 1024 * 1024;
+var HIDDEN = "[redacted]";
+var BINARY = "[binary omitted]";
+var isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+function parseJson(text) {
+  if (!text || text.length > MAX_JSON_CHARS) return text;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+var secretKey = /password|passwd|secret|token|cookie|auth|headers|api[-_]?key|private[-_]?key|credential|session[-_]?id|confirm[-_]?token/i;
+var inputKey = /^(text|value|values|fields|elements|script|function|prompt|body|requestBody|content|input|data|payload|payload_text|payload_base64|raw|code|command|sql)$/i;
+function hiddenKey(key, parameters = false) {
+  return secretKey.test(key) || parameters && inputKey.test(key);
+}
+function safeText(text) {
+  return text.replace(/data:[^\s,;]+;base64,[a-z0-9+/=\s]+/gi, BINARY).replace(/[a-z0-9+/]{256,}={0,2}/gi, BINARY).replace(/\b(?:Bearer|Basic)\s+[a-z0-9._~+/=-]+/gi, HIDDEN).replace(/((?:["']?(?:password|passwd|secret|token|cookies?|authorization|headers|api[-_]?key|private[-_]?key)["']?)\s*[:=]\s*)([^\r\n,;]+)/gi, `$1${HIDDEN}`).replace(/(https?:\/\/)[^\s/]+@/gi, `$1${HIDDEN}@`).replace(/([?&](?:[^=&\s]*(?:token|key|secret|password|auth|cookie)[^=&\s]*)=)[^&#\s]+/gi, `$1${HIDDEN}`);
+}
+function safeUrl(value) {
+  if (typeof value !== "string" || value.length > 4096 || /[\u0000-\u0020]/.test(value)) return null;
+  try {
+    const url = new URL(value);
+    if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) return null;
+    if ([...url.searchParams.keys()].some((key) => hiddenKey(key))) return null;
+    return url.href;
+  } catch {
+    return null;
+  }
+}
+function preview(value, key = "", parameters = false) {
+  if (hiddenKey(key, parameters)) return HIDDEN;
+  if (typeof value === "string") return safeText(value).slice(0, 300);
+  if (Array.isArray(value)) return `[${value.length}]`;
+  if (isRecord(value)) return `{${Object.keys(value).length}}`;
+  return String(value);
+}
+function failed(value, depth = 0) {
+  if (!isRecord(value) || depth > 8) return false;
+  if (value.isError === true || value.success === false || value.status === "failed" || value.status === "error") return true;
+  if (value.error !== void 0 && value.error !== null && value.error !== false && value.error !== "") return true;
+  for (const key of ["structuredContent", "data", "result"]) {
+    if (failed(value[key], depth + 1)) return true;
+  }
+  if (Array.isArray(value.content)) {
+    return value.content.some((part) => isRecord(part) && (failed(part, depth + 1) || part.type === "text" && failed(parseJson(typeof part.text === "string" ? part.text : void 0), depth + 1)));
+  }
+  return false;
+}
+function contentBlock(part, index) {
+  if (!isRecord(part)) return { label: `content[${index}]`, kind: "value", value: part };
+  if (part.type === "image") return { label: `content[${index}] · image`, kind: "image", value: part };
+  if (part.type === "text" && typeof part.text === "string") {
+    const extra = Object.fromEntries(Object.entries(part).filter(([key]) => key !== "text" && key !== "type"));
+    return { label: `content[${index}] · text`, kind: "value", value: Object.keys(extra).length ? { text: parseJson(part.text), ...extra } : parseJson(part.text) };
+  }
+  if (part.type === "resource" && isRecord(part.resource)) {
+    const resource = { ...part.resource };
+    if (typeof resource.text === "string") resource.text = parseJson(resource.text);
+    return { label: `content[${index}] · resource`, kind: "value", value: { ...part, resource } };
+  }
+  return { label: `content[${index}] · ${typeof part.type === "string" ? safeText(part.type).slice(0, 60) : "unknown"}`, kind: "value", value: part };
+}
+function parseMcp(result) {
+  if (result === void 0 || result === "") return { blocks: [], failed: false, bounded: false };
+  const root = parseJson(result);
+  let envelope = root;
+  let transportKey;
+  if (isRecord(root) && !Array.isArray(root.content) && root.structuredContent === void 0) {
+    for (const key of ["result", "data"]) {
+      const value = root[key];
+      if (isRecord(value) && (Array.isArray(value.content) || value.structuredContent !== void 0)) {
+        envelope = value;
+        transportKey = key;
+        break;
+      }
+    }
+  }
+  const blocks = [];
+  if (isRecord(envelope) && (Array.isArray(envelope.content) || envelope.structuredContent !== void 0)) {
+    if (envelope.structuredContent !== void 0) blocks.push({ label: "structuredContent", kind: "value", value: envelope.structuredContent });
+    if (Array.isArray(envelope.content)) {
+      envelope.content.forEach((part, index) => blocks.push(contentBlock(part, index)));
+    }
+    const fields = Object.fromEntries(Object.entries(envelope).filter(([key]) => key !== "content" && key !== "structuredContent"));
+    if (Object.keys(fields).length) blocks.push({ label: "envelope", kind: "value", value: fields });
+    if (root !== envelope && isRecord(root)) blocks.push({ label: "transport", kind: "value", value: Object.fromEntries(Object.entries(root).filter(([key]) => key !== transportKey)) });
+  } else blocks.push({ label: "result", kind: "value", value: root });
+  return { blocks, failed: failed(root), bounded: result.length > MAX_JSON_CHARS };
+}
+function candidates(blocks) {
+  const output = [];
+  const visit = (value, depth) => {
+    if (!isRecord(value) || depth > 5 || output.length >= 80) return;
+    output.push(value);
+    for (const key of ["data", "result", "text", "resource"]) visit(value[key], depth + 1);
+  };
+  for (const block of blocks.slice(0, 80)) if (block.kind === "value") visit(block.value, 0);
+  return output;
+}
+function searchGroups(records) {
+  const groups = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const record of records) {
+    for (const name of ["web", "news", "images", "results"]) {
+      const field = record[name];
+      const items = Array.isArray(field) ? field : isRecord(field) && Array.isArray(field.results) ? field.results : null;
+      if (items && !seen.has(items)) {
+        seen.add(items);
+        groups.push({ name, items });
+      }
+    }
+  }
+  return groups;
+}
+function inlineImage(value) {
+  if (!isRecord(value) || typeof value.data !== "string" || typeof value.mimeType !== "string") return null;
+  const { data, mimeType } = value;
+  if (!["image/png", "image/jpeg", "image/webp", "image/gif"].includes(mimeType) || data.length < 16 || data.length > 2 * 1024 * 1024 || data.length % 4 !== 0 || !/^[a-z0-9+/]+={0,2}$/i.test(data)) return null;
+  try {
+    const prefix = atob(data.slice(0, 64));
+    const byte = (index) => prefix.charCodeAt(index);
+    const png = mimeType === "image/png" && prefix.startsWith("PNG\r\n\n");
+    const gif = mimeType === "image/gif" && (prefix.startsWith("GIF87a") || prefix.startsWith("GIF89a"));
+    const jpeg = mimeType === "image/jpeg" && byte(0) === 255 && byte(1) === 216 && byte(2) === 255;
+    const webp = mimeType === "image/webp" && prefix.startsWith("RIFF") && prefix.slice(8, 12) === "WEBP";
+    if (!png && !gif && !jpeg && !webp) return null;
+    if (png || gif) {
+      const u32 = (offset) => byte(offset) * 16777216 + byte(offset + 1) * 65536 + byte(offset + 2) * 256 + byte(offset + 3);
+      const width = png ? u32(16) : byte(6) + byte(7) * 256;
+      const height = png ? u32(20) : byte(8) + byte(9) * 256;
+      if (!width || !height || width > 8192 || height > 8192 || width * height > 16e6) return null;
+    }
+    return { src: `data:${mimeType};base64,${data}`, bytes: Math.floor(data.length * 3 / 4) };
+  } catch {
+    return null;
+  }
+}
+
+// src/summaries.ts
+var MAX_SUMMARY = 400;
+var COUNT_KEYS = /* @__PURE__ */ new Set([
+  "urls",
+  "queries",
+  "search_queries",
+  "messages",
+  "command",
+  "elements",
+  "fields",
+  "args",
+  "paths",
+  "sources",
+  "categories",
+  "formats",
+  "schemas",
+  "children",
+  "properties",
+  "sorts",
+  "includeDomains",
+  "excludeDomains",
+  "select_paths",
+  "select_domains",
+  "include_domains",
+  "exclude_domains",
+  "search_domain_filter",
+  "types",
+  "resourceTypes",
+  "include",
+  "labels",
+  "fieldsToInclude"
+]);
+var PROVIDER_FIELDS = {
+  anysearch: ["query", "q", "url", "urls", "domains", "domain", "sub_domain", "sub_domain_params", "feedbacks", "count", "max_results", "search_depth"],
+  dbx: ["sql", "command", "script", "connection_id", "connection_name", "database", "schema", "table", "object", "topic", "limit"],
+  firecrawl: ["url", "query", "formats", "limit", "sources", "categories", "onlyMainContent", "maxAge", "filePath", "prompt", "view", "id"],
+  chrome: ["pageId", "uid", "url", "type", "text", "value", "reqid", "function", "format", "fullPage", "resourceTypes", "timeout"],
+  playwright: ["url", "target", "action", "text", "index", "level", "static", "filename", "fullPage", "depth", "function"],
+  context7: ["libraryName", "libraryId", "query", "language"],
+  github: ["owner", "repo", "path", "query", "method", "resource_id", "issue_number", "pull_number", "branch", "ref", "sha", "state", "perPage", "type"],
+  exa: ["query", "numResults", "objective", "urls", "maxCharacters", "category"],
+  brave: ["query", "count", "country", "search_lang", "freshness", "key", "latitude", "longitude", "location"],
+  duckduckgo: ["query", "count", "safeSearch"],
+  jina: ["query", "url", "question", "num", "page", "ocr", "withAllImages", "withAllLinks"],
+  tavily: ["query", "url", "urls", "input", "instructions", "search_depth", "topic", "max_results", "model", "extract_depth", "format", "limit", "max_depth"],
+  parallel: ["objective", "search_queries", "urls", "full_content", "allow_live_fetch", "model_name"],
+  serpapi: ["q", "engine", "location", "num", "output"],
+  kagi: ["query", "workflow", "limit", "extract_count", "url", "lens_id", "time_relative"],
+  linkup: ["query", "depth", "maxResults", "mode", "reasoningDepth", "id", "url", "fromDate", "toDate"],
+  searxng: ["query", "pageno", "language", "time_range", "num_results", "categories", "engines", "response_format", "url", "maxLength"],
+  supabase: ["project_id", "query", "name", "schemas", "table", "type", "id", "branch_id", "organization_id", "region"],
+  postman: ["collectionId", "workspaceId", "workspace", "environmentId", "elementType", "limit", "cursor", "type"],
+  linear: ["query", "teamId", "id", "title", "assigneeId", "stateId", "priority", "limit", "projectId"],
+  sentry: ["organizationSlug", "projectSlug", "query", "issueId", "issueUrl", "status", "limit", "name", "arguments", "sort"],
+  gitlab: ["project_id", "merge_request_iid", "issue_iid", "branch", "file_path", "ref", "group_id", "per_page", "page", "namespace", "name"],
+  docker: ["args", "namespace", "repository", "tag", "query", "container", "image", "name"],
+  k8s: ["namespace", "name", "pod", "container", "apiVersion", "kind", "context", "labelSelector", "command", "image", "resource", "scale", "tail"],
+  notion: ["page_id", "block_id", "data_source_id", "database_id", "query", "parent", "properties", "type", "filter", "page_size"]
+};
+var GENERIC_FIELDS = [
+  "query",
+  "q",
+  "search_query",
+  "url",
+  "urls",
+  "objective",
+  "libraryName",
+  "owner",
+  "repo",
+  "project",
+  "project_id",
+  "id",
+  "name",
+  "issue",
+  "issue_id",
+  "pull_number",
+  "branch",
+  "method",
+  "container",
+  "pod",
+  "namespace",
+  "database",
+  "table",
+  "path",
+  "engine",
+  "status",
+  "action",
+  "limit",
+  "count",
+  "max_results",
+  "numResults"
+];
+var fieldLabel = (t, key) => t(`toolCall.field.${key}`, { defaultValue: key });
+function describe(t, key, value) {
+  if (value === void 0 || value === null || hiddenKey(key, true)) return null;
+  if (Array.isArray(value)) return `${fieldLabel(t, key)}: ${value.length}`;
+  if (isRecord(value)) {
+    if (COUNT_KEYS.has(key)) return `${fieldLabel(t, key)}: ${Object.keys(value).length}`;
+    return `${fieldLabel(t, key)}: ${preview(value, key, true)}`;
+  }
+  if (COUNT_KEYS.has(key)) return `${fieldLabel(t, key)}: ${String(value).length}`;
+  return `${fieldLabel(t, key)}: ${preview(value, key, true)}`;
+}
+function orderedArgumentKeys(providerId, args) {
+  const fields = PROVIDER_FIELDS[providerId] ?? GENERIC_FIELDS;
+  const keys = Object.keys(args);
+  const head = fields.filter((key) => keys.includes(key));
+  const rest = keys.filter((key) => !head.includes(key)).sort();
+  return [...head, ...rest];
+}
+function providerSummary(providerId, args, t) {
+  const source = providerId === "serpapi" && isRecord(args.params) ? args.params : args;
+  const fields = PROVIDER_FIELDS[providerId] ?? GENERIC_FIELDS;
+  const parts = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const key of fields) {
+    if (seen.has(key) || parts.length >= 8) continue;
+    const text = describe(t, key, source[key]);
+    if (text) {
+      seen.add(key);
+      parts.push(text);
+    }
+  }
+  return parts.join(" · ").slice(0, MAX_SUMMARY);
+}
+
+// src/components.tsx
+var hostOf = (url) => {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+};
+var isoStamp = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
+var shortStamp = (text) => isoStamp.test(text) ? text.slice(0, 16).replace("T", " ") : text;
+function Pager({
+  total,
+  page,
+  onPage,
+  size = PAGE_SIZE
+}) {
+  const { t } = useApi();
+  if (total <= size) return null;
+  const last = Math.max(0, Math.ceil(total / size) - 1);
+  return /* @__PURE__ */ React.createElement("div", { className: "mcp-pager" }, /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      type: "button",
+      disabled: page === 0,
+      onClick: () => onPage(Math.max(0, page - 1))
+    },
+    t("toolCall.mcp.previous")
+  ), /* @__PURE__ */ React.createElement("span", null, t("toolCall.mcp.range", {
+    values: {
+      start: page * size + 1,
+      end: Math.min(total, (page + 1) * size),
+      total
+    }
+  })), /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      type: "button",
+      disabled: page >= last,
+      onClick: () => onPage(Math.min(last, page + 1))
+    },
+    t("toolCall.mcp.next")
+  ));
+}
+function SafeLink({ value, label }) {
+  const api = useApi();
+  const url = safeUrl(value);
+  if (!url) return null;
+  return /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      className: "mcp-link",
+      type: "button",
+      title: url,
+      onClick: () => api.links.open(url, "browser")
+    },
+    safeText(label || url).slice(0, 180)
+  );
+}
+function TextValue({ value }) {
+  const { t } = useApi();
+  const text = React.useMemo(() => safeText(value), [value]);
+  const [expanded, setExpanded] = React.useState(false);
+  const [requested, setPage] = React.useState(0);
+  const page = Math.min(
+    requested,
+    Math.max(0, Math.ceil(text.length / TEXT_PAGE_SIZE) - 1)
+  );
+  return /* @__PURE__ */ React.createElement("div", { className: "mcp-text" }, /* @__PURE__ */ React.createElement("pre", null, expanded ? text.slice(page * TEXT_PAGE_SIZE, (page + 1) * TEXT_PAGE_SIZE) : text.slice(0, 600)), text.length > 600 && /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      type: "button",
+      "aria-expanded": expanded,
+      onClick: () => setExpanded(!expanded)
+    },
+    t(expanded ? "toolCall.mcp.collapse" : "toolCall.mcp.fullText"),
+    " ·",
+    " ",
+    text.length
+  ), expanded && /* @__PURE__ */ React.createElement(
+    Pager,
+    {
+      total: text.length,
+      page,
+      size: TEXT_PAGE_SIZE,
+      onPage: setPage
+    }
+  ), /* @__PURE__ */ React.createElement(SafeLink, { value }));
+}
+function Value({
+  value,
+  field = "",
+  parameters = false,
+  depth = 0
+}) {
+  const { t } = useApi();
+  const [open, setOpen] = React.useState(false);
+  const [continueDeep, setContinueDeep] = React.useState(false);
+  const [requested, setPage] = React.useState(0);
+  if (hiddenKey(field, parameters))
+    return /* @__PURE__ */ React.createElement("code", { className: "mcp-muted" }, t("toolCall.mcp.redacted"));
+  if (field === "blob" || field === "base64" || field === "data" && typeof value === "string" && value.length > 128 && /^[a-z0-9+/]+=*$/i.test(value))
+    return /* @__PURE__ */ React.createElement("code", { className: "mcp-muted" }, BINARY);
+  if (typeof value === "string") return /* @__PURE__ */ React.createElement(TextValue, { value });
+  if (!Array.isArray(value) && !isRecord(value))
+    return /* @__PURE__ */ React.createElement("code", null, String(value));
+  const keys = Array.isArray(value) ? null : Object.keys(value);
+  const total = keys ? keys.length : value.length;
+  const page = Math.min(
+    requested,
+    Math.max(0, Math.ceil(total / PAGE_SIZE) - 1)
+  );
+  const start = page * PAGE_SIZE;
+  return /* @__PURE__ */ React.createElement("div", { className: "mcp-tree" }, /* @__PURE__ */ React.createElement("button", { type: "button", "aria-expanded": open, onClick: () => setOpen(!open) }, open ? "▾" : "▸", " ", Array.isArray(value) ? "[ ]" : "{ }", " · ", total, " ", t("toolCall.mcp.items")), open && depth >= 32 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      type: "button",
+      "aria-expanded": continueDeep,
+      onClick: () => setContinueDeep(!continueDeep)
+    },
+    t("toolCall.mcp.continueDepth")
+  ), continueDeep && /* @__PURE__ */ React.createElement(Value, { value, field, parameters })), open && depth < 32 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "mcp-fields" }, Array.from(
+    { length: Math.min(PAGE_SIZE, total - start) },
+    (_, offset) => {
+      const index = start + offset;
+      const key = keys ? keys[index] : String(index);
+      const child = keys ? value[key] : value[index];
+      return /* @__PURE__ */ React.createElement("div", { className: "mcp-field", key }, /* @__PURE__ */ React.createElement("span", { className: "mcp-key" }, safeText(key).slice(0, 100)), /* @__PURE__ */ React.createElement(
+        Value,
+        {
+          value: child,
+          field: key,
+          parameters,
+          depth: depth + 1
+        }
+      ));
+    }
+  )), /* @__PURE__ */ React.createElement(Pager, { total, page, onPage: setPage })));
+}
+function ParamValue({
+  field,
+  value
+}) {
+  const api = useApi();
+  const { t } = api;
+  if (hiddenKey(field, true))
+    return /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, t("toolCall.mcp.redacted"));
+  if (typeof value === "string") {
+    const url = safeUrl(value);
+    if (url)
+      return /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          type: "button",
+          className: "mcp-param-link",
+          title: url,
+          onClick: () => api.links.open(url, "browser")
+        },
+        safeText(value).slice(0, 140)
+      );
+    if (!value) return /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, "—");
+    const text = field.endsWith("_at") || field === "date" ? shortStamp(value) : value;
+    return /* @__PURE__ */ React.createElement("span", { className: "mcp-param-text", title: value }, safeText(text).slice(0, 400));
+  }
+  if (typeof value === "number" || typeof value === "boolean")
+    return /* @__PURE__ */ React.createElement("code", { className: "mcp-param-code" }, String(value));
+  if (Array.isArray(value)) {
+    if (!value.length) return /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, "—");
+    const flat = value.every(
+      (item) => typeof item === "string" || typeof item === "number" || typeof item === "boolean"
+    );
+    return /* @__PURE__ */ React.createElement("div", { className: "mcp-param-group" }, /* @__PURE__ */ React.createElement("span", { className: "mcp-param-count" }, "[", value.length, "]"), flat && /* @__PURE__ */ React.createElement("span", { className: "mcp-param-chips" }, value.slice(0, 6).map((item, index) => /* @__PURE__ */ React.createElement("code", { key: index }, safeText(String(item)).slice(0, 80))), value.length > 6 && /* @__PURE__ */ React.createElement("span", { className: "mcp-param-more" }, "+", value.length - 6)), !flat && /* @__PURE__ */ React.createElement("details", { className: "mcp-param-details" }, /* @__PURE__ */ React.createElement("summary", null, t("toolCall.mcp.details")), /* @__PURE__ */ React.createElement(Value, { value, field, parameters: true })));
+  }
+  if (isRecord(value)) {
+    const size = Object.keys(value).length;
+    if (!size) return /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, "—");
+    return /* @__PURE__ */ React.createElement("div", { className: "mcp-param-group" }, /* @__PURE__ */ React.createElement("span", { className: "mcp-param-count" }, `{${size}}`), /* @__PURE__ */ React.createElement("details", { className: "mcp-param-details" }, /* @__PURE__ */ React.createElement("summary", null, t("toolCall.mcp.details")), /* @__PURE__ */ React.createElement(Value, { value, field, parameters: true })));
+  }
+  return /* @__PURE__ */ React.createElement(Value, { value, field, parameters: true });
+}
+function ParamTable({
+  providerId,
+  args
+}) {
+  const { t } = useApi();
+  const keys = React.useMemo(
+    () => orderedArgumentKeys(providerId, args),
+    [providerId, args]
+  );
+  return /* @__PURE__ */ React.createElement("dl", { className: "mcp-params" }, keys.map((key) => /* @__PURE__ */ React.createElement("div", { className: "mcp-param", key }, /* @__PURE__ */ React.createElement("dt", null, t(`toolCall.field.${key}`, { defaultValue: key })), /* @__PURE__ */ React.createElement("dd", null, /* @__PURE__ */ React.createElement(ParamValue, { field: key, value: args[key] })))));
+}
+var checkpointLine = /^\s*\[checkpoint\]\s*/;
+function OutputSection({
+  label,
+  value
+}) {
+  const lines = React.useMemo(
+    () => safeText(value).split(/\r?\n/).filter((line) => line.trim() !== ""),
+    [value]
+  );
+  if (lines.length > 0 && lines.every((line) => checkpointLine.test(line))) {
+    return /* @__PURE__ */ React.createElement("div", { className: "mcp-notice-list" }, lines.map((line, index) => /* @__PURE__ */ React.createElement("div", { className: "mcp-notice", key: index }, /* @__PURE__ */ React.createElement(AlertCircle, { size: 12 }), /* @__PURE__ */ React.createElement("span", null, line.replace(checkpointLine, "")))));
+  }
+  return /* @__PURE__ */ React.createElement("section", { className: "mcp-output" }, /* @__PURE__ */ React.createElement("h4", null, label), /* @__PURE__ */ React.createElement(TextValue, { value }));
+}
+
 // src/AnysearchToolCall.tsx
-var isRecord = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
+var isRecord2 = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
 var asString = (value) => typeof value === "string" && value.trim() !== "" ? value : void 0;
 var parseArgs = (args) => {
   try {
     const parsed = JSON.parse(args);
-    return isRecord(parsed) ? parsed : null;
+    return isRecord2(parsed) ? parsed : null;
   } catch {
     return null;
   }
@@ -51,7 +525,7 @@ var parseResult = (result) => {
   }
   try {
     const parsed = JSON.parse(result);
-    if (!isRecord(parsed)) {
+    if (!isRecord2(parsed)) {
       return { type: "raw", text: result };
     }
     if (typeof parsed.error === "string") {
@@ -65,7 +539,7 @@ var parseResult = (result) => {
 var mcpText = (data) => {
   const content = Array.isArray(data.content) ? data.content : [];
   for (const part of content) {
-    if (isRecord(part) && part.type === "text") {
+    if (isRecord2(part) && part.type === "text") {
       const text = asString(part.text);
       if (text) {
         return text;
@@ -75,7 +549,7 @@ var mcpText = (data) => {
   return void 0;
 };
 var truncate = (value, max = 56) => value.length > max ? `${value.slice(0, max)}...` : value;
-var hostOf = (url) => {
+var hostOf2 = (url) => {
   try {
     return new URL(url).host || url;
   } catch {
@@ -156,13 +630,13 @@ var parseResultSummary = (text) => {
   };
 };
 var parseExtract = (data, text) => {
-  let candidate = isRecord(
+  let candidate = isRecord2(
     data.structuredContent
   ) ? data.structuredContent : null;
   if (!candidate && text) {
     try {
       const parsed = JSON.parse(text);
-      if (isRecord(parsed)) {
+      if (isRecord2(parsed)) {
         candidate = parsed;
       }
     } catch {
@@ -268,7 +742,7 @@ ${openInBrowserTitle}`
     "aria-label": openExternalTitle
   },
   /* @__PURE__ */ React.createElement(ExternalLink, { size: 11, "aria-hidden": "true" })
-)), /* @__PURE__ */ React.createElement("div", { className: "tool-call-websearch-result-url" }, /* @__PURE__ */ React.createElement(Globe, { size: 10, "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("span", null, hostOf(item.url))), item.snippet ? /* @__PURE__ */ React.createElement("p", { className: "tool-call-websearch-result-snippet" }, item.snippet) : null);
+)), /* @__PURE__ */ React.createElement("div", { className: "tool-call-websearch-result-url" }, /* @__PURE__ */ React.createElement(Globe, { size: 10, "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("span", null, hostOf2(item.url))), item.snippet ? /* @__PURE__ */ React.createElement("p", { className: "tool-call-websearch-result-snippet" }, item.snippet) : null);
 var AnysearchToolCall = ({
   toolCall
 }) => {
@@ -286,6 +760,7 @@ var AnysearchToolCall = ({
     () => parseResult(toolCall.result),
     [toolCall.result]
   );
+  const [parametersOpen, setParametersOpen] = useState(false);
   const effectiveStatus = parsedResult.type === "error" ? "error" : toolCall.status;
   const isRunning = toolCall.status === "running";
   const data = parsedResult.type === "success" ? parsedResult.data : null;
@@ -327,7 +802,7 @@ var AnysearchToolCall = ({
     }
     case "batch-search": {
       const queries = Array.isArray(parsedArgs?.queries) ? parsedArgs.queries : [];
-      const firstQuery = isRecord(queries[0]) ? asString(queries[0].query) : void 0;
+      const firstQuery = isRecord2(queries[0]) ? asString(queries[0].query) : void 0;
       displayName = firstQuery ? truncate(firstQuery.replace(/\s+/g, " ")) : void 0;
       const groupCount = sections.length || queries.length;
       meta = groupCount > 0 ? /* @__PURE__ */ React.createElement("span", { className: "tool-call-websearch-count tool-call-websearch-count-active" }, t("toolCall.anysearch.queryCount", {
@@ -338,7 +813,7 @@ var AnysearchToolCall = ({
     case "extract": {
       const argUrl = asString(parsedArgs?.url);
       const targetUrl = extractResult?.url ?? argUrl;
-      displayName = targetUrl ? truncate(hostOf(targetUrl), 60) : void 0;
+      displayName = targetUrl ? truncate(hostOf2(targetUrl), 60) : void 0;
       meta = extractResult && extractResult.content.length > 0 ? /* @__PURE__ */ React.createElement("span", { className: "tool-call-websearch-count tool-call-websearch-count-active" }, t("toolCall.anysearch.charCount", {
         values: {
           count: extractResult.content.length.toLocaleString()
@@ -366,17 +841,18 @@ var AnysearchToolCall = ({
   const openInBrowserTitle = t("toolCall.anysearch.openInBrowser");
   const openExternalTitle = t("toolCall.anysearch.openExternal");
   const params = [];
-  if (operation === "search") {
-    const query = asString(parsedArgs?.query);
-    const maxResults = parsedArgs?.maxResults;
+  if (operation === "search" || operation === "batch-search") {
+    const query = asString(parsedArgs?.query) ?? (Array.isArray(parsedArgs?.queries) ? isRecord2(parsedArgs.queries[0]) ? asString(parsedArgs.queries[0].query) : asString(parsedArgs.queries[0]) : void 0);
+    const maxResults = parsedArgs?.maxResults ?? parsedArgs?.max_results ?? parsedArgs?.count;
+    const subDomain = asString(parsedArgs?.sub_domain) ?? asString(parsedArgs?.domain);
     if (query) {
       params.push(
         /* @__PURE__ */ React.createElement("div", { className: "tool-call-websearch-param-item", key: "query" }, /* @__PURE__ */ React.createElement(Search, { size: 11, "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("span", { className: "tool-call-websearch-param-label" }, t("toolCall.anysearch.query")), /* @__PURE__ */ React.createElement("code", { className: "tool-call-websearch-param-value" }, query))
       );
     }
-    if (typeof maxResults === "number") {
+    if (typeof maxResults === "number" || subDomain) {
       params.push(
-        /* @__PURE__ */ React.createElement("div", { className: "tool-call-websearch-param-tags", key: "max" }, /* @__PURE__ */ React.createElement("span", { className: "tool-call-websearch-param-tag" }, t("toolCall.anysearch.maxResults"), ": ", maxResults))
+        /* @__PURE__ */ React.createElement("div", { className: "tool-call-websearch-param-tags", key: "tags" }, subDomain ? /* @__PURE__ */ React.createElement("span", { className: "tool-call-websearch-param-tag" }, subDomain) : null, typeof maxResults === "number" ? /* @__PURE__ */ React.createElement("span", { className: "tool-call-websearch-param-tag" }, t("toolCall.anysearch.maxResults"), ": ", maxResults) : null)
       );
     }
   } else if (operation === "extract") {
@@ -387,14 +863,22 @@ var AnysearchToolCall = ({
       );
     }
   } else if (operation === "get-sub-domains") {
-    const domains = Array.isArray(parsedArgs?.domains) ? parsedArgs.domains.map(String) : [];
+    const domains = Array.isArray(parsedArgs?.domains) ? parsedArgs.domains.map(String) : asString(parsedArgs?.domain) ? [asString(parsedArgs?.domain)] : [];
     if (domains.length > 0) {
       params.push(
         /* @__PURE__ */ React.createElement("div", { className: "tool-call-websearch-param-item", key: "domains" }, /* @__PURE__ */ React.createElement(Search, { size: 11, "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("span", { className: "tool-call-websearch-param-label" }, t("toolCall.anysearch.domains")), /* @__PURE__ */ React.createElement("code", { className: "tool-call-websearch-param-value" }, domains.join(", ")))
       );
     }
+  } else if (operation === "score") {
+    const feedbacks = Array.isArray(parsedArgs?.feedbacks) ? parsedArgs.feedbacks.filter(isRecord2) : [];
+    if (feedbacks.length > 0) {
+      params.push(
+        /* @__PURE__ */ React.createElement("div", { className: "tool-call-websearch-param-item", key: "feedbacks" }, /* @__PURE__ */ React.createElement(CheckCircle2, { size: 11, "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("span", { className: "tool-call-websearch-param-label" }, t("toolCall.anysearch.feedbackCount", { defaultValue: "打分条目" })), /* @__PURE__ */ React.createElement("code", { className: "tool-call-websearch-param-value" }, feedbacks.length))
+      );
+    }
   }
-  const hasStructuredContent = parsedResult.type === "success" && (operation === "search" || operation === "batch-search") && sections.length > 0 || operation === "extract" && extractResult !== null || operation === "get-sub-domains" && domainSections.length > 0;
+  const scoreFeedbacks = operation === "score" && Array.isArray(parsedArgs?.feedbacks) ? parsedArgs.feedbacks.filter(isRecord2) : [];
+  const hasStructuredContent = parsedResult.type === "success" && (operation === "search" || operation === "batch-search") && sections.length > 0 || operation === "extract" && extractResult !== null || operation === "get-sub-domains" && domainSections.length > 0 || operation === "score" && scoreFeedbacks.length > 0;
   const rawFallbackText = !hasStructuredContent ? contentTextValue ?? (data ? JSON.stringify(data, null, 2) : void 0) : void 0;
   return /* @__PURE__ */ React.createElement(
     ToolCallNode,
@@ -408,7 +892,15 @@ var AnysearchToolCall = ({
       meta,
       className: "snow-external-tool-renderer tool-call-websearch tool-call-anysearch"
     },
-    /* @__PURE__ */ React.createElement("div", { className: "tool-call-body tool-call-websearch-body" }, params.length > 0 ? /* @__PURE__ */ React.createElement("div", { className: "tool-call-websearch-params" }, params) : null, parsedResult.type === "error" ? /* @__PURE__ */ React.createElement("div", { className: "tool-call-error" }, /* @__PURE__ */ React.createElement(AlertCircle, { size: 12, "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("span", null, localizeToolError(t, parsedResult.message))) : null, operation === "search" && parsedResult.type === "success" && sections.length > 0 ? sections[0].items.length > 0 ? /* @__PURE__ */ React.createElement("div", { className: "tool-call-websearch-results" }, sections[0].items.map((item, index) => /* @__PURE__ */ React.createElement(
+    /* @__PURE__ */ React.createElement("div", { className: "tool-call-body tool-call-websearch-body" }, params.length > 0 ? /* @__PURE__ */ React.createElement("div", { className: "tool-call-websearch-params mcp-search-params-bar" }, params) : null, parsedArgs ? /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        type: "button",
+        "aria-expanded": parametersOpen,
+        onClick: () => setParametersOpen(!parametersOpen)
+      },
+      t("toolCall.mcp.parameters", { defaultValue: "参数" })
+    ) : null, parametersOpen && parsedArgs ? /* @__PURE__ */ React.createElement("section", { className: "mcp-params-section" }, /* @__PURE__ */ React.createElement("p", { className: "mcp-muted" }, t("toolCall.mcp.parameterPrivacy", { defaultValue: "敏感参数已隐藏。" })), /* @__PURE__ */ React.createElement(ParamTable, { providerId: "anysearch", args: parsedArgs }), /* @__PURE__ */ React.createElement("details", { className: "mcp-param-details mcp-params-raw" }, /* @__PURE__ */ React.createElement("summary", null, t("toolCall.mcp.rawParameters", { defaultValue: "原始参数" })), /* @__PURE__ */ React.createElement(Value, { value: parsedArgs, parameters: true }))) : null, parsedResult.type === "error" ? /* @__PURE__ */ React.createElement("div", { className: "tool-call-error" }, /* @__PURE__ */ React.createElement(AlertCircle, { size: 12, "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("span", null, localizeToolError(t, parsedResult.message))) : null, operation === "search" && parsedResult.type === "success" && sections.length > 0 ? sections[0].items.length > 0 ? /* @__PURE__ */ React.createElement("div", { className: "tool-call-websearch-results" }, sections[0].items.map((item, index) => /* @__PURE__ */ React.createElement(
       ResultItem,
       {
         key: `${item.url}-${index}`,
@@ -448,7 +940,7 @@ var AnysearchToolCall = ({
         className: "tool-call-websearch-page-title-text",
         title: extractResult.title || void 0
       },
-      extractResult.title || hostOf(extractResult.url)
+      extractResult.title || hostOf2(extractResult.url)
     )), /* @__PURE__ */ React.createElement("div", { className: "tool-call-websearch-page-link-row" }, /* @__PURE__ */ React.createElement(
       "button",
       {
@@ -459,7 +951,7 @@ var AnysearchToolCall = ({
 ${openInBrowserTitle}`
       },
       /* @__PURE__ */ React.createElement(Globe, { size: 10, "aria-hidden": "true" }),
-      /* @__PURE__ */ React.createElement("span", null, hostOf(extractResult.url))
+      /* @__PURE__ */ React.createElement("span", null, hostOf2(extractResult.url))
     ), /* @__PURE__ */ React.createElement(
       "button",
       {
@@ -491,7 +983,10 @@ ${openInBrowserTitle}`
         param.required ? /* @__PURE__ */ React.createElement("span", { className: "tool-call-websearch-param-tag" }, t("toolCall.anysearch.required")) : null,
         param.description ? /* @__PURE__ */ React.createElement("span", { className: "tool-call-anysearch-cap-param-desc" }, param.description) : null
       ))) : null))
-    ))) : null, rawFallbackText ? /* @__PURE__ */ React.createElement("section", { className: "tool-call-section" }, /* @__PURE__ */ React.createElement("span", { className: "tool-call-section-label" }, t("toolCall.anysearch.result")), /* @__PURE__ */ React.createElement("pre", { className: "tool-call-section-pre" }, rawFallbackText)) : null, parsedResult.type === "empty" ? /* @__PURE__ */ React.createElement(
+    ))) : null, operation === "score" && scoreFeedbacks.length > 0 ? /* @__PURE__ */ React.createElement("div", { className: "tool-call-anysearch-score-list" }, scoreFeedbacks.map((fb, idx) => {
+      const scoreNum = Number(fb.score) || 0;
+      return /* @__PURE__ */ React.createElement("div", { key: idx, className: "tool-call-anysearch-score-item" }, /* @__PURE__ */ React.createElement(CheckCircle2, { size: 12, className: "tool-call-icon-success", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("span", { className: "tool-call-anysearch-score-id" }, String(fb.request_id || "req")), /* @__PURE__ */ React.createElement("span", { className: "tool-call-anysearch-score-stars" }, "★".repeat(Math.max(0, Math.min(5, scoreNum))) + "☆".repeat(Math.max(0, 5 - Math.max(0, Math.min(5, scoreNum))))), /* @__PURE__ */ React.createElement("span", { className: "tool-call-anysearch-score-val" }, scoreNum, "/5"));
+    })) : null, rawFallbackText ? /* @__PURE__ */ React.createElement("section", { className: "tool-call-section" }, /* @__PURE__ */ React.createElement("span", { className: "tool-call-section-label" }, t("toolCall.anysearch.result")), /* @__PURE__ */ React.createElement(TextValue, { value: rawFallbackText })) : null, hasStructuredContent && (contentTextValue || data) ? /* @__PURE__ */ React.createElement("details", { className: "mcp-raw-blocks-toggle" }, /* @__PURE__ */ React.createElement("summary", null, t("toolCall.mcp.viewRawBlocks", { defaultValue: "查看原始响应数据" })), /* @__PURE__ */ React.createElement(TextValue, { value: contentTextValue ?? JSON.stringify(data, null, 2) })) : null, toolCall.streamingStdout && /* @__PURE__ */ React.createElement(OutputSection, { label: "stdout", value: toolCall.streamingStdout }), toolCall.streamingStderr && /* @__PURE__ */ React.createElement(OutputSection, { label: "stderr", value: toolCall.streamingStderr }), parsedResult.type === "empty" ? /* @__PURE__ */ React.createElement(
       "div",
       {
         className: `tool-call-websearch-pending ${isRunning ? "tool-call-websearch-pending-running" : ""}`
@@ -510,12 +1005,12 @@ ${openInBrowserTitle}`
 };
 
 // src/DbxToolCall.tsx
-var isRecord2 = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
+var isRecord3 = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
 var asString2 = (value) => typeof value === "string" && value.trim() !== "" ? value : void 0;
 var parseArgs2 = (args) => {
   try {
     const parsed = JSON.parse(args);
-    return isRecord2(parsed) ? parsed : null;
+    return isRecord3(parsed) ? parsed : null;
   } catch {
     return null;
   }
@@ -523,7 +1018,7 @@ var parseArgs2 = (args) => {
 var contentErrorText = (data) => {
   const content = Array.isArray(data.content) ? data.content : [];
   for (const part of content) {
-    if (isRecord2(part) && part.type === "text") {
+    if (isRecord3(part) && part.type === "text") {
       const text = asString2(part.text);
       if (text && /^Error\s*\[/.test(text)) {
         return text;
@@ -538,7 +1033,7 @@ var parseResult2 = (result) => {
   }
   try {
     const parsed = JSON.parse(result);
-    if (!isRecord2(parsed)) {
+    if (!isRecord3(parsed)) {
       return { type: "raw", text: result };
     }
     if (typeof parsed.error === "string") {
@@ -555,7 +1050,7 @@ var parseResult2 = (result) => {
 var truncate2 = (value, max = 56) => value.length > max ? `${value.slice(0, max)}...` : value;
 var parseQueryTable = (data) => {
   const extract = (candidate) => {
-    if (!isRecord2(candidate)) {
+    if (!isRecord3(candidate)) {
       return null;
     }
     if (Array.isArray(candidate.rows)) {
@@ -569,7 +1064,7 @@ var parseQueryTable = (data) => {
         return { rows: candidate[field], columns: null };
       }
     }
-    if (isRecord2(candidate.data) && Array.isArray(candidate.data.rows)) {
+    if (isRecord3(candidate.data) && Array.isArray(candidate.data.rows)) {
       return {
         rows: candidate.data.rows,
         columns: Array.isArray(candidate.data.columns) ? candidate.data.columns : null
@@ -577,16 +1072,16 @@ var parseQueryTable = (data) => {
     }
     return null;
   };
-  const extracted = extract(data) ?? (isRecord2(data.result) ? extract(data.result) : null);
+  const extracted = extract(data) ?? (isRecord3(data.result) ? extract(data.result) : null);
   if (!extracted || extracted.rows.length === 0) {
     return null;
   }
   const rawRows = extracted.rows;
   const rawColumns = extracted.columns;
-  if (isRecord2(rawRows[0])) {
+  if (isRecord3(rawRows[0])) {
     const columns2 = Object.keys(rawRows[0]);
     const rows2 = rawRows.map((row) => {
-      if (!isRecord2(row)) {
+      if (!isRecord3(row)) {
         return [row];
       }
       return columns2.map((column) => row[column]);
@@ -615,7 +1110,7 @@ var parseMarkdownTable = (text) => {
 var contentText = (data) => {
   const content = Array.isArray(data.content) ? data.content : [];
   for (const part of content) {
-    if (isRecord2(part)) {
+    if (isRecord3(part)) {
       const text = asString2(part.text);
       if (text) {
         return text;
@@ -643,6 +1138,7 @@ var DbxToolCall = ({
     () => parseResult2(toolCall.result),
     [toolCall.result]
   );
+  const [parametersOpen, setParametersOpen] = useState(false);
   const effectiveStatus = parsedResult.type === "error" ? "error" : toolCall.status;
   const data = parsedResult.type === "success" ? parsedResult.data : null;
   const queryTable = data ? parseQueryTable(data) ?? parseContentTable(data) : parsedResult.type === "raw" ? parseMarkdownTable(parsedResult.text) : null;
@@ -846,159 +1342,24 @@ var DbxToolCall = ({
       meta,
       className: "snow-external-tool-renderer tool-call-dbx"
     },
-    /* @__PURE__ */ React.createElement("div", { className: "tool-call-body tool-call-dbx-body" }, commandText ? /* @__PURE__ */ React.createElement("div", { className: "tool-call-dbx-command" }, /* @__PURE__ */ React.createElement(Play, { size: 11, "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("code", null, commandText)) : null, queryTable ? /* @__PURE__ */ React.createElement("div", { className: "tool-call-dbx-table-wrap" }, /* @__PURE__ */ React.createElement(
+    /* @__PURE__ */ React.createElement("div", { className: "tool-call-body tool-call-dbx-body" }, commandText ? /* @__PURE__ */ React.createElement("div", { className: "tool-call-dbx-command" }, /* @__PURE__ */ React.createElement(Play, { size: 11, "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("code", null, commandText)) : null, parsedArgs ? /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        type: "button",
+        "aria-expanded": parametersOpen,
+        onClick: () => setParametersOpen(!parametersOpen)
+      },
+      t("toolCall.mcp.parameters", { defaultValue: "参数" })
+    ) : null, parametersOpen && parsedArgs ? /* @__PURE__ */ React.createElement("section", { className: "mcp-params-section" }, /* @__PURE__ */ React.createElement("p", { className: "mcp-muted" }, t("toolCall.mcp.parameterPrivacy", { defaultValue: "敏感参数已隐藏。" })), /* @__PURE__ */ React.createElement(ParamTable, { providerId: "dbx", args: parsedArgs }), /* @__PURE__ */ React.createElement("details", { className: "mcp-param-details mcp-params-raw" }, /* @__PURE__ */ React.createElement("summary", null, t("toolCall.mcp.rawParameters", { defaultValue: "原始参数" })), /* @__PURE__ */ React.createElement(Value, { value: parsedArgs, parameters: true }))) : null, queryTable ? /* @__PURE__ */ React.createElement("div", { className: "tool-call-dbx-table-wrap" }, /* @__PURE__ */ React.createElement(
       DataTableViewer,
       {
         columns: queryTable.columns,
         rows: queryTable.rows,
         maxInitialRows: 20
       }
-    )) : data && Array.isArray(data.rows) && data.rows.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "tool-call-dbx-empty" }, /* @__PURE__ */ React.createElement(Database, { size: 14, "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("span", null, t("toolCall.dbx.emptyResult"))) : null, parsedResult.type === "error" ? /* @__PURE__ */ React.createElement("div", { className: "tool-call-error" }, /* @__PURE__ */ React.createElement(AlertCircle, { size: 12, "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("span", null, localizeToolError(t, parsedResult.message))) : null, resultText && !queryTable ? /* @__PURE__ */ React.createElement("section", { className: "tool-call-section" }, /* @__PURE__ */ React.createElement("span", { className: "tool-call-section-label" }, t("toolCall.common.result")), /* @__PURE__ */ React.createElement("pre", { className: "tool-call-section-pre" }, resultText)) : null)
+    )) : data && Array.isArray(data.rows) && data.rows.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "tool-call-dbx-empty" }, /* @__PURE__ */ React.createElement(Database, { size: 14, "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("span", null, t("toolCall.dbx.emptyResult"))) : null, parsedResult.type === "error" ? /* @__PURE__ */ React.createElement("div", { className: "tool-call-error" }, /* @__PURE__ */ React.createElement(AlertCircle, { size: 12, "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("span", null, localizeToolError(t, parsedResult.message))) : null, queryTable && resultText ? /* @__PURE__ */ React.createElement("details", { className: "mcp-raw-blocks-toggle" }, /* @__PURE__ */ React.createElement("summary", null, t("toolCall.mcp.viewRawBlocks", { defaultValue: "查看原始响应数据" })), /* @__PURE__ */ React.createElement(TextValue, { value: resultText })) : null, resultText && !queryTable ? /* @__PURE__ */ React.createElement("section", { className: "tool-call-section" }, /* @__PURE__ */ React.createElement("span", { className: "tool-call-section-label" }, t("toolCall.common.result")), /* @__PURE__ */ React.createElement(TextValue, { value: resultText })) : null, toolCall.streamingStdout && /* @__PURE__ */ React.createElement(OutputSection, { label: "stdout", value: toolCall.streamingStdout }), toolCall.streamingStderr && /* @__PURE__ */ React.createElement(OutputSection, { label: "stderr", value: toolCall.streamingStderr }))
   );
 };
-
-// src/mcp.ts
-var PAGE_SIZE = 20;
-var TEXT_PAGE_SIZE = 12e3;
-var MAX_JSON_CHARS = 8 * 1024 * 1024;
-var HIDDEN = "[redacted]";
-var BINARY = "[binary omitted]";
-var isRecord3 = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
-function parseJson(text) {
-  if (!text || text.length > MAX_JSON_CHARS) return text;
-  try {
-    return JSON.parse(text);
-  } catch {
-    return text;
-  }
-}
-var secretKey = /password|passwd|secret|token|cookie|auth|headers|api[-_]?key|private[-_]?key|credential|session[-_]?id|confirm[-_]?token/i;
-var inputKey = /^(text|value|values|fields|elements|script|function|prompt|body|requestBody|content|input|data|payload|payload_text|payload_base64|raw|code|command|sql)$/i;
-function hiddenKey(key, parameters = false) {
-  return secretKey.test(key) || parameters && inputKey.test(key);
-}
-function safeText(text) {
-  return text.replace(/data:[^\s,;]+;base64,[a-z0-9+/=\s]+/gi, BINARY).replace(/[a-z0-9+/]{256,}={0,2}/gi, BINARY).replace(/\b(?:Bearer|Basic)\s+[a-z0-9._~+/=-]+/gi, HIDDEN).replace(/((?:["']?(?:password|passwd|secret|token|cookies?|authorization|headers|api[-_]?key|private[-_]?key)["']?)\s*[:=]\s*)([^\r\n,;]+)/gi, `$1${HIDDEN}`).replace(/(https?:\/\/)[^\s/]+@/gi, `$1${HIDDEN}@`).replace(/([?&](?:[^=&\s]*(?:token|key|secret|password|auth|cookie)[^=&\s]*)=)[^&#\s]+/gi, `$1${HIDDEN}`);
-}
-function safeUrl(value) {
-  if (typeof value !== "string" || value.length > 4096 || /[\u0000-\u0020]/.test(value)) return null;
-  try {
-    const url = new URL(value);
-    if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) return null;
-    if ([...url.searchParams.keys()].some((key) => hiddenKey(key))) return null;
-    return url.href;
-  } catch {
-    return null;
-  }
-}
-function preview(value, key = "", parameters = false) {
-  if (hiddenKey(key, parameters)) return HIDDEN;
-  if (typeof value === "string") return safeText(value).slice(0, 300);
-  if (Array.isArray(value)) return `[${value.length}]`;
-  if (isRecord3(value)) return `{${Object.keys(value).length}}`;
-  return String(value);
-}
-function failed(value, depth = 0) {
-  if (!isRecord3(value) || depth > 8) return false;
-  if (value.isError === true || value.success === false || value.status === "failed" || value.status === "error") return true;
-  if (value.error !== void 0 && value.error !== null && value.error !== false && value.error !== "") return true;
-  for (const key of ["structuredContent", "data", "result"]) {
-    if (failed(value[key], depth + 1)) return true;
-  }
-  if (Array.isArray(value.content)) {
-    return value.content.some((part) => isRecord3(part) && (failed(part, depth + 1) || part.type === "text" && failed(parseJson(typeof part.text === "string" ? part.text : void 0), depth + 1)));
-  }
-  return false;
-}
-function contentBlock(part, index) {
-  if (!isRecord3(part)) return { label: `content[${index}]`, kind: "value", value: part };
-  if (part.type === "image") return { label: `content[${index}] · image`, kind: "image", value: part };
-  if (part.type === "text" && typeof part.text === "string") {
-    const extra = Object.fromEntries(Object.entries(part).filter(([key]) => key !== "text" && key !== "type"));
-    return { label: `content[${index}] · text`, kind: "value", value: Object.keys(extra).length ? { text: parseJson(part.text), ...extra } : parseJson(part.text) };
-  }
-  if (part.type === "resource" && isRecord3(part.resource)) {
-    const resource = { ...part.resource };
-    if (typeof resource.text === "string") resource.text = parseJson(resource.text);
-    return { label: `content[${index}] · resource`, kind: "value", value: { ...part, resource } };
-  }
-  return { label: `content[${index}] · ${typeof part.type === "string" ? safeText(part.type).slice(0, 60) : "unknown"}`, kind: "value", value: part };
-}
-function parseMcp(result) {
-  if (result === void 0 || result === "") return { blocks: [], failed: false, bounded: false };
-  const root = parseJson(result);
-  let envelope = root;
-  let transportKey;
-  if (isRecord3(root) && !Array.isArray(root.content) && root.structuredContent === void 0) {
-    for (const key of ["result", "data"]) {
-      const value = root[key];
-      if (isRecord3(value) && (Array.isArray(value.content) || value.structuredContent !== void 0)) {
-        envelope = value;
-        transportKey = key;
-        break;
-      }
-    }
-  }
-  const blocks = [];
-  if (isRecord3(envelope) && (Array.isArray(envelope.content) || envelope.structuredContent !== void 0)) {
-    if (envelope.structuredContent !== void 0) blocks.push({ label: "structuredContent", kind: "value", value: envelope.structuredContent });
-    if (Array.isArray(envelope.content)) {
-      envelope.content.forEach((part, index) => blocks.push(contentBlock(part, index)));
-    }
-    const fields = Object.fromEntries(Object.entries(envelope).filter(([key]) => key !== "content" && key !== "structuredContent"));
-    if (Object.keys(fields).length) blocks.push({ label: "envelope", kind: "value", value: fields });
-    if (root !== envelope && isRecord3(root)) blocks.push({ label: "transport", kind: "value", value: Object.fromEntries(Object.entries(root).filter(([key]) => key !== transportKey)) });
-  } else blocks.push({ label: "result", kind: "value", value: root });
-  return { blocks, failed: failed(root), bounded: result.length > MAX_JSON_CHARS };
-}
-function candidates(blocks) {
-  const output = [];
-  const visit = (value, depth) => {
-    if (!isRecord3(value) || depth > 5 || output.length >= 80) return;
-    output.push(value);
-    for (const key of ["data", "result", "text", "resource"]) visit(value[key], depth + 1);
-  };
-  for (const block of blocks.slice(0, 80)) if (block.kind === "value") visit(block.value, 0);
-  return output;
-}
-function searchGroups(records) {
-  const groups = [];
-  const seen = /* @__PURE__ */ new Set();
-  for (const record of records) {
-    for (const name of ["web", "news", "images", "results"]) {
-      const field = record[name];
-      const items = Array.isArray(field) ? field : isRecord3(field) && Array.isArray(field.results) ? field.results : null;
-      if (items && !seen.has(items)) {
-        seen.add(items);
-        groups.push({ name, items });
-      }
-    }
-  }
-  return groups;
-}
-function inlineImage(value) {
-  if (!isRecord3(value) || typeof value.data !== "string" || typeof value.mimeType !== "string") return null;
-  const { data, mimeType } = value;
-  if (!["image/png", "image/jpeg", "image/webp", "image/gif"].includes(mimeType) || data.length < 16 || data.length > 2 * 1024 * 1024 || data.length % 4 !== 0 || !/^[a-z0-9+/]+={0,2}$/i.test(data)) return null;
-  try {
-    const prefix = atob(data.slice(0, 64));
-    const byte = (index) => prefix.charCodeAt(index);
-    const png = mimeType === "image/png" && prefix.startsWith("PNG\r\n\n");
-    const gif = mimeType === "image/gif" && (prefix.startsWith("GIF87a") || prefix.startsWith("GIF89a"));
-    const jpeg = mimeType === "image/jpeg" && byte(0) === 255 && byte(1) === 216 && byte(2) === 255;
-    const webp = mimeType === "image/webp" && prefix.startsWith("RIFF") && prefix.slice(8, 12) === "WEBP";
-    if (!png && !gif && !jpeg && !webp) return null;
-    if (png || gif) {
-      const u32 = (offset) => byte(offset) * 16777216 + byte(offset + 1) * 65536 + byte(offset + 2) * 256 + byte(offset + 3);
-      const width = png ? u32(16) : byte(6) + byte(7) * 256;
-      const height = png ? u32(20) : byte(8) + byte(9) * 256;
-      if (!width || !height || width > 8192 || height > 8192 || width * height > 16e6) return null;
-    }
-    return { src: `data:${mimeType};base64,${data}`, bytes: Math.floor(data.length * 3 / 4) };
-  } catch {
-    return null;
-  }
-}
 
 // src/Exa.ts
 var MAX_TEXT_CHARS = 2e5;
@@ -1031,7 +1392,7 @@ function fetchText(text) {
 function textOf(block) {
   if (block.kind !== "value") return void 0;
   if (typeof block.value === "string") return block.value;
-  if (isRecord3(block.value) && typeof block.value.text === "string") return block.value.text;
+  if (isRecord(block.value) && typeof block.value.text === "string") return block.value.text;
   return void 0;
 }
 function exaView(blocks, records, operation) {
@@ -1058,15 +1419,6 @@ function exaView(blocks, records, operation) {
   }
   return { groups, textPreview, partialError };
 }
-function exaSummary(args, t) {
-  const parts = [];
-  if (typeof args.query === "string") parts.push(`${t("toolCall.exa.query")}: ${preview(args.query, "query", true)}`);
-  if (typeof args.numResults === "number" && Number.isFinite(args.numResults)) parts.push(`${t("toolCall.exa.numResults")}: ${args.numResults}`);
-  if (typeof args.objective === "string") parts.push(`${t("toolCall.exa.objectiveLength")}: ${args.objective.length}`);
-  if (Array.isArray(args.urls)) parts.push(`${t("toolCall.exa.urlCount")}: ${args.urls.length}`);
-  if (typeof args.maxCharacters === "number" && Number.isFinite(args.maxCharacters)) parts.push(`${t("toolCall.exa.maxCharacters")}: ${args.maxCharacters}`);
-  return parts.join(" · ").slice(0, 400);
-}
 function exaParameters(args) {
   return Object.hasOwn(args, "objective") ? { ...args, objective: HIDDEN } : args;
 }
@@ -1078,12 +1430,12 @@ var MAX_PER_BLOCK_ITEMS = 20;
 function textOf2(block) {
   if (block.kind !== "value") return void 0;
   if (typeof block.value === "string") return block.value;
-  if (isRecord3(block.value) && typeof block.value.text === "string") return block.value.text;
+  if (isRecord(block.value) && typeof block.value.text === "string") return block.value.text;
   return void 0;
 }
 var urlOf = (item) => safeUrl(item.url ?? item.link ?? item.source_url ?? item.uri);
 function asResultItem(value) {
-  if (!isRecord3(value)) return null;
+  if (!isRecord(value)) return null;
   if (!urlOf(value)) return null;
   if (value.title === void 0 && value.name === void 0 && value.description === void 0) return null;
   return value;
@@ -1099,7 +1451,7 @@ function parseSearchFeed(providerId, blocks, records) {
   const seenUrls = /* @__PURE__ */ new Set();
   for (const group of groups) {
     for (const item of group.items) {
-      if (isRecord3(item)) {
+      if (isRecord(item)) {
         const url = urlOf(item);
         if (url) seenUrls.add(url);
       }
@@ -1124,7 +1476,9 @@ function parseSearchFeed(providerId, blocks, records) {
     parallel: ["results"],
     linkup: ["results", "images"],
     firecrawl: ["web", "news", "images"],
-    brave: ["items"]
+    brave: ["items"],
+    duckduckgo: ["results"],
+    jina: ["results", "data", "images"]
   };
   const keys = itemArrays[providerId] ?? [];
   if (keys.length) {
@@ -1132,7 +1486,7 @@ function parseSearchFeed(providerId, blocks, records) {
       for (const key of keys) {
         const value = record[key];
         if (Array.isArray(value)) {
-          push(key, value.filter(isRecord3));
+          push(key, value.filter(isRecord));
         }
       }
     }
@@ -1153,7 +1507,7 @@ function parseSearchFeed(providerId, blocks, records) {
       const value = record[key];
       if (Array.isArray(value)) {
         for (const entry of value) {
-          const url = typeof entry === "string" ? safeUrl(entry) : isRecord3(entry) ? urlOf(entry) : null;
+          const url = typeof entry === "string" ? safeUrl(entry) : isRecord(entry) ? urlOf(entry) : null;
           if (url) sources.push(url);
         }
       }
@@ -1243,122 +1597,6 @@ function parseSearchFeed(providerId, blocks, records) {
     sources: sources.length ? [...new Set(sources)].slice(0, 50) : void 0,
     textPreview
   };
-}
-
-// src/summaries.ts
-var MAX_SUMMARY = 400;
-var COUNT_KEYS = /* @__PURE__ */ new Set([
-  "urls",
-  "queries",
-  "search_queries",
-  "messages",
-  "command",
-  "elements",
-  "fields",
-  "args",
-  "paths",
-  "sources",
-  "categories",
-  "formats",
-  "schemas",
-  "children",
-  "properties",
-  "sorts",
-  "includeDomains",
-  "excludeDomains",
-  "select_paths",
-  "select_domains",
-  "include_domains",
-  "exclude_domains",
-  "search_domain_filter",
-  "types",
-  "resourceTypes",
-  "include",
-  "labels",
-  "fieldsToInclude"
-]);
-var PROVIDER_FIELDS = {
-  firecrawl: ["url", "query", "formats", "limit", "sources", "categories", "onlyMainContent", "maxAge", "filePath", "prompt", "view", "id"],
-  chrome: ["pageId", "uid", "url", "type", "text", "value", "reqid", "function", "format", "fullPage", "resourceTypes", "timeout"],
-  playwright: ["url", "target", "action", "text", "index", "level", "static", "filename", "fullPage", "depth", "function"],
-  context7: ["libraryName", "libraryId", "query", "language"],
-  github: ["owner", "repo", "path", "query", "method", "resource_id", "issue_number", "pull_number", "branch", "ref", "sha", "state", "perPage", "type"],
-  exa: ["query", "numResults", "objective", "urls", "maxCharacters", "category"],
-  brave: ["query", "count", "country", "search_lang", "freshness", "key", "latitude", "longitude", "location"],
-  tavily: ["query", "url", "urls", "search_depth", "topic", "max_results", "model", "input", "extract_depth", "format"],
-  perplexity: ["query", "messages", "max_results", "search_recency_filter", "country"],
-  parallel: ["objective", "search_queries", "urls", "full_content", "session_id", "model_name"],
-  serpapi: ["q", "engine", "location", "num", "output"],
-  kagi: ["query", "workflow", "limit", "extract_count", "url", "lens_id", "time_relative"],
-  linkup: ["query", "depth", "maxResults", "mode", "reasoningDepth", "id", "url", "fromDate", "toDate"],
-  searxng: ["query", "pageno", "language", "time_range", "num_results", "categories", "engines", "response_format", "url", "maxLength"],
-  supabase: ["project_id", "query", "name", "schemas", "table", "type", "id", "branch_id", "organization_id", "region"],
-  postman: ["collectionId", "workspaceId", "workspace", "environmentId", "elementType", "limit", "cursor", "type"],
-  linear: ["query", "teamId", "id", "title", "assigneeId", "stateId", "priority", "limit", "projectId"],
-  sentry: ["organizationSlug", "projectSlug", "query", "issueId", "issueUrl", "status", "limit", "name", "arguments", "sort"],
-  gitlab: ["project_id", "merge_request_iid", "issue_iid", "branch", "file_path", "ref", "group_id", "per_page", "page", "namespace", "name"],
-  docker: ["args", "namespace", "repository", "tag", "query", "container", "image", "name"],
-  k8s: ["namespace", "name", "pod", "container", "apiVersion", "kind", "context", "labelSelector", "command", "image", "resource", "scale", "tail"],
-  notion: ["page_id", "block_id", "data_source_id", "database_id", "query", "parent", "properties", "type", "filter", "page_size"]
-};
-var GENERIC_FIELDS = [
-  "query",
-  "q",
-  "search_query",
-  "url",
-  "urls",
-  "objective",
-  "libraryName",
-  "owner",
-  "repo",
-  "project",
-  "project_id",
-  "id",
-  "name",
-  "issue",
-  "issue_id",
-  "pull_number",
-  "branch",
-  "method",
-  "container",
-  "pod",
-  "namespace",
-  "database",
-  "table",
-  "path",
-  "engine",
-  "status",
-  "action",
-  "limit",
-  "count",
-  "max_results",
-  "numResults"
-];
-var fieldLabel = (t, key) => t(`toolCall.field.${key}`, { defaultValue: key });
-function describe(t, key, value) {
-  if (value === void 0 || value === null || hiddenKey(key, true)) return null;
-  if (Array.isArray(value)) return `${fieldLabel(t, key)}: ${value.length}`;
-  if (isRecord3(value)) {
-    if (COUNT_KEYS.has(key)) return `${fieldLabel(t, key)}: ${Object.keys(value).length}`;
-    return `${fieldLabel(t, key)}: ${preview(value, key, true)}`;
-  }
-  if (COUNT_KEYS.has(key)) return `${fieldLabel(t, key)}: ${String(value).length}`;
-  return `${fieldLabel(t, key)}: ${preview(value, key, true)}`;
-}
-function providerSummary(providerId, args, t) {
-  const source = providerId === "serpapi" && isRecord3(args.params) ? args.params : args;
-  const fields = PROVIDER_FIELDS[providerId] ?? GENERIC_FIELDS;
-  const parts = [];
-  const seen = /* @__PURE__ */ new Set();
-  for (const key of fields) {
-    if (seen.has(key) || parts.length >= 8) continue;
-    const text = describe(t, key, source[key]);
-    if (text) {
-      seen.add(key);
-      parts.push(text);
-    }
-  }
-  return parts.join(" · ").slice(0, MAX_SUMMARY);
 }
 
 // src/shapes.ts
@@ -1606,7 +1844,7 @@ function checklistFromRecords(records) {
 }
 
 // src/ShapeViews.tsx
-function Pager({ total, page, onPage, size = PAGE_SIZE }) {
+function Pager2({ total, page, onPage, size = PAGE_SIZE }) {
   const { t } = useApi();
   if (total <= size) return null;
   const last = Math.max(0, Math.ceil(total / size) - 1);
@@ -1620,14 +1858,14 @@ function DiffView({ shape }) {
   const [requested, setPage] = React.useState(0);
   const page = Math.min(requested, Math.max(0, Math.ceil(shape.files.length / 5) - 1));
   const files = React.useMemo(() => shape.files.slice(page * 5, (page + 1) * 5), [shape.files, page]);
-  return /* @__PURE__ */ React.createElement("section", { className: "mcp-shape mcp-diff" }, /* @__PURE__ */ React.createElement(ShapeHead, { label: t("toolCall.shape.diff"), count: shape.files.length }), /* @__PURE__ */ React.createElement("div", { className: "mcp-shape-stats" }, /* @__PURE__ */ React.createElement("span", { className: "mcp-diff-add" }, "+", shape.additions), /* @__PURE__ */ React.createElement("span", { className: "mcp-diff-del" }, "−", shape.deletions), /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, t("toolCall.shape.files", { values: { count: shape.files.length } }))), files.map((file, fileIndex) => /* @__PURE__ */ React.createElement("article", { className: "mcp-diff-file", key: `${page}:${fileIndex}` }, /* @__PURE__ */ React.createElement("header", { className: "mcp-diff-file-head", title: file.header }, safeText(file.header).slice(0, 300) || t("toolCall.shape.diff")), /* @__PURE__ */ React.createElement("pre", { className: "mcp-diff-body" }, file.lines.map((line, lineIndex) => /* @__PURE__ */ React.createElement("div", { className: `mcp-diff-line mcp-diff-${line.type}`, key: lineIndex }, /* @__PURE__ */ React.createElement("span", { className: "mcp-diff-sign", "aria-hidden": "true" }, line.type === "add" ? "+" : line.type === "remove" ? "−" : " "), /* @__PURE__ */ React.createElement("span", { className: "mcp-diff-text" }, safeText(line.text))))))), /* @__PURE__ */ React.createElement(Pager, { total: shape.files.length, page, size: 5, onPage: setPage }));
+  return /* @__PURE__ */ React.createElement("section", { className: "mcp-shape mcp-diff" }, /* @__PURE__ */ React.createElement(ShapeHead, { label: t("toolCall.shape.diff"), count: shape.files.length }), /* @__PURE__ */ React.createElement("div", { className: "mcp-shape-stats" }, /* @__PURE__ */ React.createElement("span", { className: "mcp-diff-add" }, "+", shape.additions), /* @__PURE__ */ React.createElement("span", { className: "mcp-diff-del" }, "−", shape.deletions), /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, t("toolCall.shape.files", { values: { count: shape.files.length } }))), files.map((file, fileIndex) => /* @__PURE__ */ React.createElement("article", { className: "mcp-diff-file", key: `${page}:${fileIndex}` }, /* @__PURE__ */ React.createElement("header", { className: "mcp-diff-file-head", title: file.header }, safeText(file.header).slice(0, 300) || t("toolCall.shape.diff")), /* @__PURE__ */ React.createElement("pre", { className: "mcp-diff-body" }, file.lines.map((line, lineIndex) => /* @__PURE__ */ React.createElement("div", { className: `mcp-diff-line mcp-diff-${line.type}`, key: lineIndex }, /* @__PURE__ */ React.createElement("span", { className: "mcp-diff-sign", "aria-hidden": "true" }, line.type === "add" ? "+" : line.type === "remove" ? "−" : " "), /* @__PURE__ */ React.createElement("span", { className: "mcp-diff-text" }, safeText(line.text))))))), /* @__PURE__ */ React.createElement(Pager2, { total: shape.files.length, page, size: 5, onPage: setPage }));
 }
 function TreeView({ shape }) {
   const { t } = useApi();
   const [requested, setPage] = React.useState(0);
   const page = Math.min(requested, Math.max(0, Math.ceil(shape.entries.length / 100) - 1));
   const entries = React.useMemo(() => shape.entries.slice(page * 100, (page + 1) * 100), [shape.entries, page]);
-  return /* @__PURE__ */ React.createElement("section", { className: "mcp-shape mcp-tree-shape" }, /* @__PURE__ */ React.createElement(ShapeHead, { label: t("toolCall.shape.tree"), count: shape.entries.length }), /* @__PURE__ */ React.createElement("div", { className: "mcp-shape-stats" }, /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, t("toolCall.shape.dirs", { values: { count: shape.dirs } })), /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, t("toolCall.shape.filesCount", { values: { count: shape.files } }))), /* @__PURE__ */ React.createElement("ul", { className: "mcp-tree-list" }, entries.map((entry, index) => /* @__PURE__ */ React.createElement("li", { className: `mcp-tree-item${entry.dir ? " mcp-tree-dir" : ""}`, key: `${page}:${index}`, style: { paddingInlineStart: `${Math.min(entry.depth, 16) * 14}px` } }, /* @__PURE__ */ React.createElement("span", { className: "mcp-tree-mark", "aria-hidden": "true" }, entry.dir ? "▸" : "·"), /* @__PURE__ */ React.createElement("span", { className: "mcp-tree-name" }, safeText(entry.name).slice(0, 300))))), /* @__PURE__ */ React.createElement(Pager, { total: shape.entries.length, page, size: 100, onPage: setPage }));
+  return /* @__PURE__ */ React.createElement("section", { className: "mcp-shape mcp-tree-shape" }, /* @__PURE__ */ React.createElement(ShapeHead, { label: t("toolCall.shape.tree"), count: shape.entries.length }), /* @__PURE__ */ React.createElement("div", { className: "mcp-shape-stats" }, /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, t("toolCall.shape.dirs", { values: { count: shape.dirs } })), /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, t("toolCall.shape.filesCount", { values: { count: shape.files } }))), /* @__PURE__ */ React.createElement("ul", { className: "mcp-tree-list" }, entries.map((entry, index) => /* @__PURE__ */ React.createElement("li", { className: `mcp-tree-item${entry.dir ? " mcp-tree-dir" : ""}`, key: `${page}:${index}`, style: { paddingInlineStart: `${Math.min(entry.depth, 16) * 14}px` } }, /* @__PURE__ */ React.createElement("span", { className: "mcp-tree-mark", "aria-hidden": "true" }, entry.dir ? "▸" : "·"), /* @__PURE__ */ React.createElement("span", { className: "mcp-tree-name" }, safeText(entry.name).slice(0, 300))))), /* @__PURE__ */ React.createElement(Pager2, { total: shape.entries.length, page, size: 100, onPage: setPage }));
 }
 function LogView({ shape }) {
   const { t } = useApi();
@@ -1643,14 +1881,14 @@ function LogView({ shape }) {
   } }, t("toolCall.shape.all"), " ", shape.lines.length), levels.map((level) => /* @__PURE__ */ React.createElement("button", { type: "button", key: level, className: `mcp-log-chip mcp-level-${level.toLowerCase()}${filter === level ? " is-active" : ""}`, onClick: () => {
     setFilter(level);
     setPage(0);
-  } }, level, " ", shape.counts[level]))) : null, /* @__PURE__ */ React.createElement("pre", { className: "mcp-log-body" }, visible.map((line, index) => /* @__PURE__ */ React.createElement("div", { className: "mcp-log-line", key: `${page}:${index}` }, line.id ? /* @__PURE__ */ React.createElement("span", { className: "mcp-log-id" }, line.id) : null, /* @__PURE__ */ React.createElement("span", { className: `mcp-log-level mcp-level-${line.level.toLowerCase()}` }, line.level), /* @__PURE__ */ React.createElement("span", { className: "mcp-log-text" }, line.text)))), /* @__PURE__ */ React.createElement(Pager, { total: lines.length, page, size: 100, onPage: setPage }));
+  } }, level, " ", shape.counts[level]))) : null, /* @__PURE__ */ React.createElement("pre", { className: "mcp-log-body" }, visible.map((line, index) => /* @__PURE__ */ React.createElement("div", { className: "mcp-log-line", key: `${page}:${index}` }, line.id ? /* @__PURE__ */ React.createElement("span", { className: "mcp-log-id" }, line.id) : null, /* @__PURE__ */ React.createElement("span", { className: `mcp-log-level mcp-level-${line.level.toLowerCase()}` }, line.level), /* @__PURE__ */ React.createElement("span", { className: "mcp-log-text" }, line.text)))), /* @__PURE__ */ React.createElement(Pager2, { total: lines.length, page, size: 100, onPage: setPage }));
 }
 function SnapshotView({ shape }) {
   const { t } = useApi();
   const [requested, setPage] = React.useState(0);
   const page = Math.min(requested, Math.max(0, Math.ceil(shape.nodes.length / 100) - 1));
   const nodes = React.useMemo(() => shape.nodes.slice(page * 100, (page + 1) * 100), [shape.nodes, page]);
-  return /* @__PURE__ */ React.createElement("section", { className: "mcp-shape mcp-snapshot-shape" }, /* @__PURE__ */ React.createElement(ShapeHead, { label: t("toolCall.shape.snapshot"), count: shape.nodes.length }), /* @__PURE__ */ React.createElement("div", { className: "mcp-shape-stats" }, /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, t(`toolCall.shape.flavor.${shape.flavor}`, { defaultValue: shape.flavor }))), /* @__PURE__ */ React.createElement("ul", { className: "mcp-snapshot-list" }, nodes.map((node, index) => /* @__PURE__ */ React.createElement("li", { className: "mcp-snapshot-node", key: `${page}:${index}`, style: { paddingInlineStart: `${Math.min(node.depth, 20) * 12}px` } }, /* @__PURE__ */ React.createElement("span", { className: "mcp-snapshot-role" }, safeText(node.role)), node.name ? /* @__PURE__ */ React.createElement("span", { className: "mcp-snapshot-name" }, node.name) : null, node.ref ? /* @__PURE__ */ React.createElement("span", { className: "mcp-snapshot-ref" }, node.ref) : null, node.meta && node.meta !== node.name ? /* @__PURE__ */ React.createElement("span", { className: "mcp-muted mcp-snapshot-meta" }, node.meta) : null))), /* @__PURE__ */ React.createElement(Pager, { total: shape.nodes.length, page, size: 100, onPage: setPage }));
+  return /* @__PURE__ */ React.createElement("section", { className: "mcp-shape mcp-snapshot-shape" }, /* @__PURE__ */ React.createElement(ShapeHead, { label: t("toolCall.shape.snapshot"), count: shape.nodes.length }), /* @__PURE__ */ React.createElement("div", { className: "mcp-shape-stats" }, /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, t(`toolCall.shape.flavor.${shape.flavor}`, { defaultValue: shape.flavor }))), /* @__PURE__ */ React.createElement("ul", { className: "mcp-snapshot-list" }, nodes.map((node, index) => /* @__PURE__ */ React.createElement("li", { className: "mcp-snapshot-node", key: `${page}:${index}`, style: { paddingInlineStart: `${Math.min(node.depth, 20) * 12}px` } }, /* @__PURE__ */ React.createElement("span", { className: "mcp-snapshot-role" }, safeText(node.role)), node.name ? /* @__PURE__ */ React.createElement("span", { className: "mcp-snapshot-name" }, node.name) : null, node.ref ? /* @__PURE__ */ React.createElement("span", { className: "mcp-snapshot-ref" }, node.ref) : null, node.meta && node.meta !== node.name ? /* @__PURE__ */ React.createElement("span", { className: "mcp-muted mcp-snapshot-meta" }, node.meta) : null))), /* @__PURE__ */ React.createElement(Pager2, { total: shape.nodes.length, page, size: 100, onPage: setPage }));
 }
 function ProgressView({ shape }) {
   const { t } = useApi();
@@ -1665,7 +1903,7 @@ function ChecklistView({ shape }) {
   return /* @__PURE__ */ React.createElement("section", { className: "mcp-shape mcp-checklist-shape" }, /* @__PURE__ */ React.createElement(ShapeHead, { label: t("toolCall.shape.checklist"), count: shape.items.length }), /* @__PURE__ */ React.createElement("div", { className: "mcp-shape-stats" }, levels.map((level) => /* @__PURE__ */ React.createElement("span", { className: `mcp-log-chip mcp-level-${level}`, key: level }, level, " ", shape.counts[level]))), /* @__PURE__ */ React.createElement("ul", { className: "mcp-checklist" }, items.map((item, index) => {
     const url = safeUrl(item.detail);
     return /* @__PURE__ */ React.createElement("li", { className: `mcp-checklist-item mcp-level-${item.level}`, key: `${page}:${index}` }, /* @__PURE__ */ React.createElement("span", { className: `mcp-checklist-level mcp-level-${item.level}` }, item.level), /* @__PURE__ */ React.createElement("span", { className: "mcp-checklist-title" }, item.title), item.detail ? url ? /* @__PURE__ */ React.createElement(LinkLine, { url }) : /* @__PURE__ */ React.createElement("span", { className: "mcp-muted mcp-checklist-detail" }, item.detail) : null);
-  })), /* @__PURE__ */ React.createElement(Pager, { total: shape.items.length, page, size: 50, onPage: setPage }));
+  })), /* @__PURE__ */ React.createElement(Pager2, { total: shape.items.length, page, size: 50, onPage: setPage }));
 }
 function LinkLine({ url }) {
   const api = useApi();
@@ -1673,45 +1911,30 @@ function LinkLine({ url }) {
 }
 
 // src/McpToolCall.tsx
-function Pager2({ total, page, onPage, size = PAGE_SIZE }) {
-  const { t } = useApi();
-  if (total <= size) return null;
-  const last = Math.max(0, Math.ceil(total / size) - 1);
-  return /* @__PURE__ */ React.createElement("div", { className: "mcp-pager" }, /* @__PURE__ */ React.createElement("button", { type: "button", disabled: page === 0, onClick: () => onPage(Math.max(0, page - 1)) }, t("toolCall.mcp.previous")), /* @__PURE__ */ React.createElement("span", null, t("toolCall.mcp.range", { values: { start: page * size + 1, end: Math.min(total, (page + 1) * size), total } })), /* @__PURE__ */ React.createElement("button", { type: "button", disabled: page >= last, onClick: () => onPage(Math.min(last, page + 1)) }, t("toolCall.mcp.next")));
+function textMeta(value) {
+  const rows = [];
+  for (const [key, item] of Object.entries(value)) {
+    if (key === "text") continue;
+    if (typeof item === "string" || typeof item === "number" || typeof item === "boolean") {
+      rows.push([key, preview(item, key)]);
+      continue;
+    }
+    if (!isRecord(item)) return null;
+    for (const [child, leaf] of Object.entries(item)) {
+      if (typeof leaf !== "string" && typeof leaf !== "number" && typeof leaf !== "boolean") return null;
+      rows.push([`${key}.${child}`, preview(leaf, child)]);
+    }
+  }
+  return rows;
 }
-function SafeLink({ value, label }) {
-  const api = useApi();
-  const url = safeUrl(value);
-  if (!url) return null;
-  return /* @__PURE__ */ React.createElement("button", { className: "mcp-link", type: "button", title: url, onClick: () => api.links.open(url, "browser") }, safeText(label || url).slice(0, 180));
-}
-function TextValue({ value }) {
-  const { t } = useApi();
-  const text = React.useMemo(() => safeText(value), [value]);
-  const [expanded, setExpanded] = React.useState(false);
-  const [requested, setPage] = React.useState(0);
-  const page = Math.min(requested, Math.max(0, Math.ceil(text.length / TEXT_PAGE_SIZE) - 1));
-  return /* @__PURE__ */ React.createElement("div", { className: "mcp-text" }, /* @__PURE__ */ React.createElement("pre", null, expanded ? text.slice(page * TEXT_PAGE_SIZE, (page + 1) * TEXT_PAGE_SIZE) : text.slice(0, 600)), text.length > 600 && /* @__PURE__ */ React.createElement("button", { type: "button", "aria-expanded": expanded, onClick: () => setExpanded(!expanded) }, t(expanded ? "toolCall.mcp.collapse" : "toolCall.mcp.fullText"), " · ", text.length), expanded && /* @__PURE__ */ React.createElement(Pager2, { total: text.length, page, size: TEXT_PAGE_SIZE, onPage: setPage }), /* @__PURE__ */ React.createElement(SafeLink, { value }));
-}
-function Value({ value, field = "", parameters = false, depth = 0 }) {
-  const { t } = useApi();
-  const [open, setOpen] = React.useState(false);
-  const [continueDeep, setContinueDeep] = React.useState(false);
-  const [requested, setPage] = React.useState(0);
-  if (hiddenKey(field, parameters)) return /* @__PURE__ */ React.createElement("code", { className: "mcp-muted" }, t("toolCall.mcp.redacted"));
-  if (field === "blob" || field === "base64" || field === "data" && typeof value === "string" && value.length > 128 && /^[a-z0-9+/]+=*$/i.test(value)) return /* @__PURE__ */ React.createElement("code", { className: "mcp-muted" }, BINARY);
-  if (typeof value === "string") return /* @__PURE__ */ React.createElement(TextValue, { value });
-  if (!Array.isArray(value) && !isRecord3(value)) return /* @__PURE__ */ React.createElement("code", null, String(value));
-  const keys = Array.isArray(value) ? null : Object.keys(value);
-  const total = keys ? keys.length : value.length;
-  const page = Math.min(requested, Math.max(0, Math.ceil(total / PAGE_SIZE) - 1));
-  const start = page * PAGE_SIZE;
-  return /* @__PURE__ */ React.createElement("div", { className: "mcp-tree" }, /* @__PURE__ */ React.createElement("button", { type: "button", "aria-expanded": open, onClick: () => setOpen(!open) }, open ? "▾" : "▸", " ", Array.isArray(value) ? "[ ]" : "{ }", " · ", total, " ", t("toolCall.mcp.items")), open && depth >= 32 && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("button", { type: "button", "aria-expanded": continueDeep, onClick: () => setContinueDeep(!continueDeep) }, t("toolCall.mcp.continueDepth")), continueDeep && /* @__PURE__ */ React.createElement(Value, { value, field, parameters })), open && depth < 32 && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "mcp-fields" }, Array.from({ length: Math.min(PAGE_SIZE, total - start) }, (_, offset) => {
-    const index = start + offset;
-    const key = keys ? keys[index] : String(index);
-    const child = keys ? value[key] : value[index];
-    return /* @__PURE__ */ React.createElement("div", { className: "mcp-field", key }, /* @__PURE__ */ React.createElement("span", { className: "mcp-key" }, safeText(key).slice(0, 100)), /* @__PURE__ */ React.createElement(Value, { value: child, field: key, parameters, depth: depth + 1 }));
-  })), /* @__PURE__ */ React.createElement(Pager2, { total, page, onPage: setPage })));
+function BlockValue({ value }) {
+  if (isRecord(value) && typeof value.text === "string") {
+    const meta = textMeta(value);
+    if (meta) {
+      return /* @__PURE__ */ React.createElement("div", { className: "mcp-text-part" }, /* @__PURE__ */ React.createElement(TextValue, { value: value.text }), meta.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mcp-text-meta" }, meta.map(([label, text]) => /* @__PURE__ */ React.createElement("span", { key: label }, /* @__PURE__ */ React.createElement("b", null, label), text))));
+    }
+  }
+  return /* @__PURE__ */ React.createElement(Value, { value });
 }
 function ImageBlock({ value }) {
   const { t } = useApi();
@@ -1720,30 +1943,389 @@ function ImageBlock({ value }) {
   const shown = revealed === value;
   const broken = failedValue === value;
   const image = React.useMemo(() => inlineImage(value), [value]);
-  const metadata = isRecord3(value) ? Object.fromEntries(Object.entries(value).filter(([key]) => key !== "data")) : value;
+  const metadata = isRecord(value) ? Object.fromEntries(Object.entries(value).filter(([key]) => key !== "data")) : value;
   return /* @__PURE__ */ React.createElement("div", { className: "mcp-image" }, /* @__PURE__ */ React.createElement(Value, { value: metadata }), !image || broken ? /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, t("toolCall.mcp.imageBlocked")) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("button", { type: "button", "aria-expanded": shown, onClick: () => setRevealed(shown ? null : value) }, t(shown ? "toolCall.mcp.hideImage" : "toolCall.mcp.showImage"), " · ", Math.ceil(image.bytes / 1024), " KiB"), shown && /* @__PURE__ */ React.createElement("img", { src: image.src, alt: t("toolCall.mcp.inlineImage"), loading: "lazy", onError: () => setFailedValue(value), onLoad: (event) => {
     const { naturalWidth: width, naturalHeight: height } = event.currentTarget;
     if (!width || !height || width > 8192 || height > 8192 || width * height > 16e6) setFailedValue(value);
   } })));
 }
-var SearchResults = React.memo(function SearchResults2({ groups, showPublished = false }) {
-  const { t } = useApi();
+var SearchResults = React.memo(function SearchResults2({
+  groups,
+  showPublished = false
+}) {
+  const api = useApi();
+  const { t } = api;
   const [requested, setPage] = React.useState(0);
-  const items = React.useMemo(() => groups.flatMap((group) => group.items.map((item) => ({ group: group.name, item }))), [groups]);
+  const items = React.useMemo(
+    () => groups.flatMap((group) => group.items.map((item) => ({ group: group.name, item }))),
+    [groups]
+  );
   const page = Math.min(requested, Math.max(0, Math.ceil(items.length / PAGE_SIZE) - 1));
-  const pageItems = React.useMemo(() => items.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE), [items, page]);
-  return /* @__PURE__ */ React.createElement("section", { className: "mcp-search" }, /* @__PURE__ */ React.createElement("h4", null, t("toolCall.mcp.searchResults"), " · ", items.length), pageItems.map(({ group, item }, index) => /* @__PURE__ */ React.createElement("article", { key: page * PAGE_SIZE + index }, /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, t(`toolCall.mcp.group.${group}`, { defaultValue: group })), isRecord3(item) ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("strong", null, preview(item.title ?? item.name ?? item.url ?? "", "title")), /* @__PURE__ */ React.createElement(SafeLink, { value: item.url ?? item.link }), showPublished && typeof item.publishedDate === "string" && /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, t("toolCall.exa.published"), ": ", preview(item.publishedDate).slice(0, 80)), /* @__PURE__ */ React.createElement("p", null, preview(item.description ?? item.snippet ?? item.text ?? "")), /* @__PURE__ */ React.createElement(Value, { value: item })) : /* @__PURE__ */ React.createElement(Value, { value: item }))), /* @__PURE__ */ React.createElement(Pager2, { total: items.length, page, onPage: setPage }));
+  const pageItems = React.useMemo(
+    () => items.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+    [items, page]
+  );
+  const openInApp = (url) => api.links.open(url, "browser");
+  const openExternal = (url) => api.links.open(url, "external");
+  return /* @__PURE__ */ React.createElement("section", { className: "mcp-search-section" }, /* @__PURE__ */ React.createElement("div", { className: "tool-call-websearch-results" }, pageItems.map(({ group, item }, index) => {
+    const itemIndex = page * PAGE_SIZE + index + 1;
+    if (!isRecord(item)) {
+      return /* @__PURE__ */ React.createElement("article", { key: itemIndex, className: "tool-call-websearch-result" }, /* @__PURE__ */ React.createElement(Value, { value: item }));
+    }
+    const rawTitle = typeof item.title === "string" ? item.title : typeof item.name === "string" ? item.name : "";
+    const rawUrl = typeof item.url === "string" ? item.url : typeof item.link === "string" ? item.link : typeof item.source_url === "string" ? item.source_url : "";
+    const url = safeUrl(rawUrl);
+    const host = url ? (() => {
+      try {
+        return new URL(url).hostname;
+      } catch {
+        return "";
+      }
+    })() : "";
+    const title = rawTitle.trim() || host || rawUrl || "Untitled";
+    const snippet = typeof item.snippet === "string" ? item.snippet : typeof item.text === "string" ? item.text : typeof item.description === "string" ? item.description : typeof item.content === "string" ? item.content : "";
+    const published = typeof item.publishedDate === "string" ? item.publishedDate : typeof item.published === "string" ? item.published : typeof item.date === "string" ? item.date : "";
+    const showDate = showPublished && published && published !== "N/A" && published.trim() !== "";
+    const authors = Array.isArray(item.authors) ? item.authors.join(", ") : typeof item.author === "string" ? item.author : typeof item.authors === "string" ? item.authors : "";
+    const pdfUrl = safeUrl(item.pdf_url ?? item.pdf);
+    return /* @__PURE__ */ React.createElement("article", { key: itemIndex, className: "tool-call-websearch-result" }, /* @__PURE__ */ React.createElement("div", { className: "tool-call-websearch-result-head" }, /* @__PURE__ */ React.createElement("span", { className: "tool-call-websearch-result-index", "aria-hidden": "true" }, itemIndex), url ? /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        type: "button",
+        className: "tool-call-websearch-result-title",
+        onClick: () => openInApp(url),
+        title: `${url}
+${t("toolCall.mcp.openInBrowser", { defaultValue: "在应用内浏览器打开" })}`
+      },
+      /* @__PURE__ */ React.createElement("span", { className: "tool-call-websearch-result-title-text" }, title)
+    ) : /* @__PURE__ */ React.createElement("strong", { className: "tool-call-websearch-result-title-text", style: { fontSize: "12.5px" } }, title), pdfUrl && /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        type: "button",
+        className: "mcp-pdf-tag",
+        onClick: () => openInApp(pdfUrl),
+        title: pdfUrl
+      },
+      "PDF"
+    ), url && /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        type: "button",
+        className: "tool-call-websearch-external",
+        onClick: () => openExternal(url),
+        title: t("toolCall.mcp.openExternal", { defaultValue: "在系统默认浏览器打开" }),
+        "aria-label": t("toolCall.mcp.openExternal", { defaultValue: "在系统默认浏览器打开" })
+      },
+      /* @__PURE__ */ React.createElement("svg", { width: "11", height: "11", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": "true" }, /* @__PURE__ */ React.createElement("path", { d: "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" }), /* @__PURE__ */ React.createElement("polyline", { points: "15 3 21 3 21 9" }), /* @__PURE__ */ React.createElement("line", { x1: "10", y1: "14", x2: "21", y2: "3" }))
+    )), url && /* @__PURE__ */ React.createElement("div", { className: "tool-call-websearch-result-url" }, /* @__PURE__ */ React.createElement("svg", { width: "10", height: "10", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": "true" }, /* @__PURE__ */ React.createElement("circle", { cx: "12", cy: "12", r: "10" }), /* @__PURE__ */ React.createElement("line", { x1: "2", y1: "12", x2: "22", y2: "12" }), /* @__PURE__ */ React.createElement("path", { d: "M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" })), /* @__PURE__ */ React.createElement("span", null, host || url), showDate && /* @__PURE__ */ React.createElement("span", { className: "mcp-date-tag" }, preview(published).slice(0, 30)), authors && /* @__PURE__ */ React.createElement("span", { className: "mcp-author-tag", title: authors }, preview(authors).slice(0, 40)), group && group !== "results" && /* @__PURE__ */ React.createElement("span", { className: "mcp-group-tag" }, t(`toolCall.mcp.group.${group}`, { defaultValue: group }))), snippet ? /* @__PURE__ */ React.createElement("p", { className: "tool-call-websearch-result-snippet" }, preview(snippet).slice(0, 600)) : null);
+  })), /* @__PURE__ */ React.createElement(Pager, { total: items.length, page, onPage: setPage }));
 });
-var RecordTable = React.memo(function RecordTable2({ rows, label }) {
+function searchTerms(args) {
+  const query = typeof args.query === "string" ? args.query : typeof args.q === "string" ? args.q : typeof args.search_query === "string" ? args.search_query : void 0;
+  const numResults = typeof args.numResults === "number" ? args.numResults : typeof args.max_results === "number" ? args.max_results : typeof args.count === "number" ? args.count : typeof args.limit === "number" ? args.limit : void 0;
+  const url = typeof args.url === "string" ? args.url : void 0;
+  const depth = typeof args.search_depth === "string" ? args.search_depth : typeof args.depth === "string" ? args.depth : void 0;
+  return { query, numResults, url, depth };
+}
+function titleSubject(args) {
+  const { query, url } = searchTerms(args);
+  const urls = Array.isArray(args.urls) && typeof args.urls[0] === "string" ? args.urls[0] : void 0;
+  const value = query ?? url ?? urls;
+  if (!value) return "";
+  const text = preview(value, "query", true);
+  return text.length > 60 ? `${text.slice(0, 60)}…` : text;
+}
+function SearchParamsBar({ args }) {
+  const { t } = useApi();
+  const { query, numResults, url, depth } = searchTerms(args);
+  if (!query && !numResults && !url) return null;
+  return /* @__PURE__ */ React.createElement("div", { className: "tool-call-websearch-params mcp-search-params-bar" }, query && /* @__PURE__ */ React.createElement("div", { className: "tool-call-websearch-param-item" }, /* @__PURE__ */ React.createElement("svg", { width: "11", height: "11", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": "true" }, /* @__PURE__ */ React.createElement("circle", { cx: "11", cy: "11", r: "8" }), /* @__PURE__ */ React.createElement("line", { x1: "21", y1: "21", x2: "16.65", y2: "16.65" })), /* @__PURE__ */ React.createElement("span", { className: "tool-call-websearch-param-label" }, t("toolCall.search.query", { defaultValue: "查询" })), /* @__PURE__ */ React.createElement("code", { className: "tool-call-websearch-param-value" }, preview(query, "query", true))), url && /* @__PURE__ */ React.createElement("div", { className: "tool-call-websearch-param-item" }, /* @__PURE__ */ React.createElement("svg", { width: "11", height: "11", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": "true" }, /* @__PURE__ */ React.createElement("circle", { cx: "12", cy: "12", r: "10" }), /* @__PURE__ */ React.createElement("line", { x1: "2", y1: "12", x2: "22", y2: "12" }), /* @__PURE__ */ React.createElement("path", { d: "M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" })), /* @__PURE__ */ React.createElement("span", { className: "tool-call-websearch-param-label" }, t("toolCall.anysearch.url", { defaultValue: "网址" })), /* @__PURE__ */ React.createElement("code", { className: "tool-call-websearch-param-value" }, preview(url, "url", true))), /* @__PURE__ */ React.createElement("div", { className: "tool-call-websearch-param-tags" }, numResults !== void 0 && /* @__PURE__ */ React.createElement("span", { className: "tool-call-websearch-param-tag" }, t("toolCall.anysearch.maxResults", { defaultValue: "上限" }), ": ", numResults), depth && /* @__PURE__ */ React.createElement("span", { className: "tool-call-websearch-param-tag" }, depth)));
+}
+function detectEntities(rows) {
+  if (!Array.isArray(rows) || rows.length === 0 || !isRecord(rows[0])) return null;
+  const first = rows[0];
+  const hasIssueLike = (first.title !== void 0 || first.message !== void 0) && (first.number !== void 0 || first.iid !== void 0 || first.identifier !== void 0 || first.id !== void 0) && (first.state !== void 0 || first.status !== void 0);
+  if (hasIssueLike) {
+    return rows.slice(0, 100).filter(isRecord).map((r) => {
+      const id = String(r.number ? `#${r.number}` : r.iid ? `#${r.iid}` : r.identifier ? r.identifier : r.id ?? "");
+      const title = String(r.title ?? r.message ?? "Untitled");
+      const state = String(r.state ?? r.status ?? "").toLowerCase();
+      let stateType = "neutral";
+      if (["open", "opened", "active", "running", "success"].includes(state)) stateType = "success";
+      else if (["closed", "failed", "error", "canceled"].includes(state)) stateType = "error";
+      else if (["merged"].includes(state)) stateType = "purple";
+      else if (["pending", "in_progress", "todo"].includes(state)) stateType = "warning";
+      const url = safeUrl(r.html_url ?? r.web_url ?? r.url);
+      const user = isRecord(r.user) ? String(r.user.login ?? "") : typeof r.author === "string" ? r.author : "";
+      return { id, title, state: state.toUpperCase(), stateType, url: url || void 0, subtitle: user ? `@${user}` : void 0 };
+    });
+  }
+  const hasCommitLike = (first.sha !== void 0 || first.id !== void 0 && typeof first.id === "string" && first.id.length >= 8) && (first.message !== void 0 || first.title !== void 0);
+  if (hasCommitLike) {
+    return rows.slice(0, 100).filter(isRecord).map((r) => {
+      const rawSha = String(r.sha ?? r.id ?? "");
+      const id = rawSha.slice(0, 8);
+      const title = String(r.message ?? r.title ?? "").split("\n")[0];
+      const author = isRecord(r.author) ? String(r.author.name ?? r.author.login ?? "") : typeof r.author_name === "string" ? r.author_name : "";
+      const url = safeUrl(r.html_url ?? r.web_url ?? r.url);
+      return { id, title, subtitle: author, state: "COMMIT", stateType: "neutral", url: url || void 0 };
+    });
+  }
+  const hasSentryLike = (first.culprit !== void 0 || first.shortId !== void 0) && first.level !== void 0;
+  if (hasSentryLike) {
+    return rows.slice(0, 100).filter(isRecord).map((r) => {
+      const id = String(r.shortId ?? r.id ?? "");
+      const title = String(r.title ?? r.culprit ?? "Error");
+      const level = String(r.level ?? "error").toLowerCase();
+      let stateType = "error";
+      if (level === "warning") stateType = "warning";
+      else if (level === "info") stateType = "neutral";
+      const count = r.count !== void 0 ? `${r.count} events` : void 0;
+      return { id, title, state: level.toUpperCase(), stateType, subtitle: count };
+    });
+  }
+  const hasContainerLike = (first.Names !== void 0 || first.name !== void 0) && (first.State !== void 0 || first.status !== void 0 || first.phase !== void 0);
+  if (hasContainerLike) {
+    return rows.slice(0, 100).filter(isRecord).map((r) => {
+      const name = String(Array.isArray(r.Names) ? r.Names[0] : r.name ?? r.id ?? "");
+      const title = name.replace(/^\//, "");
+      const status = String(r.State ?? r.status ?? r.phase ?? "").toLowerCase();
+      let stateType = "neutral";
+      if (["running", "ready", "active"].includes(status)) stateType = "success";
+      else if (["exited", "failed", "crashloopbackoff", "error"].includes(status)) stateType = "error";
+      else if (["waiting", "pending", "containercreating"].includes(status)) stateType = "warning";
+      const image = String(r.Image ?? r.image ?? "");
+      return { id: "POD/CTR", title, state: status.toUpperCase(), stateType, subtitle: image || void 0 };
+    });
+  }
+  const hasRepoLike = first.full_name !== void 0 || first.name !== void 0 && (first.owner !== void 0 || first.stargazers_count !== void 0 || first.star_count !== void 0);
+  if (hasRepoLike) {
+    return rows.slice(0, 100).filter(isRecord).map((r) => {
+      const name = String(r.full_name ?? r.name ?? "repo");
+      const stars = r.stargazers_count ?? r.star_count;
+      const lang = typeof r.language === "string" ? r.language : void 0;
+      const subtitle = [
+        stars !== void 0 ? `★ ${stars}` : null,
+        lang,
+        typeof r.description === "string" ? r.description.slice(0, 70) : null
+      ].filter(Boolean).join(" · ");
+      const url = safeUrl(r.html_url ?? r.web_url ?? r.url);
+      return { id: "REPO", title: name, state: "REPO", stateType: "purple", subtitle: subtitle || void 0, url: url || void 0 };
+    });
+  }
+  const hasRequestLike = first.method !== void 0 && (first.url !== void 0 || first.name !== void 0);
+  if (hasRequestLike) {
+    return rows.slice(0, 100).filter(isRecord).map((r) => {
+      const method = String(r.method ?? "GET").toUpperCase();
+      let stateType = "neutral";
+      if (method === "GET") stateType = "success";
+      else if (method === "POST") stateType = "purple";
+      else if (method === "PUT" || method === "PATCH") stateType = "warning";
+      else if (method === "DELETE") stateType = "error";
+      const rawUrl = typeof r.url === "string" ? r.url : isRecord(r.url) && typeof r.url.raw === "string" ? r.url.raw : "";
+      const title = String(r.name ?? (rawUrl || "API Request"));
+      const url = safeUrl(rawUrl);
+      const statusCode = r.responseCode ?? r.status;
+      const subtitle = [statusCode ? `HTTP ${statusCode}` : null, rawUrl && rawUrl !== title ? rawUrl : null].filter(Boolean).join(" · ");
+      return { id: method, title, state: method, stateType, subtitle: subtitle || void 0, url: url || void 0 };
+    });
+  }
+  const hasNotionLike = first.object === "page" || first.object === "database" || first.parent !== void 0 && first.properties !== void 0;
+  if (hasNotionLike) {
+    return rows.slice(0, 100).filter(isRecord).map((r) => {
+      const type = String(r.object ?? "page").toUpperCase();
+      let title = "Untitled";
+      if (isRecord(r.properties)) {
+        for (const val of Object.values(r.properties)) {
+          if (isRecord(val) && val.type === "title" && Array.isArray(val.title) && val.title.length > 0) {
+            const t = val.title[0];
+            if (isRecord(t) && typeof t.plain_text === "string") title = t.plain_text;
+          }
+        }
+      }
+      const url = safeUrl(r.url);
+      const subtitle = typeof r.last_edited_time === "string" ? `Updated ${r.last_edited_time.slice(0, 10)}` : void 0;
+      return { id: type, title, state: type, stateType: "neutral", subtitle, url: url || void 0 };
+    });
+  }
+  return null;
+}
+var EntityListView = React.memo(function EntityListView2({ entities, label }) {
   const api = useApi();
   const [requested, setPage] = React.useState(0);
+  const page = Math.min(requested, Math.max(0, Math.ceil(entities.length / PAGE_SIZE) - 1));
+  const visible = React.useMemo(() => entities.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE), [entities, page]);
+  return /* @__PURE__ */ React.createElement("section", { className: "mcp-entity-section" }, /* @__PURE__ */ React.createElement("h4", null, label, " · ", entities.length), /* @__PURE__ */ React.createElement("div", { className: "mcp-entity-list" }, visible.map((item, idx) => /* @__PURE__ */ React.createElement("div", { key: `${item.id}-${idx}`, className: "mcp-entity-card" }, /* @__PURE__ */ React.createElement("div", { className: "mcp-entity-head" }, item.state && /* @__PURE__ */ React.createElement("span", { className: `mcp-status-badge mcp-status-${item.stateType || "neutral"}` }, item.state), /* @__PURE__ */ React.createElement("span", { className: "mcp-entity-id" }, item.id), item.url ? /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      type: "button",
+      className: "mcp-entity-title-btn",
+      onClick: () => api.links.open(item.url, "browser"),
+      title: item.url
+    },
+    item.title
+  ) : /* @__PURE__ */ React.createElement("span", { className: "mcp-entity-title" }, item.title)), item.subtitle && /* @__PURE__ */ React.createElement("div", { className: "mcp-entity-sub" }, /* @__PURE__ */ React.createElement("span", null, item.subtitle))))), /* @__PURE__ */ React.createElement(Pager, { total: entities.length, page, onPage: setPage }));
+});
+function extractScrapeInfo(blocks, records) {
+  for (const rec of records) {
+    const rawUrl = rec.url ?? rec.sourceUrl ?? rec.link;
+    const url = safeUrl(rawUrl);
+    const screenshot = rec.screenshot ?? rec.image ?? rec.base64;
+    const inlineImg = inlineImage(screenshot);
+    const content = typeof rec.markdown === "string" ? rec.markdown : typeof rec.content === "string" ? rec.content : typeof rec.text === "string" ? rec.text : typeof rec.html === "string" ? rec.html : void 0;
+    if (inlineImg || content && content.length > 50) {
+      const title = typeof rec.title === "string" ? rec.title : void 0;
+      return { title, url: url || void 0, content: content || "", image: inlineImg || void 0 };
+    }
+  }
+  for (const b of blocks) {
+    if (b.kind === "image") {
+      const img = inlineImage(b.value);
+      if (img) return { content: "", image: img };
+    }
+    if (typeof b.value === "string" && b.value.length > 50) {
+      if (/^data:image\//.test(b.value)) {
+        const comma = b.value.indexOf(",");
+        if (comma > 0) {
+          const mime = b.value.slice(5, comma).split(";")[0];
+          const data = b.value.slice(comma + 1);
+          const img = inlineImage({ mimeType: mime, data });
+          if (img) return { content: "", image: img };
+        }
+      }
+      if (/^#\s+/m.test(b.value) || b.value.length > 200) {
+        return { content: b.value };
+      }
+    }
+  }
+  return null;
+}
+var ScrapeView = React.memo(function ScrapeView2({ data }) {
+  const api = useApi();
+  const { t } = api;
+  const [expanded, setExpanded] = React.useState(false);
+  const host = data.url ? (() => {
+    try {
+      return new URL(data.url).hostname;
+    } catch {
+      return "";
+    }
+  })() : "";
+  return /* @__PURE__ */ React.createElement("section", { className: "mcp-scrape-section" }, /* @__PURE__ */ React.createElement("div", { className: "tool-call-websearch-page mcp-scrape-card" }, /* @__PURE__ */ React.createElement("div", { className: "tool-call-websearch-page-title" }, /* @__PURE__ */ React.createElement("svg", { width: "13", height: "13", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": "true" }, /* @__PURE__ */ React.createElement("path", { d: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" }), /* @__PURE__ */ React.createElement("polyline", { points: "14 2 14 8 20 8" }), /* @__PURE__ */ React.createElement("line", { x1: "16", y1: "13", x2: "8", y2: "13" }), /* @__PURE__ */ React.createElement("line", { x1: "16", y1: "17", x2: "8", y2: "17" }), /* @__PURE__ */ React.createElement("polyline", { points: "10 9 9 9 8 9" })), /* @__PURE__ */ React.createElement("span", { className: "tool-call-websearch-page-title-text", title: data.title || data.url }, data.title || host || data.url || "Document")), data.url && /* @__PURE__ */ React.createElement("div", { className: "tool-call-websearch-page-link-row" }, /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      type: "button",
+      className: "tool-call-websearch-page-link",
+      onClick: () => api.links.open(data.url, "browser"),
+      title: data.url
+    },
+    /* @__PURE__ */ React.createElement("svg", { width: "10", height: "10", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": "true" }, /* @__PURE__ */ React.createElement("circle", { cx: "12", cy: "12", r: "10" }), /* @__PURE__ */ React.createElement("line", { x1: "2", y1: "12", x2: "22", y2: "12" }), /* @__PURE__ */ React.createElement("path", { d: "M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" })),
+    /* @__PURE__ */ React.createElement("span", null, host || data.url)
+  ), /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      type: "button",
+      className: "tool-call-websearch-external",
+      onClick: () => api.links.open(data.url, "external"),
+      title: t("toolCall.mcp.openExternal", { defaultValue: "在系统默认浏览器打开" }),
+      "aria-label": t("toolCall.mcp.openExternal", { defaultValue: "在系统默认浏览器打开" })
+    },
+    /* @__PURE__ */ React.createElement("svg", { width: "10", height: "10", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": "true" }, /* @__PURE__ */ React.createElement("path", { d: "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" }), /* @__PURE__ */ React.createElement("polyline", { points: "15 3 21 3 21 9" }), /* @__PURE__ */ React.createElement("line", { x1: "10", y1: "14", x2: "21", y2: "3" }))
+  )), data.image && /* @__PURE__ */ React.createElement("div", { className: "mcp-image-preview" }, /* @__PURE__ */ React.createElement("img", { src: data.image.src, alt: "Screenshot / Image preview", style: { maxWidth: "100%", maxHeight: "380px", borderRadius: "var(--radius-sm)", border: "1px solid var(--border-color)", objectFit: "contain" } })), data.content && /* @__PURE__ */ React.createElement("div", { className: "tool-call-websearch-preview-wrap" }, /* @__PURE__ */ React.createElement("pre", { className: `tool-call-websearch-preview ${expanded ? "is-expanded" : ""}` }, expanded ? data.content : data.content.slice(0, 1e3)), data.content.length > 1e3 && /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      type: "button",
+      className: "mcp-expand-btn",
+      onClick: () => setExpanded(!expanded)
+    },
+    expanded ? t("toolCall.mcp.collapse", { defaultValue: "收起全文" }) : `${t("toolCall.anysearch.fullContent", { defaultValue: "展开全文" })} (${data.content.length} 字符)`
+  ))));
+});
+function extractUrlList(records, blocks) {
+  for (const rec of records) {
+    if (Array.isArray(rec.urls) && rec.urls.length > 0 && typeof rec.urls[0] === "string") {
+      const valid = rec.urls.map(String).filter((u) => safeUrl(u));
+      if (valid.length > 0) return valid;
+    }
+  }
+  for (const b of blocks) {
+    if (Array.isArray(b.value) && b.value.length > 0 && typeof b.value[0] === "string" && safeUrl(b.value[0])) {
+      const valid = b.value.map(String).filter((u) => safeUrl(u));
+      if (valid.length > 0) return valid;
+    }
+  }
+  return null;
+}
+var UrlListView = React.memo(function UrlListView2({ urls, label }) {
+  const api = useApi();
+  const { t } = api;
+  const [requested, setPage] = React.useState(0);
+  const page = Math.min(requested, Math.max(0, Math.ceil(urls.length / PAGE_SIZE) - 1));
+  const visible = React.useMemo(() => urls.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE), [urls, page]);
+  return /* @__PURE__ */ React.createElement("section", { className: "mcp-url-list-section" }, /* @__PURE__ */ React.createElement("h4", null, label, " · ", urls.length), /* @__PURE__ */ React.createElement("div", { className: "mcp-url-list" }, visible.map((url, idx) => {
+    return /* @__PURE__ */ React.createElement("div", { key: `${url}-${idx}`, className: "mcp-url-item" }, /* @__PURE__ */ React.createElement("span", { className: "mcp-url-index" }, page * PAGE_SIZE + idx + 1), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        type: "button",
+        className: "mcp-url-link-btn",
+        onClick: () => api.links.open(url, "browser"),
+        title: url
+      },
+      /* @__PURE__ */ React.createElement(Globe, { size: 11, "aria-hidden": "true" }),
+      /* @__PURE__ */ React.createElement("span", { className: "mcp-url-text" }, url)
+    ), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        type: "button",
+        className: "tool-call-websearch-external",
+        onClick: () => api.links.open(url, "external"),
+        title: t("toolCall.mcp.openExternal", { defaultValue: "在系统默认浏览器打开" })
+      },
+      /* @__PURE__ */ React.createElement(ExternalLink, { size: 10, "aria-hidden": "true" })
+    ));
+  })), /* @__PURE__ */ React.createElement(Pager, { total: urls.length, page, onPage: setPage }));
+});
+var KEY_FIELDS = ["name", "title", "identifier", "number", "id", "key", "schema", "status", "state", "type", "kind", "level", "priority", "language", "author", "assignee", "rows", "rls_enabled", "comments", "size", "count", "total", "path", "file", "url", "html_url", "web_url", "description", "created_at", "updated_at", "createdAt", "updatedAt", "date", "time"];
+var MAX_COLUMNS = 6;
+function RecordCell({ field, value }) {
+  const api = useApi();
+  if (value === null || value === void 0 || value === "") return /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, "—");
+  if (typeof value === "boolean") return /* @__PURE__ */ React.createElement("code", { className: "mcp-param-code" }, String(value));
+  if (typeof value === "number") return /* @__PURE__ */ React.createElement("code", { className: "mcp-param-code" }, value);
+  if (typeof value === "string") {
+    const url = safeUrl(value);
+    if (url) return /* @__PURE__ */ React.createElement("button", { type: "button", className: "mcp-cell-link", title: url, onClick: () => api.links.open(url, "browser") }, hostOf(url));
+    const text = field.endsWith("_at") || field === "date" ? shortStamp(value) : value;
+    return /* @__PURE__ */ React.createElement("span", { className: "mcp-cell-text", title: value }, safeText(text));
+  }
+  if (Array.isArray(value)) return /* @__PURE__ */ React.createElement("span", { className: "mcp-param-count" }, "[", value.length, "]");
+  return /* @__PURE__ */ React.createElement("span", { className: "mcp-param-count" }, `{${Object.keys(value).length}}`);
+}
+var RecordTable = React.memo(function RecordTable2({ rows, label }) {
+  const api = useApi();
+  const { t } = api;
+  const [requested, setPage] = React.useState(0);
+  const [openRow, setOpenRow] = React.useState(null);
   const page = Math.min(requested, Math.max(0, Math.ceil(rows.length / PAGE_SIZE) - 1));
   const visible = React.useMemo(() => rows.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE), [rows, page]);
-  const columns = React.useMemo(() => [...new Set(visible.flatMap((row) => isRecord3(row) ? Object.keys(row) : ["value"]))].slice(0, 12), [visible]);
-  const tableColumns = React.useMemo(() => columns.map((key) => safeText(key).slice(0, 100)), [columns]);
-  const tableRows = React.useMemo(() => visible.map((row) => columns.map((key) => preview(isRecord3(row) ? row[key] : row, key))), [visible, columns]);
-  const Table = api.ui.DataTableViewer;
-  return /* @__PURE__ */ React.createElement("section", { className: "mcp-table" }, /* @__PURE__ */ React.createElement("h4", null, label, " · ", rows.length), /* @__PURE__ */ React.createElement(Table, { columns: tableColumns, rows: tableRows, maxInitialRows: PAGE_SIZE, enableExport: false, enableSearch: false }), /* @__PURE__ */ React.createElement(Pager2, { total: rows.length, page, onPage: setPage }), /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, api.t("toolCall.mcp.tablePreview")));
+  const columns = React.useMemo(() => {
+    const present = /* @__PURE__ */ new Set();
+    for (const row of visible) {
+      if (!isRecord(row)) continue;
+      for (const [key, value] of Object.entries(row)) {
+        if (value !== null && value !== void 0 && value !== "") present.add(key);
+      }
+    }
+    const ordered = [...KEY_FIELDS.filter((key) => present.has(key)), ...[...present].filter((key) => !KEY_FIELDS.includes(key)).sort()];
+    return ordered.slice(0, MAX_COLUMNS);
+  }, [visible]);
+  const hasRecords = visible.some(isRecord);
+  return /* @__PURE__ */ React.createElement("section", { className: "mcp-table" }, /* @__PURE__ */ React.createElement("h4", null, label, " · ", rows.length), /* @__PURE__ */ React.createElement("div", { className: "mcp-record-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "mcp-record-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", { className: "mcp-record-expander", "aria-hidden": "true" }), hasRecords ? columns.map((key) => /* @__PURE__ */ React.createElement("th", { key }, t(`toolCall.field.${key}`, { defaultValue: key }))) : /* @__PURE__ */ React.createElement("th", null, t("toolCall.mcp.value")))), /* @__PURE__ */ React.createElement("tbody", null, visible.map((row, index) => {
+    const key = `${page}:${index}`;
+    const record = isRecord(row);
+    const open = openRow === key;
+    return /* @__PURE__ */ React.createElement(React.Fragment, { key }, /* @__PURE__ */ React.createElement("tr", { className: "mcp-record-row" }, /* @__PURE__ */ React.createElement("td", { className: "mcp-record-expander" }, /* @__PURE__ */ React.createElement("button", { type: "button", "aria-expanded": open, title: t("toolCall.mcp.details"), onClick: () => setOpenRow(open ? null : key) }, open ? "▾" : "▸")), record ? columns.map((field) => /* @__PURE__ */ React.createElement("td", { key: field }, /* @__PURE__ */ React.createElement(RecordCell, { field, value: row[field] }))) : /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement(RecordCell, { field: "", value: row }))), open && /* @__PURE__ */ React.createElement("tr", { className: "mcp-record-detail" }, /* @__PURE__ */ React.createElement("td", null), /* @__PURE__ */ React.createElement("td", { colSpan: record ? Math.max(1, columns.length) : 1 }, record ? /* @__PURE__ */ React.createElement(ParamTable, { providerId: "", args: row }) : /* @__PURE__ */ React.createElement(Value, { value: row }))));
+  })))), /* @__PURE__ */ React.createElement(Pager, { total: rows.length, page, onPage: setPage }));
 });
 function BrowserView({ records, collections, blocks }) {
   const { t } = useApi();
@@ -1773,25 +2355,43 @@ function BrowserView({ records, collections, blocks }) {
   }
   return /* @__PURE__ */ React.createElement(React.Fragment, null, tables.slice(0, 8).map((table, index) => /* @__PURE__ */ React.createElement(RecordTable, { key: index, ...table })));
 }
-function GenericView({ records, collections, blocks }) {
-  const { t } = useApi();
-  const tables = [];
+function collectionItems(records, collections, blocks, t) {
+  const items = [];
   const seen = /* @__PURE__ */ new Set();
   for (const block of blocks.slice(0, 20)) {
     if (Array.isArray(block.value) && !seen.has(block.value)) {
       seen.add(block.value);
-      tables.push({ label: t("toolCall.mcp.records"), rows: block.value });
+      items.push({ label: t("toolCall.mcp.records"), rows: block.value, entities: detectEntities(block.value) });
     }
   }
   for (const record of records) for (const key of collections) {
     const rows = record[key];
     if (Array.isArray(rows) && !seen.has(rows)) {
       seen.add(rows);
-      tables.push({ label: t(`toolCall.mcp.collection.${key}`, { defaultValue: key }), rows });
+      items.push({ label: t(`toolCall.mcp.collection.${key}`, { defaultValue: key }), rows, entities: detectEntities(rows) });
     }
   }
-  return /* @__PURE__ */ React.createElement(React.Fragment, null, tables.slice(0, 6).map((table, index) => /* @__PURE__ */ React.createElement(RecordTable, { key: index, ...table })));
+  if (!items.length) {
+    for (const record of records) for (const [key, value] of Object.entries(record)) {
+      if (!Array.isArray(value) || value.length === 0 || seen.has(value) || !value.some(isRecord)) continue;
+      seen.add(value);
+      items.push({ label: t(`toolCall.mcp.collection.${key}`, { defaultValue: safeText(key).slice(0, 60) }), rows: value, entities: detectEntities(value) });
+    }
+  }
+  return items;
 }
+var GenericView = React.memo(function GenericView2({ items, records }) {
+  if (items.length) {
+    return /* @__PURE__ */ React.createElement(React.Fragment, null, items.slice(0, 6).map(
+      (item, index) => item.entities && item.entities.length > 0 ? /* @__PURE__ */ React.createElement(EntityListView, { key: index, entities: item.entities, label: item.label }) : /* @__PURE__ */ React.createElement(RecordTable, { key: index, label: item.label, rows: item.rows })
+    ));
+  }
+  const checklist = checklistFromRecords(records);
+  if (checklist) return /* @__PURE__ */ React.createElement(ChecklistView, { shape: checklist });
+  const progress = progressFromRecords(records);
+  if (progress) return /* @__PURE__ */ React.createElement(ProgressView, { shape: progress });
+  return null;
+});
 var Metrics = React.memo(function Metrics2({ records }) {
   const { t } = useApi();
   const fields = React.useMemo(() => ["id", "status", "progress", "completed", "total", "totalPages", "creditsUsed", "duration", "durationMs"], []);
@@ -1810,12 +2410,12 @@ var Metrics = React.memo(function Metrics2({ records }) {
   if (!selected.size) return null;
   return /* @__PURE__ */ React.createElement("dl", { className: "mcp-metrics" }, [...selected].map(([key, value]) => /* @__PURE__ */ React.createElement("div", { key }, /* @__PURE__ */ React.createElement("dt", null, t(`toolCall.mcp.metric.${key}`, { defaultValue: key })), /* @__PURE__ */ React.createElement("dd", null, preview(value, key)))));
 });
-var Blocks = React.memo(function Blocks2({ blocks }) {
+var Blocks = React.memo(function Blocks2({ blocks, compact = false }) {
   const { t } = useApi();
   const [requested, setPage] = React.useState(0);
   const page = Math.min(requested, Math.max(0, Math.ceil(blocks.length / 5) - 1));
   const currentBlocks = React.useMemo(() => blocks.slice(page * 5, (page + 1) * 5), [blocks, page]);
-  return /* @__PURE__ */ React.createElement("section", { className: "mcp-blocks" }, /* @__PURE__ */ React.createElement("h4", null, t("toolCall.mcp.contentBlocks"), " · ", blocks.length), currentBlocks.map((block, index) => /* @__PURE__ */ React.createElement("div", { className: "mcp-block", key: `${page}:${index}` }, /* @__PURE__ */ React.createElement("h5", null, block.label), block.kind === "image" ? /* @__PURE__ */ React.createElement(ImageBlock, { value: block.value }) : /* @__PURE__ */ React.createElement(Value, { value: block.value }))), /* @__PURE__ */ React.createElement(Pager2, { total: blocks.length, page, size: 5, onPage: setPage }));
+  return /* @__PURE__ */ React.createElement("section", { className: "mcp-blocks" }, !compact && /* @__PURE__ */ React.createElement("h4", null, t("toolCall.mcp.contentBlocks"), " · ", blocks.length), currentBlocks.map((block, index) => /* @__PURE__ */ React.createElement("div", { className: "mcp-block", key: `${page}:${index}` }, /* @__PURE__ */ React.createElement("h5", null, block.label), block.kind === "image" ? /* @__PURE__ */ React.createElement(ImageBlock, { value: block.value }) : /* @__PURE__ */ React.createElement(BlockValue, { value: block.value }))), /* @__PURE__ */ React.createElement(Pager, { total: blocks.length, page, size: 5, onPage: setPage }));
 });
 function computeMeta({
   status,
@@ -1887,16 +2487,17 @@ function McpToolCall({ toolCall, provider, operation }) {
   const status = toolCall.status === "error" || parsed.failed || exa?.partialError ? "error" : toolCall.status;
   const ToolCallNode = api.ui.ToolCallNode;
   const op = api.t(`toolCall.mcp.op.${operation}`, { defaultValue: operation });
+  const isSearchTool = provider.kind === "search";
+  const subject = React.useMemo(() => isSearchTool && isRecord(args) ? titleSubject(args) : "", [isSearchTool, args]);
   const summary = React.useMemo(() => {
-    if (!isRecord3(args)) return "";
-    if (provider.id === "exa") return exaSummary(args, api.t);
+    if (!isRecord(args) || isSearchTool) return "";
     return providerSummary(provider.id, args, api.t);
-  }, [provider.id, args, api.t]);
+  }, [provider.id, isSearchTool, args, api.t]);
   const shape = React.useMemo(() => {
     const texts = [];
     for (const block of parsed.blocks) {
       if (typeof block.value === "string") texts.push(block.value);
-      else if (isRecord3(block.value) && typeof block.value.text === "string") texts.push(block.value.text);
+      else if (isRecord(block.value) && typeof block.value.text === "string") texts.push(block.value.text);
     }
     const joined = texts.join("\n");
     if (joined.length <= 4e5) {
@@ -1909,12 +2510,22 @@ function McpToolCall({ toolCall, provider, operation }) {
       const log = parseLogs(joined);
       if (log) return /* @__PURE__ */ React.createElement(LogView, { shape: log });
     }
-    const checklist = checklistFromRecords(records);
-    if (checklist) return /* @__PURE__ */ React.createElement(ChecklistView, { shape: checklist });
-    const progress = progressFromRecords(records);
-    if (progress) return /* @__PURE__ */ React.createElement(ProgressView, { shape: progress });
     return null;
   }, [parsed.blocks, records]);
+  const scrapeData = React.useMemo(() => {
+    if (groups.length > 0) return null;
+    if (provider.kind !== "search" && provider.kind !== "browser" && operation !== "web-fetch") return null;
+    return extractScrapeInfo(parsed.blocks, records);
+  }, [groups.length, provider.kind, operation, parsed.blocks, records]);
+  const urlListData = React.useMemo(() => {
+    if (groups.length > 0 || scrapeData !== null) return null;
+    return extractUrlList(records, parsed.blocks);
+  }, [groups.length, scrapeData, records, parsed.blocks]);
+  const recordItems = React.useMemo(
+    () => provider.kind === "generic" ? collectionItems(records, provider.collections, parsed.blocks, api.t) : [],
+    [provider.kind, provider.collections, records, parsed.blocks, api.t]
+  );
+  const hasSpecializedView = groups.length > 0 || shape !== null || scrapeData !== null || urlListData !== null || recordItems.length > 0;
   const meta = React.useMemo(() => computeMeta({
     status,
     provider,
@@ -1923,7 +2534,7 @@ function McpToolCall({ toolCall, provider, operation }) {
     blocks: parsed.blocks,
     api
   }), [status, provider, groups, records, parsed.blocks, api]);
-  return /* @__PURE__ */ React.createElement(ToolCallNode, { toolName: toolCall.name, status, lazyBody: true, category: provider.category, badgeName: provider.name, displayName: summary ? `${op} · ${summary}` : op, displayNameTitle: toolCall.name, className: "sno************************", meta }, /* @__PURE__ */ React.createElement("div", { className: "mcp-card" }, summary && /* @__PURE__ */ React.createElement("p", { className: "mcp-summary" }, summary), status === "error" && /* @__PURE__ */ React.createElement("p", { role: "status", className: "mcp-error" }, api.t("toolCall.mcp.failed")), /* @__PURE__ */ React.createElement("button", { type: "button", "aria-expanded": parametersOpen, onClick: () => setParametersOpen(!parametersOpen) }, api.t("toolCall.mcp.parameters")), parametersOpen && /* @__PURE__ */ React.createElement("section", null, /* @__PURE__ */ React.createElement("p", { className: "mcp-muted" }, api.t("toolCall.mcp.parameterPrivacy")), isRecord3(args) ? /* @__PURE__ */ React.createElement(Value, { value: provider.id === "exa" ? exaParameters(args) : args, parameters: true }) : /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, HIDDEN)), /* @__PURE__ */ React.createElement(Metrics, { records }), feed?.answer && /* @__PURE__ */ React.createElement("div", { className: "mcp-answer" }, /* @__PURE__ */ React.createElement("strong", null, api.t("toolCall.search.answer"), ":"), /* @__PURE__ */ React.createElement("p", null, preview(feed.answer))), feed?.sources && feed.sources.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mcp-sources" }, /* @__PURE__ */ React.createElement("strong", null, api.t("toolCall.search.sources"), " · ", feed.sources.length), /* @__PURE__ */ React.createElement("ul", null, feed.sources.slice(0, 20).map((url, index) => /* @__PURE__ */ React.createElement("li", { key: `${url}-${index}` }, /* @__PURE__ */ React.createElement(SafeLink, { value: url }))))), exa?.textPreview && /* @__PURE__ */ React.createElement("p", { className: "mcp-muted" }, api.t("toolCall.exa.previewOnly")), feed?.textPreview && /* @__PURE__ */ React.createElement("p", { className: "mcp-muted" }, api.t("toolCall.search.textPreview")), groups.length > 0 && /* @__PURE__ */ React.createElement(SearchResults, { groups, showPublished: provider.id === "exa" || provider.id === "brave" }), shape, provider.kind === "browser" && /* @__PURE__ */ React.createElement(BrowserView, { records, collections: provider.collections, blocks: parsed.blocks }), provider.kind === "generic" && /* @__PURE__ */ React.createElement(GenericView, { records, collections: provider.collections, blocks: parsed.blocks }), parsed.bounded && /* @__PURE__ */ React.createElement("p", { className: "mcp-muted" }, api.t("toolCall.mcp.parseLimit")), parsed.blocks.length > 0 ? /* @__PURE__ */ React.createElement(Blocks, { blocks: parsed.blocks }) : /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, api.t(`toolCall.mcp.status.${status}`)), toolCall.streamingStdout && /* @__PURE__ */ React.createElement("section", null, /* @__PURE__ */ React.createElement("h4", null, "stdout"), /* @__PURE__ */ React.createElement(TextValue, { value: toolCall.streamingStdout })), toolCall.streamingStderr && /* @__PURE__ */ React.createElement("section", null, /* @__PURE__ */ React.createElement("h4", null, "stderr"), /* @__PURE__ */ React.createElement(TextValue, { value: toolCall.streamingStderr }))));
+  return /* @__PURE__ */ React.createElement(ToolCallNode, { toolName: toolCall.name, status, lazyBody: true, category: provider.category, badgeName: provider.name, displayName: subject || (summary ? `${op} · ${summary}` : op), displayNameTitle: subject || toolCall.name, className: `snow-external-tool-renderer tool-call-gallery ${isSearchTool ? "tool-call-websearch" : ""}`, meta }, /* @__PURE__ */ React.createElement("div", { className: "mcp-card" }, isRecord(args) && isSearchTool && /* @__PURE__ */ React.createElement(SearchParamsBar, { args }), status === "error" && /* @__PURE__ */ React.createElement("p", { role: "status", className: "mcp-error" }, api.t("toolCall.mcp.failed")), /* @__PURE__ */ React.createElement("button", { type: "button", "aria-expanded": parametersOpen, onClick: () => setParametersOpen(!parametersOpen) }, api.t("toolCall.mcp.parameters")), parametersOpen && /* @__PURE__ */ React.createElement("section", { className: "mcp-params-section" }, /* @__PURE__ */ React.createElement("p", { className: "mcp-muted" }, api.t("toolCall.mcp.parameterPrivacy")), isRecord(args) ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(ParamTable, { providerId: provider.id, args: provider.id === "exa" ? exaParameters(args) : args }), /* @__PURE__ */ React.createElement("details", { className: "mcp-param-details mcp-params-raw" }, /* @__PURE__ */ React.createElement("summary", null, api.t("toolCall.mcp.rawParameters")), /* @__PURE__ */ React.createElement(Value, { value: provider.id === "exa" ? exaParameters(args) : args, parameters: true }))) : /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, HIDDEN)), /* @__PURE__ */ React.createElement(Metrics, { records }), feed?.answer && /* @__PURE__ */ React.createElement("div", { className: "mcp-answer" }, /* @__PURE__ */ React.createElement("strong", null, api.t("toolCall.search.answer"), ":"), /* @__PURE__ */ React.createElement("p", null, preview(feed.answer))), feed?.sources && feed.sources.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mcp-sources" }, /* @__PURE__ */ React.createElement("strong", null, api.t("toolCall.search.sources"), " · ", feed.sources.length), /* @__PURE__ */ React.createElement("ul", null, feed.sources.slice(0, 20).map((url, index) => /* @__PURE__ */ React.createElement("li", { key: `${url}-${index}` }, /* @__PURE__ */ React.createElement(SafeLink, { value: url }))))), exa?.textPreview && /* @__PURE__ */ React.createElement("div", { className: "mcp-hint-banner" }, /* @__PURE__ */ React.createElement("svg", { width: "12", height: "12", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": "true" }, /* @__PURE__ */ React.createElement("circle", { cx: "12", cy: "12", r: "10" }), /* @__PURE__ */ React.createElement("line", { x1: "12", y1: "16", x2: "12", y2: "12" }), /* @__PURE__ */ React.createElement("line", { x1: "12", y1: "8", x2: "12.01", y2: "8" })), /* @__PURE__ */ React.createElement("span", null, api.t("toolCall.exa.previewOnly"))), feed?.textPreview && /* @__PURE__ */ React.createElement("div", { className: "mcp-hint-banner" }, /* @__PURE__ */ React.createElement("svg", { width: "12", height: "12", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": "true" }, /* @__PURE__ */ React.createElement("circle", { cx: "12", cy: "12", r: "10" }), /* @__PURE__ */ React.createElement("line", { x1: "12", y1: "16", x2: "12", y2: "12" }), /* @__PURE__ */ React.createElement("line", { x1: "12", y1: "8", x2: "12.01", y2: "8" })), /* @__PURE__ */ React.createElement("span", null, api.t("toolCall.search.textPreview"))), groups.length > 0 && /* @__PURE__ */ React.createElement(SearchResults, { groups, showPublished: provider.id === "exa" || provider.id === "brave" }), scrapeData && /* @__PURE__ */ React.createElement(ScrapeView, { data: scrapeData }), urlListData && /* @__PURE__ */ React.createElement(UrlListView, { urls: urlListData, label: api.t("toolCall.mcp.op.tavily-map", { defaultValue: "站点链接清单" }) }), shape, provider.kind === "browser" && /* @__PURE__ */ React.createElement(BrowserView, { records, collections: provider.collections, blocks: parsed.blocks }), provider.kind === "generic" && /* @__PURE__ */ React.createElement(GenericView, { items: recordItems, records }), parsed.bounded && /* @__PURE__ */ React.createElement("p", { className: "mcp-muted" }, api.t("toolCall.mcp.parseLimit")), parsed.blocks.length > 0 ? hasSpecializedView ? /* @__PURE__ */ React.createElement("details", { className: "mcp-raw-blocks-toggle" }, /* @__PURE__ */ React.createElement("summary", null, api.t("toolCall.mcp.viewRawBlocks", { defaultValue: "查看原始响应数据" }), " · ", parsed.blocks.length), /* @__PURE__ */ React.createElement(Blocks, { blocks: parsed.blocks, compact: true })) : /* @__PURE__ */ React.createElement(Blocks, { blocks: parsed.blocks }) : /* @__PURE__ */ React.createElement("span", { className: "mcp-muted" }, api.t(`toolCall.mcp.status.${status}`)), toolCall.streamingStdout && /* @__PURE__ */ React.createElement(OutputSection, { label: "stdout", value: toolCall.streamingStdout }), toolCall.streamingStderr && /* @__PURE__ */ React.createElement(OutputSection, { label: "stderr", value: toolCall.streamingStderr })));
 }
 
 // src/providers.ts
@@ -1949,7 +2560,9 @@ var providers = [
   { id: "gitlab", name: "GitLab", services: ["gitlab", "gitlab-mcp", "gitlab_mcp"], category: "git", kind: "generic", collections: ["projects", "issues", "merge_requests", "branches", "commits", "pipelines", "jobs", "labels", "members", "namespaces", "discussions", "notes", "artifacts"] },
   { id: "docker", name: "Docker", services: ["docker", "docker-mcp", "docker_mcp"], category: "terminal", kind: "generic", collections: ["containers", "images", "networks", "volumes"] },
   { id: "k8s", name: "Kubernetes", services: ["kubernetes", "k8s", "kubernetes-mcp", "k8s-mcp"], category: "terminal", kind: "generic", collections: ["pods", "nodes", "namespaces", "events", "contexts", "targets", "resources", "deployments", "services", "configmaps", "secrets"] },
-  { id: "notion", name: "Notion", services: ["notion", "notion-mcp", "notion_mcp"], category: "outline", kind: "generic", collections: ["results", "pages", "blocks", "comments", "users", "databases", "data_sources"] }
+  { id: "notion", name: "Notion", services: ["notion", "notion-mcp", "notion_mcp"], category: "outline", kind: "generic", collections: ["results", "pages", "blocks", "comments", "users", "databases", "data_sources"] },
+  { id: "duckduckgo", name: "DuckDuckGo", services: ["duckduckgo", "duckduckgo-search", "duckduckgo_search", "ddg"], category: "search", kind: "search", collections: ["results"] },
+  { id: "jina", name: "Jina", services: ["jina", "jina-search", "jina_search", "jina-reader", "jina_reader"], category: "search", kind: "search", collections: ["results", "images", "data"] }
 ];
 var normalizeName = (name) => name.replace(/_/g, "-");
 var prefixMap = [];

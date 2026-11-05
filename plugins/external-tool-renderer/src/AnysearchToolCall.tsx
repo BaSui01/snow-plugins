@@ -17,9 +17,10 @@
  * 注意：外部 MCP 的返回结构可能随 Anysearch 版本变化，Markdown 解析均做了
  * 容错（解析不出条目就回退原文展示），保证任何情况下都有内容可看。
  */
-import { React, useMemo, type ReactNode } from "./runtime";
+import { React, useMemo, useState, type ReactNode } from "./runtime";
 import {
   AlertCircle,
+  CheckCircle2,
   ExternalLink,
   FileText,
   Globe,
@@ -28,6 +29,7 @@ import {
   useApi,
 } from "./api";
 import type { ToolCallInfo } from "./types";
+import { ParamTable, OutputSection, TextValue, Value } from "./components";
 
 type AnysearchToolCallProps = {
   toolCall: ToolCallInfo;
@@ -396,6 +398,7 @@ export const AnysearchToolCall = ({
     () => parseResult(toolCall.result),
     [toolCall.result],
   );
+  const [parametersOpen, setParametersOpen] = useState(false);
 
   const effectiveStatus =
     parsedResult.type === "error" ? "error" : toolCall.status;
@@ -521,11 +524,12 @@ export const AnysearchToolCall = ({
   const openInBrowserTitle = t("toolCall.anysearch.openInBrowser");
   const openExternalTitle = t("toolCall.anysearch.openExternal");
 
-  /* 参数行（按操作挑选可读字段）。 */
+  /* 参数行（按操作挑选核心字段，单行省略）。 */
   const params: ReactNode[] = [];
-  if (operation === "search") {
-    const query = asString(parsedArgs?.query);
-    const maxResults = parsedArgs?.maxResults;
+  if (operation === "search" || operation === "batch-search") {
+    const query = asString(parsedArgs?.query) ?? (Array.isArray(parsedArgs?.queries) ? (isRecord(parsedArgs.queries[0]) ? asString(parsedArgs.queries[0].query) : asString(parsedArgs.queries[0])) : undefined);
+    const maxResults = parsedArgs?.maxResults ?? parsedArgs?.max_results ?? parsedArgs?.count;
+    const subDomain = asString(parsedArgs?.sub_domain) ?? asString(parsedArgs?.domain);
     if (query) {
       params.push(
         <div className="tool-call-websearch-param-item" key="query">
@@ -537,12 +541,19 @@ export const AnysearchToolCall = ({
         </div>,
       );
     }
-    if (typeof maxResults === "number") {
+    if (typeof maxResults === "number" || subDomain) {
       params.push(
-        <div className="tool-call-websearch-param-tags" key="max">
-          <span className="tool-call-websearch-param-tag">
-            {t("toolCall.anysearch.maxResults")}: {maxResults}
-          </span>
+        <div className="tool-call-websearch-param-tags" key="tags">
+          {subDomain ? (
+            <span className="tool-call-websearch-param-tag">
+              {subDomain}
+            </span>
+          ) : null}
+          {typeof maxResults === "number" ? (
+            <span className="tool-call-websearch-param-tag">
+              {t("toolCall.anysearch.maxResults")}: {maxResults}
+            </span>
+          ) : null}
         </div>,
       );
     }
@@ -562,7 +573,7 @@ export const AnysearchToolCall = ({
   } else if (operation === "get-sub-domains") {
     const domains = Array.isArray(parsedArgs?.domains)
       ? parsedArgs.domains.map(String)
-      : [];
+      : asString(parsedArgs?.domain) ? [asString(parsedArgs?.domain)!] : [];
     if (domains.length > 0) {
       params.push(
         <div className="tool-call-websearch-param-item" key="domains">
@@ -576,7 +587,26 @@ export const AnysearchToolCall = ({
         </div>,
       );
     }
+  } else if (operation === "score") {
+    const feedbacks = Array.isArray(parsedArgs?.feedbacks) ? parsedArgs.feedbacks.filter(isRecord) : [];
+    if (feedbacks.length > 0) {
+      params.push(
+        <div className="tool-call-websearch-param-item" key="feedbacks">
+          <CheckCircle2 size={11} aria-hidden="true" />
+          <span className="tool-call-websearch-param-label">
+            {t("toolCall.anysearch.feedbackCount", { defaultValue: "打分条目" })}
+          </span>
+          <code className="tool-call-websearch-param-value">
+            {feedbacks.length}
+          </code>
+        </div>,
+      );
+    }
   }
+
+  const scoreFeedbacks = operation === "score" && Array.isArray(parsedArgs?.feedbacks)
+    ? parsedArgs.feedbacks.filter(isRecord)
+    : [];
 
   /* 原文兜底：只在实际有专属内容可渲染时隐藏原文，未知格式不能空白。 */
   const hasStructuredContent =
@@ -584,7 +614,8 @@ export const AnysearchToolCall = ({
       (operation === "search" || operation === "batch-search") &&
       sections.length > 0) ||
     (operation === "extract" && extractResult !== null) ||
-    (operation === "get-sub-domains" && domainSections.length > 0);
+    (operation === "get-sub-domains" && domainSections.length > 0) ||
+    (operation === "score" && scoreFeedbacks.length > 0);
   const rawFallbackText = !hasStructuredContent
     ? contentTextValue ?? (data ? JSON.stringify(data, null, 2) : undefined)
     : undefined;
@@ -606,7 +637,32 @@ export const AnysearchToolCall = ({
     >
       <div className="tool-call-body tool-call-websearch-body">
         {params.length > 0 ? (
-          <div className="tool-call-websearch-params">{params}</div>
+          <div className="tool-call-websearch-params mcp-search-params-bar">{params}</div>
+        ) : null}
+
+        {parsedArgs ? (
+          <button
+            type="button"
+            aria-expanded={parametersOpen}
+            onClick={() => setParametersOpen(!parametersOpen)}
+          >
+            {t("toolCall.mcp.parameters", { defaultValue: "参数" })}
+          </button>
+        ) : null}
+
+        {parametersOpen && parsedArgs ? (
+          <section className="mcp-params-section">
+            <p className="mcp-muted">
+              {t("toolCall.mcp.parameterPrivacy", { defaultValue: "敏感参数已隐藏。" })}
+            </p>
+            <ParamTable providerId="anysearch" args={parsedArgs} />
+            <details className="mcp-param-details mcp-params-raw">
+              <summary>
+                {t("toolCall.mcp.rawParameters", { defaultValue: "原始参数" })}
+              </summary>
+              <Value value={parsedArgs} parameters />
+            </details>
+          </section>
         ) : null}
 
         {parsedResult.type === "error" ? (
@@ -822,15 +878,44 @@ export const AnysearchToolCall = ({
           </div>
         ) : null}
 
-        {/* 原文兜底（结构化解析失败时） */}
+        {/* score：打分回执列表 */}
+        {operation === "score" && scoreFeedbacks.length > 0 ? (
+          <div className="tool-call-anysearch-score-list">
+            {scoreFeedbacks.map((fb, idx) => {
+              const scoreNum = Number(fb.score) || 0;
+              return (
+                <div key={idx} className="tool-call-anysearch-score-item">
+                  <CheckCircle2 size={12} className="tool-call-icon-success" aria-hidden="true" />
+                  <span className="tool-call-anysearch-score-id">{String(fb.request_id || "req")}</span>
+                  <span className="tool-call-anysearch-score-stars">
+                    {"★".repeat(Math.max(0, Math.min(5, scoreNum))) + "☆".repeat(Math.max(0, 5 - Math.max(0, Math.min(5, scoreNum))))}
+                  </span>
+                  <span className="tool-call-anysearch-score-val">{scoreNum}/5</span>
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
         {rawFallbackText ? (
           <section className="tool-call-section">
             <span className="tool-call-section-label">
               {t("toolCall.anysearch.result")}
             </span>
-            <pre className="tool-call-section-pre">{rawFallbackText}</pre>
+            <TextValue value={rawFallbackText} />
           </section>
         ) : null}
+
+        {hasStructuredContent && (contentTextValue || data) ? (
+          <details className="mcp-raw-blocks-toggle">
+            <summary>
+              {t("toolCall.mcp.viewRawBlocks", { defaultValue: "查看原始响应数据" })}
+            </summary>
+            <TextValue value={contentTextValue ?? JSON.stringify(data, null, 2)} />
+          </details>
+        ) : null}
+
+        {toolCall.streamingStdout && <OutputSection label="stdout" value={toolCall.streamingStdout} />}
+        {toolCall.streamingStderr && <OutputSection label="stderr" value={toolCall.streamingStderr} />}
 
         {/* 等待 / 执行中 */}
         {parsedResult.type === "empty" ? (

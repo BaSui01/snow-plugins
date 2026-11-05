@@ -86,6 +86,8 @@ export function parseSearchFeed(
     linkup: ["results", "images"],
     firecrawl: ["web", "news", "images"],
     brave: ["items"],
+    duckduckgo: ["results"],
+    jina: ["results", "data", "images"],
   };
 
   // 1. Service-specific structured arrays already surfaced as records.
@@ -229,12 +231,13 @@ function cleanSummaryText(text: string, maxLen = 120): string {
 /** Bounded parameter summary shared by the search-class providers. */
 export function searchProviderSummary(providerId: string, args: Record<string, unknown>, t: Translate): string {
   const parts: string[] = [];
-  const q = args.query ?? args.q ?? args.search_query;
+  const q = args.query ?? args.q ?? args.search_query ?? args.question;
   if (typeof q === "string") parts.push(`${t("toolCall.search.query")}: ${cleanSummaryText(q)}`);
 
   if (typeof args.url === "string") parts.push(`url: ${preview(args.url, "url", true)}`);
   else if (Array.isArray(args.urls)) parts.push(`urls: ${args.urls.length}`);
 
+  if (typeof args.safeSearch === "string") parts.push(`safe: ${args.safeSearch}`);
   if (typeof args.depth === "string") parts.push(`depth: ${args.depth}`);
   if (typeof args.search_depth === "string") parts.push(`depth: ${args.search_depth}`);
   if (typeof args.mode === "string") parts.push(`mode: ${args.mode}`);
@@ -242,7 +245,7 @@ export function searchProviderSummary(providerId: string, args: Record<string, u
   if (typeof args.category === "string") parts.push(`category: ${args.category}`);
   if (typeof args.country === "string") parts.push(`country: ${args.country}`);
 
-  const max = args.max_results ?? args.count ?? args.numResults ?? args.limit;
+  const max = args.max_results ?? args.count ?? args.numResults ?? args.limit ?? args.num ?? args.topk;
   if (typeof max === "number" && Number.isFinite(max)) parts.push(`max: ${max}`);
 
   return parts.join(" · ").slice(0, 400);

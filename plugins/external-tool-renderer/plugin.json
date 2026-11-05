@@ -7,12 +7,12 @@
     "en": "Tool Gallery"
   },
   "description": {
-    "default": "Unified cards for external MCP tool calls: argument summaries, tables, content blocks and error states, covering 24 search and developer services such as Anysearch, DBX, Firecrawl and Chrome DevTools. Requires a compatible desktop host.",
-    "zh-CN": "为外部 MCP 工具调用提供统一卡片：参数摘要、表格、内容块与错误状态，覆盖 Anysearch、DBX、Firecrawl、Chrome DevTools 等 24 类搜索与开发服务。需配套支持工具卡插槽的桌面宿主。",
-    "zh-TW": "為外部 MCP 工具呼叫提供統一卡片：參數摘要、表格、內容區塊與錯誤狀態，覆蓋 Anysearch、DBX、Firecrawl、Chrome DevTools 等 24 類搜尋與開發服務。需配套支援工具卡插槽的桌面宿主。",
-    "en": "Unified cards for external MCP tool calls: argument summaries, tables, content blocks and error states, covering 24 search and developer services such as Anysearch, DBX, Firecrawl and Chrome DevTools. Requires a compatible desktop host."
+    "default": "Unified cards for external MCP tool calls: argument summaries, tables, content blocks and error states, covering 26 search and developer services such as Anysearch, DBX, Jina, DuckDuckGo and Firecrawl. Requires a compatible desktop host.",
+    "zh-CN": "为外部 MCP 工具调用提供统一卡片：参数摘要、表格、内容块与错误状态，覆盖 Anysearch、DBX、Jina、DuckDuckGo、Firecrawl 等 26 类搜索与开发服务。需配套支持工具卡插槽的桌面宿主。",
+    "zh-TW": "為外部 MCP 工具呼叫提供統一卡片：參數摘要、表格、內容區塊與錯誤狀態，覆蓋 Anysearch、DBX、Jina、DuckDuckGo、Firecrawl 等 26 類搜尋與開發服務。需配套支援工具卡插槽的桌面宿主。",
+    "en": "Unified cards for external MCP tool calls: argument summaries, tables, content blocks and error states, covering 26 search and developer services such as Anysearch, DBX, Jina, DuckDuckGo and Firecrawl. Requires a compatible desktop host."
   },
-  "version": "0.3.3",
+  "version": "0.3.4",
   "minAppVersion": "0.4.24",
   "author": "BaSui",
   "license": "MIT",
@@ -275,6 +275,31 @@
           "notion_",
           "notion-mcp-",
           "notion_mcp-"
+        ],
+        "exportName": "renderMcp",
+        "priority": 10
+      },
+      {
+        "id": "duckduckgo",
+        "prefixes": [
+          "duckduckgo-",
+          "duckduckgo_",
+          "ddg-",
+          "ddg_"
+        ],
+        "exportName": "renderMcp",
+        "priority": 10
+      },
+      {
+        "id": "jina",
+        "prefixes": [
+          "jina-",
+          "jina_",
+          "jina-search-",
+          "jina_search-",
+          "jina_search_",
+          "jina-reader-",
+          "jina_reader-"
         ],
         "exportName": "renderMcp",
         "priority": 10

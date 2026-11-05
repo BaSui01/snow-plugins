@@ -38,6 +38,8 @@ export const providers: readonly Provider[] = [
   { id: "docker", name: "Docker", services: ["docker", "docker-mcp", "docker_mcp"], category: "terminal", kind: "generic", collections: ["containers", "images", "networks", "volumes"] },
   { id: "k8s", name: "Kubernetes", services: ["kubernetes", "k8s", "kubernetes-mcp", "k8s-mcp"], category: "terminal", kind: "generic", collections: ["pods", "nodes", "namespaces", "events", "contexts", "targets", "resources", "deployments", "services", "configmaps", "secrets"] },
   { id: "notion", name: "Notion", services: ["notion", "notion-mcp", "notion_mcp"], category: "outline", kind: "generic", collections: ["results", "pages", "blocks", "comments", "users", "databases", "data_sources"] },
+  { id: "duckduckgo", name: "DuckDuckGo", services: ["duckduckgo", "duckduckgo-search", "duckduckgo_search", "ddg"], category: "search", kind: "search", collections: ["results"] },
+  { id: "jina", name: "Jina", services: ["jina", "jina-search", "jina_search", "jina-reader", "jina_reader"], category: "search", kind: "search", collections: ["results", "images", "data"] },
 ];
 
 export const normalizeName = (name: string): string => name.replace(/_/g, "-");

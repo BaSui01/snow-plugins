@@ -5,5 +5,5 @@ import type * as ReactTypes from "react";
 export const React: typeof ReactTypes = (
   window as unknown as { SnowAppPlugin: { React: typeof ReactTypes } }
 ).SnowAppPlugin.React;
-export const { useMemo, createContext, useContext } = React;
+export const { useMemo, useState, createContext, useContext } = React;
 export type { ReactNode } from "react";
