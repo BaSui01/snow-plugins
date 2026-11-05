@@ -1,0 +1,450 @@
+/* GitHub 工具卡：仅作用于自带渲染器输出的卡片，避免影响其他工具。 */
+.gh-tool-card .gh-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.gh-tool-card .gh-icon {
+  display: block;
+  flex-shrink: 0;
+}
+
+.gh-tool-card .gh-params {
+  display: grid;
+  grid-template-columns: minmax(72px, max-content) minmax(0, 1fr);
+  gap: 4px 12px;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+}
+
+.gh-tool-card .gh-param {
+  display: contents;
+}
+
+.gh-tool-card .gh-param dt {
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.gh-tool-card .gh-param dd {
+  min-width: 0;
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.gh-tool-card .gh-param-value {
+  display: block;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: text;
+}
+
+.gh-tool-card .gh-section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+}
+
+.gh-tool-card .gh-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--bg-active);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.gh-tool-card .gh-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.gh-tool-card .gh-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+}
+
+.gh-tool-card .gh-item--compact {
+  gap: 3px;
+  padding: 6px 10px;
+}
+
+.gh-tool-card .gh-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.gh-tool-card .gh-link {
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: none;
+  color: var(--accent-blue-text, var(--accent-color));
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: text;
+}
+
+.gh-tool-card .gh-link:hover {
+  text-decoration: underline;
+}
+
+.gh-tool-card .gh-link--strong {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.gh-tool-card .gh-issue-title {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.gh-tool-card .gh-issue-number {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.gh-tool-card .gh-desc {
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  line-height: 1.55;
+  user-select: text;
+}
+
+.gh-tool-card .gh-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  min-width: 0;
+}
+
+.gh-tool-card .gh-stats {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}
+
+.gh-tool-card .gh-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.gh-tool-card .gh-tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+
+.gh-tool-card .gh-tag {
+  display: inline-flex;
+  align-items: center;
+  max-width: 180px;
+  padding: 1px 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--bg-active);
+  color: var(--text-tertiary);
+  font-size: 10.5px;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gh-tool-card .gh-tag--muted {
+  opacity: 0.8;
+}
+
+.gh-tool-card .gh-state-row {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+}
+
+.gh-tool-card .gh-state {
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.gh-tool-card .gh-state--open {
+  background: color-mix(in srgb, #2da44e 16%, transparent);
+  color: #2da44e;
+}
+
+.gh-tool-card .gh-state--closed {
+  background: color-mix(in srgb, #8250df 16%, transparent);
+  color: #8250df;
+}
+
+.gh-tool-card .gh-more {
+  align-self: flex-start;
+  padding: 3px 8px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.gh-tool-card .gh-more:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.gh-tool-card .gh-hint {
+  color: var(--text-tertiary);
+  font-size: 10.5px;
+}
+
+.gh-tool-card .gh-empty {
+  padding: 10px;
+  border: 1px dashed var(--border-light);
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  font-size: 11.5px;
+  text-align: center;
+}
+
+.gh-tool-card .gh-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, #cf222e 32%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, #cf222e 10%, transparent);
+  color: #cf222e;
+  font-size: 11.5px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+}
+
+.gh-tool-card .gh-repo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+}
+
+.gh-tool-card .gh-file {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.gh-tool-card .gh-file-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.gh-tool-card .gh-code {
+  max-height: 320px;
+  margin: 0;
+  padding: 8px 10px;
+  overflow: auto;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.55;
+  white-space: pre;
+  user-select: text;
+}
+
+.gh-tool-card .gh-dir-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 8px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+}
+
+.gh-tool-card .gh-dir-path {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: text;
+}
+
+.gh-tool-card .gh-raw {
+  min-width: 0;
+}
+
+.gh-tool-card .gh-raw summary {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.gh-tool-card .gh-raw pre {
+  max-height: 260px;
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  overflow: auto;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  user-select: text;
+}
+
+/* 写操作结果：合并 / 评论 / 议题 / PR / 审查 / Release / 文件提交 */
+.gh-tool-card .gh-write {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+}
+
+.gh-tool-card .gh-write-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.gh-tool-card .gh-badge {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.gh-tool-card .gh-badge--ok {
+  background: color-mix(in srgb, #2da44e 16%, transparent);
+  color: #2da44e;
+}
+
+.gh-tool-card .gh-badge--warn {
+  background: color-mix(in srgb, #bf8700 18%, transparent);
+  color: #bf8700;
+}
+
+.gh-tool-card .gh-badge--muted {
+  background: var(--bg-active);
+  color: var(--text-tertiary);
+}
+
+.gh-tool-card .gh-write-title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: text;
+}
+
+.gh-tool-card .gh-write-link {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.gh-tool-card .gh-comment-body {
+  max-height: 240px;
+  margin: 0;
+  padding: 8px 10px;
+  overflow: auto;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+}

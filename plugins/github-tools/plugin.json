@@ -1,0 +1,67 @@
+{
+  "id": "com.snow.github-tools",
+  "name": {
+    "default": "GitHub",
+    "en": "GitHub",
+    "zh-CN": "GitHub",
+    "zh-TW": "GitHub"
+  },
+  "description": {
+    "default": "GitHub tools with built-in result cards: search and inspect repositories, list issues and commits, read files, search code, merge pull requests, comment, open or update issues, create pull requests, submit reviews, publish releases and commit files.",
+    "en": "GitHub tools with built-in result cards: search and inspect repositories, list issues and commits, read files, search code, merge pull requests, comment, open or update issues, create pull requests, submit reviews, publish releases and commit files.",
+    "zh-CN": "GitHub 工具，自带结果卡片：搜索与查看仓库、列出议题与提交、读取文件、搜索代码，以及合并 PR、发表评论、创建议题、更新或关闭议题、创建 PR、提交审查、发布 Release 与提交文件。",
+    "zh-TW": "GitHub 工具，自帶結果卡片：搜尋與檢視儲存庫、列出議題與提交、讀取檔案、搜尋程式碼，以及合併 PR、發表評論、建立議題、更新或關閉議題、建立 PR、提交審查、發布 Release 與提交檔案。"
+  },
+  "version": "0.4.0",
+  "author": "BaSui",
+  "license": "MIT",
+  "icon": "assets/icon.svg",
+  "kind": "tool",
+  "renderMode": "esm",
+  "entry": "index.js",
+  "minAppVersion": "0.5.11",
+  "mcpServers": {
+    "github": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["{{pluginDir}}/server.js"],
+      "timeoutMs": 30000
+    }
+  },
+  "contributions": {
+    "toolCallRenderers": [
+      {
+        "id": "github-tools",
+        "tools": [
+          "github_search_repositories",
+          "github_get_repository",
+          "github_list_issues",
+          "github_list_commits",
+          "github_get_file",
+          "github_search_code",
+          "github_merge_pull_request",
+          "github_comment",
+          "github_create_issue",
+          "github_update_issue",
+          "github_create_pull_request",
+          "github_review_pull_request",
+          "github_create_release",
+          "github_put_file"
+        ],
+        "exportName": "renderGitHubTool",
+        "priority": 20
+      }
+    ]
+  },
+  "styles": ["style.css"],
+  "skills": ["skills/github-workflow"],
+  "locales": {
+    "en": "locales/en.json",
+    "zh-CN": "locales/zh-CN.json",
+    "zh-TW": "locales/zh-TW.json"
+  },
+  "privacy": {
+    "scopes": ["network", "messages"],
+    "note": "调用 GitHub REST API：仓库、议题、代码搜索与文件内容按查询外发到 api.github.com。只读工具可匿名使用；写工具（合并 PR、评论、议题、PR、审查、Release、提交文件）必须提供 GITHUB_TOKEN/GH_TOKEN 或本机 gh CLI 令牌，并以该令牌的权限修改远端仓库。令牌不写入插件目录。工具卡只读取宿主提供的当前工具调用快照（名称、参数、状态、结果），不读取其他消息。"
+  }
+}
