@@ -77,6 +77,25 @@ def validate_market_metadata(metadata):
     return metadata
 
 
+def market_kind(published):
+    """Resolve the market entry kind the same way the host reads plugin.json."""
+    declared = published.get("kind", "")
+    declared = declared.strip().lower() if isinstance(declared, str) else ""
+    if declared not in {"", "plugin", "oauth", "tool"}:
+        raise ValueError(f"Unsupported plugin kind: {declared}")
+    oauth = published.get("oauth")
+    oauth_entry = oauth.get("entry") if isinstance(oauth, dict) else None
+    if declared == "oauth" or oauth_entry:
+        if not isinstance(oauth_entry, str) or not oauth_entry.strip():
+            raise ValueError("Plugin kind 'oauth' requires an 'oauth.entry' module")
+        return "oauth"
+    if declared == "tool" or "mcpServers" in published:
+        if not published.get("mcpServers"):
+            raise ValueError("Plugin kind 'tool' requires at least one 'mcpServers' entry")
+        return "tool"
+    return "plugin"
+
+
 def validate(directory, manifest):
     market_path = directory / "market.json"
     if market_path.exists():
@@ -178,7 +197,7 @@ def main():
         if current == version and entry["sha256"].lower() != checksum:
             raise ValueError("Same market version has different bytes; publish a new patch version")
     else:
-        entry = dict(id=manifest["id"], kind="plugin", name=published["name"],
+        entry = dict(id=manifest["id"], name=published["name"],
                      description=published["description"], repo=REPO,
                      homepage=f"{REPO}/tree/main/plugins/{name}")
         if published.get("author"):
@@ -197,7 +216,8 @@ def main():
     entry.update(version=version, tag=args.tag, asset=asset,
                  downloadUrl=f"{REPO}/releases/download/{quote(args.tag, safe='')}/{asset}",
                  sha256=hashlib.sha256(archive.read_bytes()).hexdigest(),
-                 privacy=published.get("privacy", {}).get("scopes", []))
+                 privacy=published.get("privacy", {}).get("scopes", []),
+                 kind=market_kind(published))
     entry_path.parent.mkdir(parents=True, exist_ok=True)
     entry_path.write_text(json.dumps(entry, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
     print(f"Prepared only {entry_path.name}; maintainer review required.")
