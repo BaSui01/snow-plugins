@@ -1,3 +1,23 @@
+# 0.3.4 — 工具画廊：新增 Jina / DuckDuckGo 与卡片信息完善
+
+独立插件 `com.snow.external-tool-renderer` 版本升至 `0.3.4`。不是宿主更新；不自动安装。
+
+## 本版改动
+
+### 1. 新增两类搜索服务
+- 接入 DuckDuckGo 与 Jina 的工具前缀、搜索结果解析及三语操作名称，覆盖服务由 24 类增至 26 类。
+- 扩展 Tavily 对 `tavily-backup` / `tavily_backup` 前缀的识别。
+
+### 2. 结果卡片信息完善
+- 完善搜索结果、网页抓取、链接列表、通用实体与记录表展示。
+- 为通用、Anysearch 与 DBX 卡片补充参数表、敏感字段遮掩、原始响应及流式输出展示。
+- 改进 Anysearch 批量搜索参数与评分展示。
+
+### 3. 主题与样式
+- 卡片样式改用宿主主题令牌，跟随浅色 / 深色及预设主题；合并重复的 MCP 卡片规则并支持 `prefers-reduced-motion`。
+
+`index.js` 已由 `src/` 重新构建并随提交更新。
+
 # 0.3.3 — 工具画廊：搜索类与通用 MCP 动态结果元信息与摘要展示优化
 
 独立插件 `com.snow.external-tool-renderer` 版本升至 `0.3.3`。
