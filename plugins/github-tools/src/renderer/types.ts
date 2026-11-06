@@ -12,6 +12,7 @@ export type Translate = (
 
 export type ToolCallInfo = Readonly<{
   name: string;
+  originalToolName?: string;
   arguments: string;
   interactionId: string;
   status: "pending" | "running" | "completed" | "error";

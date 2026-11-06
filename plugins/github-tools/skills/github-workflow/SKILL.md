@@ -1,59 +1,40 @@
 ---
 name: github-workflow
-description: GitHub 工作流：先查后写、PR 生命周期（建 PR → 审查 → 合并）、议题管理、Release 与单文件提交的工具选择与顺序。当需要用 GitHub 插件完成提交、评论、合并、发布等写操作时使用。
+description: GitHub 工作流：先查后写、议题与 PR 生命周期、行级评论、Revert PR、Release 资产、Actions 与 GraphQL 的工具选择和顺序。当需要用 GitHub 插件完成结构化读写时使用。
 enable: true
 ---
 
 # GitHub 工作流
 
-## 工具选择
+## 适用范围与能力地图
 
-本技能不声明固定 `allowed-tools`，因为插件工具公开名会动态变化。仅使用 `toolsearch-discover`、下列 GitHub 操作，以及必要的 `bash-terminal-execute` 和 `filesystem-read`；实际权限与审批由宿主决定。下列 `github_*` 是检索用的操作标识，不是可直接调用的公开名。
+用于 GitHub 插件远端结构化操作：查询仓库、议题、PR、提交、文件、代码与 Actions；创建和管理议题、PR、评论与审查；创建 Revert PR、Release 和资产；提交单个文本文件；执行真实 GitHub GraphQL query/mutation。先用只读工具定位，再执行写操作。
 
-只读（可匿名，先做定位）：
+- **插件**：远端对象的结构化读写，所有分页由真实 Link 头判断。
+- **终端 git**：本地分支、提交、push、冲突处理；插件不操作工作区、不执行 push、不改写历史。
+- **`gh` CLI**：负责本机登录态与插件未封装的 CLI 工作流；插件可复用 `gh auth token`。
 
-- `github_search_repositories`：按关键词找仓库
-- `github_get_repository`：读单个仓库元数据（默认分支、话题、star）
-- `github_list_issues`：列议题（同时返回 PR，用 `pull_request` 字段区分）
-- `github_list_commits`：列提交，可按分支、文件路径、作者与时间范围过滤
-- `github_get_file`：读文件内容；目录返回列表
-- `github_search_code`：全站代码搜索（必须令牌）
+## 工具发现与按需阅读
 
-写（需要令牌写权限，按宿主授权与审批规则执行）：
+不声明固定 `allowed-tools`，因为插件工具公开名会动态变化。仅使用 `toolsearch-discover`、本技能列出的 GitHub 操作，以及必要的 `bash-terminal-execute` 和 `filesystem-read`；实际权限与审批由宿主决定。
 
-- `github_create_issue` / `github_update_issue`（改标题、正文、标签、指派，或 `state: closed` 关闭）
-- `github_comment`：议题或 PR 评论
-- `github_create_pull_request`：head → base
-- `github_review_pull_request`：`APPROVE` / `REQUEST_CHANGES` / `COMMENT`（后两者必须带 body）
-- `github_merge_pull_request`：`merge` / `squash` / `rebase`，可传 `sha` 校验 head 未变
-- `github_create_release`：标签不存在时由 GitHub 创建
-- `github_put_file`：contents API 提交单个 UTF-8 文本文件，更新已有文件必须带 blob `sha`
+资料中的 `github_*` 是检索用操作标识，**不是可直接调用的完整公开名**。调用前用 `toolsearch-discover` 检索目标操作，获取真实完整公开名及参数契约，不自行拼接名称。
 
-## 分工：插件 / git / gh
+只读取当前任务相关资料，**不自动展开全部引用文件**。下列相对路径均基于技能目录；用 `filesystem-read` 读取时，以技能加载结果给出的绝对目录为基准解析。
 
-- **本地分支、提交、push、冲突处理**：终端 git。插件不操作工作区、不执行 push、不改写历史。
-- **插件**：远端对象的结构化读写。适合合并、评论、议题、审查、Release 与单文件提交。
-- **`gh` CLI**：插件没封装的能力（workflow、GraphQL、复杂分页）。令牌共用 `gh auth token`。
+| 当前任务 | 按需读取 |
+| --- | --- |
+| 查询定位、选择工具或核对全部能力 | [工具操作地图（全部 26 项）](references/tools.md) |
+| 读取、创建、审查、行级评论、合并或 Revert PR | [PR 生命周期](references/pull-requests.md) |
+| 读取、创建、更新、关闭、重开议题或普通评论 | [议题管理](references/issues.md) |
+| 文件范围读取、Release、资产或单文件提交 | [Release 与文件](references/releases-and-files.md) |
+| Actions 状态、构件下载 URL 或通用 GraphQL | [工具操作地图对应章节](references/tools.md) |
 
-## PR 生命周期
+## 共同约束
 
-1. 本地提交并 `git push` 到 head 分支（终端完成，先确认分支与远端一致）。
-2. 创建 PR，记下返回的 `number`。
-3. 需要时提交审查；`REQUEST_CHANGES` 必须写清要改什么。
-4. 合并前先查仓库或议题确认 base 分支与状态，再合并 PR；传 `sha` 可避免 head 在你检查后被更新。
-5. 合并结果只看返回的 `merged` 与 `sha`；`merged: false` 时把 `message` 原文回给用户，不重试。
-
-## 写操作纪律
-
-- 合并、关闭、发布、提交文件属于不可逆动作：执行前说明目标（仓库、编号、分支、标签），执行后回报结果字段。
-- 不猜测 `sha`、不猜测 PR 编号；缺信息时先用只读工具查。
-- 不批量循环写同一仓库：一次调用一个对象，失败立即停手并回报错误原文。
-- 写失败（401/403/404/422）不要换工具重试；把 GitHub 返回的 message 原样交给用户判断权限或参数问题。
-- 需要提交多个文件时不要用 `github_put_file` 逐个写：让用户在本地 commit + push，再用插件建 PR。
-
-## 议题管理
-
-- 建：`github_create_issue`，标题必填，标签与指派可选（上限 20 / 10）。
-- 改：`github_update_issue` 至少给一个字段；`labels` / `assignees` 是**整体替换**，不是追加。
-- 关：`state: "closed"`；重开用 `"open"`。
-- 讨论：`github_comment`，议题与 PR 共用同一接口。
+- 写操作执行前说明目标仓库、对象编号、分支、标签或 Release；执行后只根据真实结果字段回报。每次调用仍受宿主单独授权，GraphQL 不例外。
+- 不猜测 SHA、PR GraphQL ID、运行或构件 ID；缺信息时先用只读工具查。
+- 不批量循环写同一仓库：一次调用一个对象，失败立即停手并回报错误原文。写请求不会自动重试。
+- Revert PR 只创建新的 PR，不撤销已有合并、不自动 merge。
+- 文件和 GraphQL 结果超过 20,000 字符会失败而非截断；文件超限需缩小行范围后重新读取。
+- Actions 构件下载 URL 仅一分钟有效，会进入当前工具结果和展示链；只在用户主动打开时使用，不宣称不落历史。

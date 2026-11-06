@@ -128,9 +128,16 @@ def main():
     parser.add_argument("--output", type=Path)
     parser.add_argument("--market", type=Path)
     parser.add_argument("--github-output", type=Path)
+    parser.add_argument("--plugin", help="Validate only this plugin directory")
     args = parser.parse_args()
+    if args.plugin and args.command != "validate":
+        parser.error("--plugin is only supported by validate")
     plugins = discover()
     if args.command == "validate":
+        if args.plugin:
+            if args.plugin not in plugins:
+                parser.error(f"Unknown plugin directory: {args.plugin}")
+            plugins = {args.plugin: plugins[args.plugin]}
         for directory, manifest in plugins.values():
             validate(directory, manifest)
         print(f"Validated {len(plugins)} plugins: manifests, declared resources, JSON and JavaScript syntax.")

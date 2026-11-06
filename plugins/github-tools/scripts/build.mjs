@@ -14,6 +14,17 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const check = process.argv.includes("--check");
 const normalize = (text) => text.replaceAll("\r\n", "\n");
 
+const manifest = JSON.parse(await readFile(path.join(root, "plugin.json"), "utf8"));
+const packageJson = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
+const lock = JSON.parse(await readFile(path.join(root, "package-lock.json"), "utf8"));
+if (
+  packageJson.version !== manifest.version ||
+  lock.version !== manifest.version ||
+  lock.packages[""].version !== manifest.version
+) {
+  throw new Error("package.json and package-lock.json must match the plugin.json version.");
+}
+
 const serverOptions = {
   entryPoints: [path.join(root, "src/index.ts")],
   bundle: true,

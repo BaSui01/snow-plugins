@@ -229,13 +229,13 @@
 }
 
 .gh-tool-card .gh-state--open {
-  background: color-mix(in srgb, #2da44e 16%, transparent);
-  color: #2da44e;
+  background: var(--accent-green-bg);
+  color: var(--accent-green-text);
 }
 
 .gh-tool-card .gh-state--closed {
-  background: color-mix(in srgb, #8250df 16%, transparent);
-  color: #8250df;
+  background: var(--bg-active);
+  color: var(--text-secondary);
 }
 
 .gh-tool-card .gh-more {
@@ -259,6 +259,12 @@
   font-size: 10.5px;
 }
 
+.gh-tool-card .gh-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
 .gh-tool-card .gh-empty {
   padding: 10px;
   border: 1px dashed var(--border-light);
@@ -273,10 +279,10 @@
   align-items: flex-start;
   gap: 6px;
   padding: 8px 10px;
-  border: 1px solid color-mix(in srgb, #cf222e 32%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-red-text) 32%, transparent);
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, #cf222e 10%, transparent);
-  color: #cf222e;
+  background: var(--accent-red-bg);
+  color: var(--accent-red-text);
   font-size: 11.5px;
   line-height: 1.55;
   white-space: pre-wrap;
@@ -402,13 +408,13 @@
 }
 
 .gh-tool-card .gh-badge--ok {
-  background: color-mix(in srgb, #2da44e 16%, transparent);
-  color: #2da44e;
+  background: var(--accent-green-bg);
+  color: var(--accent-green-text);
 }
 
 .gh-tool-card .gh-badge--warn {
-  background: color-mix(in srgb, #bf8700 18%, transparent);
-  color: #bf8700;
+  background: var(--accent-amber-bg);
+  color: var(--accent-amber-text);
 }
 
 .gh-tool-card .gh-badge--muted {
@@ -447,4 +453,205 @@
   white-space: pre-wrap;
   word-break: break-word;
   user-select: text;
+}
+
+.gh-tool-card .gh-results {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.gh-tool-card .gh-head-count {
+  height: auto;
+  padding: 2px 7px;
+  background: var(--bg-active);
+  color: var(--accent-color);
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.gh-tool-card .gh-issue-item {
+  gap: 7px;
+}
+
+.gh-tool-card .gh-issue-title > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gh-tool-card .gh-item-foot,
+.gh-tool-card .gh-updated,
+.gh-tool-card .gh-created {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  color: var(--text-tertiary);
+  font-size: 10.5px;
+}
+
+.gh-tool-card .gh-item-foot > span,
+.gh-tool-card .gh-updated,
+.gh-tool-card .gh-created {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gh-tool-card .gh-language::before {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  content: "";
+}
+
+.gh-tool-card .gh-file-head,
+.gh-tool-card .gh-file-actions,
+.gh-tool-card .gh-open-link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.gh-tool-card .gh-copy {
+  flex-shrink: 0;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-tertiary);
+  font: inherit;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+
+.gh-tool-card .gh-copy:hover {
+  background: var(--bg-hover);
+  color: var(--accent-color);
+}
+
+.gh-tool-card .gh-copy--error {
+  color: var(--accent-red-text);
+}
+
+.gh-tool-card .gh-copy:focus-visible,
+.gh-tool-card .gh-link:focus-visible,
+.gh-tool-card .gh-more:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+.gh-tool-card .gh-dir-path {
+  flex: 1;
+}
+
+.gh-tool-card .gh-dir-row--folder .gh-icon {
+  color: var(--accent-amber-text);
+}
+
+.gh-tool-card .gh-write-symbol {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+}
+
+.gh-tool-card .gh-write-head {
+  flex-wrap: wrap;
+}
+
+.gh-tool-card .gh-write-warning {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-amber-bg);
+  color: var(--accent-amber-text);
+  font-size: 11.5px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.gh-tool-card .gh-branch-flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-tertiary);
+}
+
+.gh-tool-card .gh-branch-flow code {
+  max-width: 45%;
+  padding: 3px 7px;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gh-tool-card .gh-sha-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.gh-tool-card .gh-sha-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-tertiary);
+  font-size: 10.5px;
+}
+
+.gh-tool-card .gh-sha-row code {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+
+.gh-tool-card .gh-commit-link {
+  flex-basis: 100%;
+  width: fit-content;
+}
+
+.gh-tool-card .gh-empty.gh-running {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.gh-tool-card .gh-running .gh-icon {
+  animation: gh-spin 1s linear infinite;
+}
+
+@keyframes gh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 520px) {
+  .gh-tool-card .gh-item-head,
+  .gh-tool-card .gh-file-head {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gh-tool-card .gh-running .gh-icon {
+    animation: none;
+  }
 }

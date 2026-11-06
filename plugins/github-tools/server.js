@@ -3871,7 +3871,7 @@ var require_fast_uri = __commonJS({
         normalizeString(uri, options);
       } else if (typeof uri === "object") {
         uri = /** @type {T} */
-        parse3(serialize(uri, options), options);
+        parse3(serialize2(uri, options), options);
       }
       return uri;
     }
@@ -3909,13 +3909,13 @@ var require_fast_uri = __commonJS({
         throw new Error(resolved.error);
       }
       schemelessOptions.skipEscape = true;
-      return serialize(resolved, schemelessOptions);
+      return serialize2(resolved, schemelessOptions);
     }
     function resolveComponent(base, relative, options, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
-        base = parse3(serialize(base, options), options);
-        relative = parse3(serialize(relative, options), options);
+        base = parse3(serialize2(base, options), options);
+        relative = parse3(serialize2(relative, options), options);
       }
       options = options || {};
       if (!options.tolerant && relative.scheme) {
@@ -3970,7 +3970,7 @@ var require_fast_uri = __commonJS({
       const normalizedB = normalizeComparableURI(uriB, options);
       return normalizedA !== void 0 && normalizedB !== void 0 && normalizedA === normalizedB;
     }
-    function serialize(cmpts, opts) {
+    function serialize2(cmpts, opts) {
       const component = {
         host: cmpts.host,
         scheme: cmpts.scheme,
@@ -4242,7 +4242,7 @@ var require_fast_uri = __commonJS({
     function normalizeStringWithStatus(uri, opts) {
       const { parsed, malformedAuthorityOrPort, malformedPercentEncoding, malformedSchemeSpecific, malformedHost, malformedScheme } = parseWithStatus(uri, opts);
       return {
-        normalized: malformedAuthorityOrPort || malformedPercentEncoding || malformedSchemeSpecific || malformedHost || malformedScheme ? uri : serialize(parsed, opts),
+        normalized: malformedAuthorityOrPort || malformedPercentEncoding || malformedSchemeSpecific || malformedHost || malformedScheme ? uri : serialize2(parsed, opts),
         malformedAuthorityOrPort,
         malformedPercentEncoding,
         malformedSchemeSpecific,
@@ -4256,7 +4256,7 @@ var require_fast_uri = __commonJS({
       }
       let value;
       try {
-        value = typeof uri === "string" ? uri : serialize(uri, opts);
+        value = typeof uri === "string" ? uri : serialize2(uri, opts);
       } catch {
         return void 0;
       }
@@ -4269,7 +4269,7 @@ var require_fast_uri = __commonJS({
       resolve,
       resolveComponent,
       equal,
-      serialize,
+      serialize: serialize2,
       parse: parse3
     };
     module.exports = fastUri;
@@ -7255,10 +7255,6 @@ var require_dist = __commonJS({
   }
 });
 
-// src/index.ts
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-
 // node_modules/zod/v3/external.js
 var external_exports = {};
 __export(external_exports, {
@@ -8237,11 +8233,11 @@ function datetimeRegex(args) {
   regex = `${regex}(${opts.join("|")})`;
   return new RegExp(`^${regex}$`);
 }
-function isValidIP(ip, version2) {
-  if ((version2 === "v4" || !version2) && ipv4Regex.test(ip)) {
+function isValidIP(ip, version3) {
+  if ((version3 === "v4" || !version3) && ipv4Regex.test(ip)) {
     return true;
   }
-  if ((version2 === "v6" || !version2) && ipv6Regex.test(ip)) {
+  if ((version3 === "v6" || !version3) && ipv6Regex.test(ip)) {
     return true;
   }
   return false;
@@ -8268,11 +8264,11 @@ function isValidJWT(jwt, alg) {
     return false;
   }
 }
-function isValidCidr(ip, version2) {
-  if ((version2 === "v4" || !version2) && ipv4CidrRegex.test(ip)) {
+function isValidCidr(ip, version3) {
+  if ((version3 === "v4" || !version3) && ipv4CidrRegex.test(ip)) {
     return true;
   }
-  if ((version2 === "v6" || !version2) && ipv6CidrRegex.test(ip)) {
+  if ((version3 === "v6" || !version3) && ipv6CidrRegex.test(ip)) {
     return true;
   }
   return false;
@@ -12016,10 +12012,10 @@ var ksuid = /^[A-Za-z0-9]{27}$/;
 var nanoid = /^[a-zA-Z0-9_-]{21}$/;
 var duration = /^P(?:(\d+W)|(?!.*W)(?=\d|T\d)(\d+Y)?(\d+M)?(\d+D)?(T(?=\d)(\d+H)?(\d+M)?(\d+([.,]\d+)?S)?)?)$/;
 var guid = /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/;
-var uuid = (version2) => {
-  if (!version2)
+var uuid = (version3) => {
+  if (!version3)
     return /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000)$/;
-  return new RegExp(`^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-${version2}[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$`);
+  return new RegExp(`^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-${version3}[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$`);
 };
 var email = /^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$/;
 var _emoji = `^(\\p{Extended_Pictographic}|\\p{Emoji_Component})+$`;
@@ -19045,11 +19041,11 @@ var Protocol = class {
    *
    * The Protocol object assumes ownership of the Transport, replacing any callbacks that have already been set, and expects that it is the only user of the Transport instance going forward.
    */
-  async connect(transport2) {
+  async connect(transport) {
     if (this._transport) {
       throw new Error("Already connected to a transport. Call close() before connecting to a new transport, or use a separate Protocol instance per connection.");
     }
-    this._transport = transport2;
+    this._transport = transport;
     const _onclose = this.transport?.onclose;
     this._transport.onclose = () => {
       _onclose?.();
@@ -20696,8 +20692,8 @@ var McpServer = class {
    *
    * The `server` object assumes ownership of the Transport, replacing any callbacks that have already been set, and expects that it is the only user of the Transport instance going forward.
    */
-  async connect(transport2) {
-    return await this.server.connect(transport2);
+  async connect(transport) {
+    return await this.server.connect(transport);
   }
   /**
    * Closes the connection.
@@ -21565,549 +21561,1272 @@ var StdioServerTransport = class {
   }
 };
 
-// src/index.ts
-var API_BASE = "https://api.github.com";
-var USER_AGENT = "snow-app-github-tools/0.1.0";
-var MAX_TEXT_CHARS = 2e4;
-var MAX_FILE_BYTES = 1e6;
+// plugin.json
+var version2 = "0.4.1";
+
+// src/github/auth.ts
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 var execFileAsync = promisify(execFile);
 var tokenPromise = null;
 async function resolveToken() {
   const fromEnv = process.env.GITHUB_TOKEN?.trim() || process.env.GH_TOKEN?.trim();
-  if (fromEnv) {
-    return fromEnv;
-  }
+  if (fromEnv) return fromEnv;
   if (!tokenPromise) {
     tokenPromise = execFileAsync("gh", ["auth", "token"], {
       encoding: "utf8",
       timeout: 5e3
-    }).then(({ stdout }) => stdout.trim() || void 0).catch((error2) => {
-      console.error(
-        `[github-tools] GITHUB_TOKEN/GH_TOKEN is not set and "gh auth token" failed: ${error2 instanceof Error ? error2.message : String(error2)}`
-      );
-      return void 0;
-    });
+    }).then(
+      ({ stdout }) => {
+        const token = stdout.trim() || void 0;
+        if (!token) tokenPromise = null;
+        return token;
+      },
+      (error2) => {
+        tokenPromise = null;
+        console.error(
+          `[github-tools] GITHUB_TOKEN/GH_TOKEN is not set and "gh auth token" failed: ${error2 instanceof Error ? error2.message : String(error2)}`
+        );
+        return void 0;
+      }
+    );
   }
   return tokenPromise;
 }
-async function githubRequest(path, init = {}) {
+
+// src/github/client.ts
+var API_BASE = "https://api.github.com";
+var UPLOADS_BASE = "https://uploads.github.com";
+var REQUEST_TIMEOUT_MS = 3e4;
+var USER_AGENT = `snow-github-tools/${version2}`;
+function redactToken(value, token) {
+  return token ? value.split(token).join("[redacted]") : value;
+}
+async function requestResponse(path, init, options) {
   const token = await resolveToken();
+  if (options.requireToken && !token) {
+    throw new Error(
+      "This GitHub operation requires authentication: set GITHUB_TOKEN/GH_TOKEN or sign in with `gh auth login`."
+    );
+  }
   const headers = new Headers(init.headers);
   headers.set("Accept", "application/vnd.github+json");
   headers.set("X-GitHub-Api-Version", "2022-11-28");
   headers.set("User-Agent", USER_AGENT);
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const controller = new AbortController();
+  const callerSignal = init.signal;
+  const forwardAbort = () => controller.abort(callerSignal?.reason);
+  if (callerSignal?.aborted) forwardAbort();
+  else callerSignal?.addEventListener("abort", forwardAbort, { once: true });
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, REQUEST_TIMEOUT_MS);
+  let response;
+  let body;
+  try {
+    const base = options.host === "uploads" ? UPLOADS_BASE : API_BASE;
+    response = await fetch(`${base}${path}`, {
+      ...init,
+      headers,
+      signal: controller.signal
+    });
+    body = await response.text();
+  } catch (error2) {
+    if (timedOut) {
+      throw new Error(
+        `GitHub request timed out after ${REQUEST_TIMEOUT_MS / 1e3} seconds.`,
+        { cause: error2 }
+      );
+    }
+    if (callerSignal?.aborted || error2 instanceof Error && error2.name === "AbortError") {
+      throw new Error("GitHub request was aborted.", { cause: error2 });
+    }
+    throw error2;
+  } finally {
+    clearTimeout(timeout);
+    callerSignal?.removeEventListener("abort", forwardAbort);
   }
-  const response = await fetch(`${API_BASE}${path}`, { ...init, headers });
-  const body = await response.text();
-  if (!response.ok) {
-    throw new Error(
-      `GitHub API ${response.status} ${response.statusText}: ${body.slice(0, 800) || "(empty body)"}`
-    );
+  const accepted = options.acceptedStatuses ? options.acceptedStatuses.includes(response.status) : response.ok;
+  if (!accepted) {
+    const statusText = redactToken(response.statusText, token);
+    const safeBody = redactToken(body, token);
+    const bodyText = safeBody.length > 800 ? `${safeBody.slice(0, 800)}… (response body excerpt)` : safeBody || "(empty body)";
+    const detail = options.includeErrorBody === false ? "" : `: ${bodyText}`;
+    throw new Error(`GitHub API ${response.status} ${statusText}${detail}`);
   }
-  if (!body) {
-    return null;
-  }
+  return { response, body };
+}
+function parseJsonBody(body) {
+  if (!body) return null;
   try {
     return JSON.parse(body);
   } catch (error2) {
     throw new Error(
-      `GitHub API returned non-JSON content: ${error2 instanceof Error ? error2.message : String(error2)}`
+      `GitHub API returned non-JSON content: ${error2 instanceof Error ? error2.message : String(error2)}`,
+      { cause: error2 }
     );
   }
 }
-async function githubWrite(path, method, payload) {
-  const token = await resolveToken();
-  if (!token) {
+function parseWithSchema(payload, schema, path, method) {
+  const parsed = schema.safeParse(payload);
+  if (!parsed.success) {
     throw new Error(
-      "Write access requires a GitHub token: set GITHUB_TOKEN/GH_TOKEN or sign in with `gh auth login`."
+      `GitHub API ${method} ${path} returned an unexpected payload: ${parsed.error.message}`,
+      { cause: parsed.error }
     );
   }
-  return githubRequest(path, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
+  return parsed.data;
 }
-function render(value) {
-  const text = JSON.stringify(value, null, 2);
-  if (text.length <= MAX_TEXT_CHARS) {
-    return text;
+async function githubRequestWithResponse(path, schema, init = {}, options = {}) {
+  const { response, body } = await requestResponse(path, init, options);
+  return {
+    data: parseWithSchema(parseJsonBody(body), schema, path, init.method ?? "GET"),
+    response
+  };
+}
+async function githubRequest(path, schema, init = {}, options = {}) {
+  const { response, body } = await requestResponse(path, init, options);
+  const payload = parseJsonBody(body);
+  if (!schema) return payload;
+  return parseWithSchema(payload, schema, path, init.method ?? "GET");
+}
+async function githubWrite(path, method, payload, schema) {
+  return githubRequest(
+    path,
+    schema,
+    {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    },
+    { requireToken: true }
+  );
+}
+var graphQLError = external_exports.object({ message: external_exports.string() }).passthrough();
+var graphQLResponse = external_exports.object({
+  data: external_exports.unknown().optional(),
+  errors: external_exports.array(graphQLError).optional()
+});
+async function githubGraphQL(query, variables, schema) {
+  const payload = await githubRequest(
+    "/graphql",
+    graphQLResponse,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, ...variables === void 0 ? {} : { variables } })
+    },
+    { requireToken: true }
+  );
+  if (payload.errors?.length) {
+    throw new Error(
+      `GitHub GraphQL request failed: ${payload.errors.map((error2) => error2.message).join("; ")}`,
+      { cause: payload.errors }
+    );
   }
-  return `${text.slice(0, MAX_TEXT_CHARS)}
-…[truncated ${text.length - MAX_TEXT_CHARS} characters]`;
+  if (!Object.hasOwn(payload, "data")) {
+    throw new Error("GitHub GraphQL response contained neither data nor errors.");
+  }
+  return parseWithSchema(payload.data, schema, "/graphql", "POST");
 }
-async function run(operation) {
+async function githubArtifactRedirect(path) {
+  const { response } = await requestResponse(
+    path,
+    { method: "GET", redirect: "manual" },
+    { acceptedStatuses: [302], includeErrorBody: false }
+  );
+  const location = response.headers.get("Location");
+  if (!location) {
+    throw new Error("GitHub artifact download redirect did not include a Location header.");
+  }
+  let parsed;
   try {
-    return {
-      content: [{ type: "text", text: render(await operation()) }]
-    };
+    parsed = new URL(location);
   } catch (error2) {
-    return {
-      isError: true,
-      content: [
-        {
-          type: "text",
-          text: error2 instanceof Error ? error2.message : String(error2)
-        }
-      ]
-    };
+    throw new Error("GitHub artifact download redirect contained an invalid URL.", {
+      cause: error2
+    });
   }
+  if (parsed.protocol !== "https:") {
+    throw new Error("GitHub artifact download redirect must use HTTPS.");
+  }
+  return location;
 }
 function segment(value) {
   return encodeURIComponent(value);
 }
-var server = new McpServer({ name: "github-tools", version: "0.1.0" });
-server.registerTool(
-  "github_search_repositories",
-  {
-    title: "Search GitHub repositories",
-    description: "Search repositories with GitHub's search syntax. Returns full name, description, stars, language and URL for each match.",
-    inputSchema: {
-      query: external_exports.string().min(1).describe("Search keywords, e.g. language:typescript mcp"),
-      perPage: external_exports.number().int().min(1).max(30).default(10).describe("Number of results (1-30)")
-    }
-  },
-  ({ query, perPage }) => run(
-    () => githubRequest(
-      `/search/repositories?${new URLSearchParams({
-        q: query,
-        per_page: String(perPage)
-      })}`
-    )
-  )
-);
-server.registerTool(
-  "github_get_repository",
-  {
-    title: "Get a GitHub repository",
-    description: "Read metadata for one repository: description, stars, default branch, license, topics and URLs.",
-    inputSchema: {
-      owner: external_exports.string().min(1).describe("Repository owner"),
-      repo: external_exports.string().min(1).describe("Repository name")
-    }
-  },
-  ({ owner, repo }) => run(() => githubRequest(`/repos/${segment(owner)}/${segment(repo)}`))
-);
-server.registerTool(
-  "github_list_issues",
-  {
-    title: "List GitHub issues",
-    description: "List issues for a repository. GitHub returns pull requests in this endpoint too; filter them by the pull_request field.",
-    inputSchema: {
-      owner: external_exports.string().min(1).describe("Repository owner"),
-      repo: external_exports.string().min(1).describe("Repository name"),
-      state: external_exports.enum(["open", "closed", "all"]).default("open").describe("Issue state filter"),
-      perPage: external_exports.number().int().min(1).max(50).default(20).describe("Number of results (1-50)")
-    }
-  },
-  ({ owner, repo, state, perPage }) => run(
-    () => githubRequest(
-      `/repos/${segment(owner)}/${segment(repo)}/issues?${new URLSearchParams(
-        { state, per_page: String(perPage) }
-      )}`
-    )
-  )
-);
-server.registerTool(
-  "github_list_commits",
-  {
-    title: "List GitHub commits",
-    description: "List commits on a branch, tag or commit SHA. Optionally filter by file path, author or a date range. Returns sha, message, author, date and URL for each commit.",
-    inputSchema: {
-      owner: external_exports.string().min(1).describe("Repository owner"),
-      repo: external_exports.string().min(1).describe("Repository name"),
-      ref: external_exports.string().optional().describe("Branch, tag or commit SHA; defaults to the default branch"),
-      path: external_exports.string().optional().describe("Only commits touching this file path"),
-      author: external_exports.string().optional().describe("GitHub username or email"),
-      since: external_exports.string().optional().describe("ISO 8601 timestamp; only commits after this date"),
-      until: external_exports.string().optional().describe("ISO 8601 timestamp; only commits before this date"),
-      perPage: external_exports.number().int().min(1).max(100).default(20).describe("Number of results (1-100)")
-    }
-  },
-  ({ owner, repo, ref, path, author, since, until, perPage }) => run(async () => {
-    const query = new URLSearchParams({ per_page: String(perPage) });
-    if (ref) query.set("sha", ref);
-    if (path) query.set("path", path);
-    if (author) query.set("author", author);
-    if (since) query.set("since", since);
-    if (until) query.set("until", until);
-    const payload = await githubRequest(
-      `/repos/${segment(owner)}/${segment(repo)}/commits?${query}`
-    );
-    if (!Array.isArray(payload)) {
-      throw new Error("GitHub commits endpoint returned an unexpected payload.");
-    }
-    return payload.map((item) => {
-      const entry = item;
-      return {
-        sha: entry.sha ?? null,
-        message: entry.commit?.message ?? null,
-        author: entry.author?.login ?? entry.commit?.author?.name ?? null,
-        date: entry.commit?.author?.date ?? null,
-        html_url: entry.html_url ?? null
-      };
+
+// src/github/pagination.ts
+var pageInput = external_exports.number().int().positive().default(1).describe("Page number (1 or greater)");
+function hasNextRelation(link) {
+  if (!link) return false;
+  return link.split(",").some((entry) => {
+    const parameters = entry.split(";").slice(1);
+    return parameters.some((parameter) => {
+      const match = /^\s*rel\s*=\s*(?:"([^"]*)"|([^;\s]*))\s*$/i.exec(parameter);
+      const relations = (match?.[1] ?? match?.[2] ?? "").split(/\s+/);
+      return relations.includes("next");
     });
-  })
-);
-server.registerTool(
-  "github_get_file",
-  {
-    title: "Read a GitHub file",
-    description: "Read one file from a repository (default branch unless ref is given) and return its UTF-8 text. Directory paths return a listing instead.",
-    inputSchema: {
-      owner: external_exports.string().min(1).describe("Repository owner"),
-      repo: external_exports.string().min(1).describe("Repository name"),
-      path: external_exports.string().min(1).describe("File path inside the repository"),
-      ref: external_exports.string().optional().describe("Branch, tag or commit SHA; defaults to the default branch")
-    }
-  },
-  ({ owner, repo, path, ref }) => run(async () => {
-    const query = ref ? `?${new URLSearchParams({ ref })}` : "";
-    const encodedPath = path.split("/").filter(Boolean).map(segment).join("/");
-    const payload = await githubRequest(
-      `/repos/${segment(owner)}/${segment(repo)}/contents/${encodedPath}${query}`
+  });
+}
+function paginationFromLink(link, page, perPage) {
+  return { page, perPage, hasNextPage: hasNextRelation(link) };
+}
+
+// src/mcp/result.ts
+var MAX_TEXT_CHARS = 2e4;
+function serialize(value) {
+  const text = JSON.stringify(value, null, 2);
+  if (text === void 0) {
+    throw new Error("GitHub operation returned a value that cannot be serialized as JSON.");
+  }
+  return text;
+}
+function assertResultSize(value, guidance) {
+  const length = serialize(value).length;
+  if (length > MAX_TEXT_CHARS) {
+    throw new Error(
+      `GitHub result is ${length} characters; the limit is ${MAX_TEXT_CHARS}. The result was not truncated. ${guidance ?? "A remote write, if completed, is not rolled back by this error."}`
     );
-    if (Array.isArray(payload)) {
-      return payload.map((item) => {
-        const entry = item;
-        return { name: entry.name, type: entry.type, path: entry.path };
-      });
-    }
-    const file = payload;
-    if (file.type !== "file") {
-      throw new Error(
-        `GitHub path is not a file (type: ${file.type ?? "unknown"})`
-      );
-    }
-    if (typeof file.size === "number" && file.size > MAX_FILE_BYTES) {
-      throw new Error(
-        `File is ${file.size} bytes; the limit is ${MAX_FILE_BYTES}. Fetch the blob directly instead.`
-      );
-    }
-    if (file.encoding !== "base64" || typeof file.content !== "string") {
-      throw new Error("GitHub did not return base64 content for this file.");
-    }
-    const text = Buffer.from(
-      file.content.replace(/\s+/g, ""),
-      "base64"
-    ).toString("utf8");
+  }
+}
+async function run(operation) {
+  try {
+    const value = await operation();
+    assertResultSize(value);
+    return { content: [{ type: "text", text: serialize(value) }] };
+  } catch (error2) {
     return {
-      path: file.path,
-      html_url: file.html_url,
-      size: file.size,
-      text
+      isError: true,
+      content: [{ type: "text", text: error2 instanceof Error ? error2.message : String(error2) }]
     };
-  })
-);
-server.registerTool(
-  "github_search_code",
-  {
-    title: "Search GitHub code",
-    description: "Search code across GitHub (default branch only). Requires authentication: GITHUB_TOKEN/GH_TOKEN or `gh auth login`.",
-    inputSchema: {
-      query: external_exports.string().min(1).describe("Code search query, e.g. repo:owner/name useState"),
-      perPage: external_exports.number().int().min(1).max(30).default(10).describe("Number of results (1-30)")
-    }
-  },
-  ({ query, perPage }) => run(async () => {
-    const token = await resolveToken();
-    if (!token) {
-      throw new Error(
-        "GitHub code search requires authentication: set GITHUB_TOKEN/GH_TOKEN or sign in with `gh auth login`."
+  }
+}
+
+// src/tools/repositories.ts
+var repositoryResponse = external_exports.object({
+  full_name: external_exports.string(),
+  name: external_exports.string(),
+  owner: external_exports.object({ login: external_exports.string() }),
+  html_url: external_exports.string(),
+  description: external_exports.string().nullable(),
+  language: external_exports.string().nullable(),
+  private: external_exports.boolean(),
+  archived: external_exports.boolean(),
+  default_branch: external_exports.string(),
+  license: external_exports.object({ spdx_id: external_exports.string(), name: external_exports.string() }).nullable(),
+  homepage: external_exports.string().nullable(),
+  topics: external_exports.array(external_exports.string()),
+  stargazers_count: external_exports.number(),
+  forks_count: external_exports.number(),
+  open_issues_count: external_exports.number(),
+  updated_at: external_exports.string()
+});
+var repositorySearchResponse = external_exports.object({
+  total_count: external_exports.number(),
+  incomplete_results: external_exports.boolean(),
+  items: external_exports.array(repositoryResponse)
+});
+var commitAuthor = external_exports.object({
+  name: external_exports.string().nullable(),
+  date: external_exports.string()
+}).nullable();
+var commitListEntry = external_exports.object({
+  sha: external_exports.string(),
+  html_url: external_exports.string(),
+  commit: external_exports.object({ message: external_exports.string(), author: commitAuthor }),
+  author: external_exports.object({ login: external_exports.string() }).nullable()
+});
+var commitResponse = commitListEntry.extend({
+  parents: external_exports.array(external_exports.object({ sha: external_exports.string(), html_url: external_exports.string() })),
+  files: external_exports.array(external_exports.object({
+    filename: external_exports.string(),
+    status: external_exports.string(),
+    additions: external_exports.number(),
+    deletions: external_exports.number(),
+    changes: external_exports.number(),
+    patch: external_exports.string().optional()
+  }))
+});
+var codeSearchResponse = external_exports.object({
+  total_count: external_exports.number(),
+  incomplete_results: external_exports.boolean(),
+  items: external_exports.array(external_exports.object({
+    name: external_exports.string(),
+    path: external_exports.string(),
+    html_url: external_exports.string(),
+    repository: external_exports.object({ full_name: external_exports.string() })
+  }))
+});
+function projectCommitListEntry(entry) {
+  return {
+    sha: entry.sha,
+    message: entry.commit.message,
+    author: entry.author?.login ?? entry.commit.author?.name ?? null,
+    date: entry.commit.author?.date ?? null,
+    html_url: entry.html_url
+  };
+}
+function registerRepositories(server2) {
+  server2.registerTool(
+    "github_search_repositories",
+    {
+      title: "Search GitHub repositories",
+      description: "Search repositories with GitHub's search syntax. Returns projected repository cards and Link-based pagination.",
+      inputSchema: {
+        query: external_exports.string().min(1).describe("Search keywords, e.g. language:typescript mcp"),
+        page: pageInput,
+        perPage: external_exports.number().int().min(1).max(30).default(10).describe("Number of results per page (1-30)")
+      }
+    },
+    ({ query, page, perPage }) => run(async () => {
+      const { data, response } = await githubRequestWithResponse(
+        `/search/repositories?${new URLSearchParams({
+          q: query,
+          page: String(page),
+          per_page: String(perPage)
+        })}`,
+        repositorySearchResponse
       );
-    }
-    return githubRequest(
-      `/search/code?${new URLSearchParams({
-        q: query,
+      return {
+        ...data,
+        pagination: paginationFromLink(response.headers.get("Link"), page, perPage)
+      };
+    })
+  );
+  server2.registerTool(
+    "github_get_repository",
+    {
+      title: "Get a GitHub repository",
+      description: "Read projected repository metadata: description, stars, default branch, license, topics and URLs.",
+      inputSchema: {
+        owner: external_exports.string().min(1).describe("Repository owner"),
+        repo: external_exports.string().min(1).describe("Repository name")
+      }
+    },
+    ({ owner, repo }) => run(
+      () => githubRequest(
+        `/repos/${segment(owner)}/${segment(repo)}`,
+        repositoryResponse
+      )
+    )
+  );
+  server2.registerTool(
+    "github_list_commits",
+    {
+      title: "List GitHub commits",
+      description: "List commits on a branch, tag or commit SHA. Optionally filter by file path, author or a date range. Returns projected commits and Link-based pagination.",
+      inputSchema: {
+        owner: external_exports.string().min(1).describe("Repository owner"),
+        repo: external_exports.string().min(1).describe("Repository name"),
+        ref: external_exports.string().optional().describe("Branch, tag or commit SHA; defaults to the default branch"),
+        path: external_exports.string().optional().describe("Only commits touching this file path"),
+        author: external_exports.string().optional().describe("GitHub username or email"),
+        since: external_exports.string().optional().describe("ISO 8601 timestamp; only commits after this date"),
+        until: external_exports.string().optional().describe("ISO 8601 timestamp; only commits before this date"),
+        page: pageInput,
+        perPage: external_exports.number().int().min(1).max(100).default(20).describe("Number of results per page (1-100)")
+      }
+    },
+    ({ owner, repo, ref, path, author, since, until, page, perPage }) => run(async () => {
+      const query = new URLSearchParams({
+        page: String(page),
         per_page: String(perPage)
-      })}`
-    );
-  })
-);
-server.registerTool(
-  "github_merge_pull_request",
-  {
-    title: "Merge a GitHub pull request",
-    description: "Merge one pull request with merge, squash or rebase. Requires a token with write access. Returns whether the merge happened, the merge SHA and GitHub's message.",
-    inputSchema: {
-      owner: external_exports.string().min(1).describe("Repository owner"),
-      repo: external_exports.string().min(1).describe("Repository name"),
-      pullNumber: external_exports.number().int().min(1).describe("Pull request number"),
-      mergeMethod: external_exports.enum(["merge", "squash", "rebase"]).default("merge").describe("Merge strategy"),
-      commitTitle: external_exports.string().optional().describe("Title for the merge commit"),
-      commitMessage: external_exports.string().optional().describe("Extra detail for the merge commit message"),
-      sha: external_exports.string().optional().describe("Head SHA that must still match before merging")
-    }
-  },
-  ({ owner, repo, pullNumber, mergeMethod, commitTitle, commitMessage, sha }) => run(async () => {
-    const payload = await githubWrite(
-      `/repos/${segment(owner)}/${segment(repo)}/pulls/${pullNumber}/merge`,
-      "PUT",
-      {
-        merge_method: mergeMethod,
-        ...commitTitle ? { commit_title: commitTitle } : {},
-        ...commitMessage ? { commit_message: commitMessage } : {},
-        ...sha ? { sha } : {}
-      }
-    );
-    return {
-      merged: payload?.merged === true,
-      sha: payload?.sha ?? null,
-      message: payload?.message ?? "",
-      html_url: `https://github.com/${owner}/${repo}/pull/${pullNumber}`
-    };
-  })
-);
-server.registerTool(
-  "github_comment",
-  {
-    title: "Comment on a GitHub issue or pull request",
-    description: "Create a comment on an issue or pull request. GitHub uses the issues comments endpoint for both. Requires a token with write access.",
-    inputSchema: {
-      owner: external_exports.string().min(1).describe("Repository owner"),
-      repo: external_exports.string().min(1).describe("Repository name"),
-      issueNumber: external_exports.number().int().min(1).describe("Issue or pull request number"),
-      body: external_exports.string().min(1).describe("Markdown comment body")
-    }
-  },
-  ({ owner, repo, issueNumber, body }) => run(async () => {
-    const payload = await githubWrite(
-      `/repos/${segment(owner)}/${segment(repo)}/issues/${issueNumber}/comments`,
-      "POST",
-      { body }
-    );
-    return {
-      id: payload?.id ?? null,
-      html_url: payload?.html_url ?? null,
-      body: payload?.body ?? body,
-      created_at: payload?.created_at ?? null
-    };
-  })
-);
-server.registerTool(
-  "github_create_issue",
-  {
-    title: "Create a GitHub issue",
-    description: "Open a new issue. Requires a token with write access. Returns number, state, title and URL.",
-    inputSchema: {
-      owner: external_exports.string().min(1).describe("Repository owner"),
-      repo: external_exports.string().min(1).describe("Repository name"),
-      title: external_exports.string().min(1).describe("Issue title"),
-      body: external_exports.string().optional().describe("Markdown issue body"),
-      labels: external_exports.array(external_exports.string().min(1)).max(20).optional().describe("Label names to attach"),
-      assignees: external_exports.array(external_exports.string().min(1)).max(10).optional().describe("GitHub logins to assign")
-    }
-  },
-  ({ owner, repo, title, body, labels, assignees }) => run(async () => {
-    const payload = await githubWrite(
-      `/repos/${segment(owner)}/${segment(repo)}/issues`,
-      "POST",
-      {
-        title,
-        ...body ? { body } : {},
-        ...labels?.length ? { labels } : {},
-        ...assignees?.length ? { assignees } : {}
-      }
-    );
-    return {
-      number: payload?.number ?? null,
-      html_url: payload?.html_url ?? null,
-      state: payload?.state ?? null,
-      title: payload?.title ?? title
-    };
-  })
-);
-server.registerTool(
-  "github_update_issue",
-  {
-    title: "Update or close a GitHub issue",
-    description: "Change an issue or pull request: state (open/closed), title, body, labels or assignees. At least one field is required. Requires a token with write access.",
-    inputSchema: {
-      owner: external_exports.string().min(1).describe("Repository owner"),
-      repo: external_exports.string().min(1).describe("Repository name"),
-      issueNumber: external_exports.number().int().min(1).describe("Issue or pull request number"),
-      state: external_exports.enum(["open", "closed"]).optional().describe("Target state; closed closes the issue"),
-      title: external_exports.string().min(1).optional().describe("New title"),
-      body: external_exports.string().optional().describe("New markdown body"),
-      labels: external_exports.array(external_exports.string().min(1)).max(20).optional().describe("Replacement label names"),
-      assignees: external_exports.array(external_exports.string().min(1)).max(10).optional().describe("Replacement assignee logins")
-    }
-  },
-  ({ owner, repo, issueNumber, state, title, body, labels, assignees }) => run(async () => {
-    if (state === void 0 && title === void 0 && body === void 0 && labels === void 0 && assignees === void 0) {
-      throw new Error(
-        "At least one of state, title, body, labels or assignees is required."
+      });
+      if (ref) query.set("sha", ref);
+      if (path) query.set("path", path);
+      if (author) query.set("author", author);
+      if (since) query.set("since", since);
+      if (until) query.set("until", until);
+      const { data, response } = await githubRequestWithResponse(
+        `/repos/${segment(owner)}/${segment(repo)}/commits?${query}`,
+        external_exports.array(commitListEntry)
       );
-    }
-    const payload = await githubWrite(
-      `/repos/${segment(owner)}/${segment(repo)}/issues/${issueNumber}`,
-      "PATCH",
-      {
-        ...state ? { state } : {},
-        ...title !== void 0 ? { title } : {},
-        ...body !== void 0 ? { body } : {},
-        ...labels !== void 0 ? { labels } : {},
-        ...assignees !== void 0 ? { assignees } : {}
+      return {
+        items: data.map(projectCommitListEntry),
+        pagination: paginationFromLink(response.headers.get("Link"), page, perPage)
+      };
+    })
+  );
+  server2.registerTool(
+    "github_get_commit",
+    {
+      title: "Get a GitHub commit",
+      description: "Read one commit with its message, author, date, parents and changed files. A file patch is returned only when GitHub provides it.",
+      inputSchema: {
+        owner: external_exports.string().min(1).describe("Repository owner"),
+        repo: external_exports.string().min(1).describe("Repository name"),
+        ref: external_exports.string().min(1).describe("Commit SHA, branch or tag")
       }
-    );
-    return {
-      number: payload?.number ?? issueNumber,
-      html_url: payload?.html_url ?? null,
-      state: payload?.state ?? state ?? null,
-      title: payload?.title ?? title ?? null
-    };
-  })
-);
-server.registerTool(
-  "github_create_pull_request",
-  {
-    title: "Create a GitHub pull request",
-    description: "Open a pull request from head into base. The head branch must already exist on GitHub. Requires a token with write access.",
-    inputSchema: {
-      owner: external_exports.string().min(1).describe("Repository owner"),
-      repo: external_exports.string().min(1).describe("Repository name"),
-      title: external_exports.string().min(1).describe("Pull request title"),
-      head: external_exports.string().min(1).describe("Branch containing the changes, e.g. owner:feature"),
-      base: external_exports.string().min(1).describe("Branch to merge into, e.g. main"),
-      body: external_exports.string().optional().describe("Markdown pull request body"),
-      draft: external_exports.boolean().optional().describe("Open as a draft"),
-      maintainerCanModify: external_exports.boolean().optional().describe("Allow maintainers to push to the head branch")
-    }
-  },
-  ({ owner, repo, title, head, base, body, draft, maintainerCanModify }) => run(async () => {
-    const payload = await githubWrite(
-      `/repos/${segment(owner)}/${segment(repo)}/pulls`,
-      "POST",
-      {
-        title,
-        head,
-        base,
-        ...body ? { body } : {},
-        ...draft !== void 0 ? { draft } : {},
-        ...maintainerCanModify !== void 0 ? { maintainer_can_modify: maintainerCanModify } : {}
+    },
+    ({ owner, repo, ref }) => run(async () => {
+      const payload = await githubRequest(
+        `/repos/${segment(owner)}/${segment(repo)}/commits/${segment(ref)}`,
+        commitResponse
+      );
+      return { ...projectCommitListEntry(payload), parents: payload.parents, files: payload.files };
+    })
+  );
+  server2.registerTool(
+    "github_search_code",
+    {
+      title: "Search GitHub code",
+      description: "Search code across GitHub (default branch only). Requires authentication and returns projected code matches with Link-based pagination.",
+      inputSchema: {
+        query: external_exports.string().min(1).describe("Code search query, e.g. repo:owner/name useState"),
+        page: pageInput,
+        perPage: external_exports.number().int().min(1).max(30).default(10).describe("Number of results per page (1-30)")
       }
-    );
-    return {
-      number: payload?.number ?? null,
-      html_url: payload?.html_url ?? null,
-      state: payload?.state ?? null,
-      title: payload?.title ?? title,
-      draft: payload?.draft === true,
-      head: payload?.head?.ref ?? head,
-      base: payload?.base?.ref ?? base
-    };
-  })
-);
-server.registerTool(
-  "github_review_pull_request",
-  {
-    title: "Review a GitHub pull request",
-    description: "Submit a pull request review: APPROVE, REQUEST_CHANGES or COMMENT. REQUEST_CHANGES and COMMENT require a body. Requires a token with write access.",
-    inputSchema: {
-      owner: external_exports.string().min(1).describe("Repository owner"),
-      repo: external_exports.string().min(1).describe("Repository name"),
-      pullNumber: external_exports.number().int().min(1).describe("Pull request number"),
-      event: external_exports.enum(["APPROVE", "REQUEST_CHANGES", "COMMENT"]).describe("Review verdict"),
-      body: external_exports.string().optional().describe("Review comment body")
-    }
-  },
-  ({ owner, repo, pullNumber, event, body }) => run(async () => {
-    if (event !== "APPROVE" && !body?.trim()) {
-      throw new Error(`${event} requires a non-empty body.`);
-    }
-    const payload = await githubWrite(
-      `/repos/${segment(owner)}/${segment(repo)}/pulls/${pullNumber}/reviews`,
-      "POST",
-      {
-        event,
-        ...body ? { body } : {}
+    },
+    ({ query, page, perPage }) => run(async () => {
+      const { data, response } = await githubRequestWithResponse(
+        `/search/code?${new URLSearchParams({
+          q: query,
+          page: String(page),
+          per_page: String(perPage)
+        })}`,
+        codeSearchResponse,
+        {},
+        { requireToken: true }
+      );
+      return {
+        ...data,
+        pagination: paginationFromLink(response.headers.get("Link"), page, perPage)
+      };
+    })
+  );
+}
+
+// src/tools/issues.ts
+var issueResponse = external_exports.object({
+  number: external_exports.number(),
+  html_url: external_exports.string(),
+  state: external_exports.string(),
+  title: external_exports.string(),
+  body: external_exports.string().nullable(),
+  labels: external_exports.array(external_exports.union([external_exports.string(), external_exports.object({ name: external_exports.string() })])),
+  user: external_exports.object({ login: external_exports.string() }).nullable(),
+  comments: external_exports.number(),
+  pull_request: external_exports.object({ html_url: external_exports.string() }).optional(),
+  created_at: external_exports.string(),
+  updated_at: external_exports.string()
+});
+var commentResponse = external_exports.object({
+  id: external_exports.number(),
+  html_url: external_exports.string(),
+  body: external_exports.string(),
+  created_at: external_exports.string()
+});
+function registerIssues(server2) {
+  server2.registerTool(
+    "github_list_issues",
+    {
+      title: "List GitHub issues",
+      description: "List projected issues for a repository with Link-based pagination. GitHub includes pull requests in this endpoint; the pull_request marker distinguishes them.",
+      inputSchema: {
+        owner: external_exports.string().min(1).describe("Repository owner"),
+        repo: external_exports.string().min(1).describe("Repository name"),
+        state: external_exports.enum(["open", "closed", "all"]).default("open").describe("Issue state filter"),
+        page: pageInput,
+        perPage: external_exports.number().int().min(1).max(50).default(20).describe("Number of results per page (1-50)")
       }
-    );
-    return {
-      id: payload?.id ?? null,
-      state: payload?.state ?? event,
-      html_url: payload?.html_url ?? `https://github.com/${owner}/${repo}/pull/${pullNumber}`,
-      submitted_at: payload?.submitted_at ?? null
-    };
-  })
-);
-server.registerTool(
-  "github_create_release",
-  {
-    title: "Create a GitHub release",
-    description: "Create a release for a tag. GitHub creates the tag at targetCommitish when it does not exist. Requires a token with write access.",
-    inputSchema: {
-      owner: external_exports.string().min(1).describe("Repository owner"),
-      repo: external_exports.string().min(1).describe("Repository name"),
-      tagName: external_exports.string().min(1).describe("Tag name, e.g. v1.2.0"),
-      name: external_exports.string().optional().describe("Release title"),
-      body: external_exports.string().optional().describe("Markdown release notes"),
-      targetCommitish: external_exports.string().optional().describe("Branch or commit the tag points at"),
-      draft: external_exports.boolean().optional().describe("Create as a draft"),
-      prerelease: external_exports.boolean().optional().describe("Mark as a prerelease")
-    }
-  },
-  ({ owner, repo, tagName, name, body, targetCommitish, draft, prerelease }) => run(async () => {
-    const payload = await githubWrite(
-      `/repos/${segment(owner)}/${segment(repo)}/releases`,
-      "POST",
-      {
-        tag_name: tagName,
-        ...name ? { name } : {},
-        ...body ? { body } : {},
-        ...targetCommitish ? { target_commitish: targetCommitish } : {},
-        ...draft !== void 0 ? { draft } : {},
-        ...prerelease !== void 0 ? { prerelease } : {}
+    },
+    ({ owner, repo, state, page, perPage }) => run(async () => {
+      const { data, response } = await githubRequestWithResponse(
+        `/repos/${segment(owner)}/${segment(repo)}/issues?${new URLSearchParams({
+          state,
+          page: String(page),
+          per_page: String(perPage)
+        })}`,
+        external_exports.array(issueResponse)
+      );
+      return {
+        items: data,
+        pagination: paginationFromLink(response.headers.get("Link"), page, perPage)
+      };
+    })
+  );
+  server2.registerTool(
+    "github_get_issue",
+    {
+      title: "Get a GitHub issue",
+      description: "Read one issue with its full body, labels, state, author, comment count, pull-request marker and URL.",
+      inputSchema: {
+        owner: external_exports.string().min(1).describe("Repository owner"),
+        repo: external_exports.string().min(1).describe("Repository name"),
+        issueNumber: external_exports.number().int().positive().describe("Issue number")
       }
-    );
-    return {
-      id: payload?.id ?? null,
-      tag_name: payload?.tag_name ?? tagName,
-      name: payload?.name ?? name ?? null,
-      html_url: payload?.html_url ?? null,
-      draft: payload?.draft === true,
-      prerelease: payload?.prerelease === true
-    };
-  })
-);
-server.registerTool(
-  "github_put_file",
-  {
-    title: "Create or update a GitHub file",
-    description: "Commit one UTF-8 text file through the contents API. Provide sha to update an existing file; omit it to create a new one. Requires a token with write access. This creates one commit on branch.",
-    inputSchema: {
-      owner: external_exports.string().min(1).describe("Repository owner"),
-      repo: external_exports.string().min(1).describe("Repository name"),
-      path: external_exports.string().min(1).describe("File path inside the repository"),
-      message: external_exports.string().min(1).describe("Commit message"),
-      content: external_exports.string().describe("Full UTF-8 file content"),
-      branch: external_exports.string().optional().describe("Branch to commit to; defaults to the default branch"),
-      sha: external_exports.string().optional().describe("Blob SHA of the existing file when updating")
-    }
-  },
-  ({ owner, repo, path, message, content, branch, sha }) => run(async () => {
-    const encodedPath = path.split("/").filter(Boolean).map(segment).join("/");
-    const payload = await githubWrite(
-      `/repos/${segment(owner)}/${segment(repo)}/contents/${encodedPath}`,
-      "PUT",
-      {
-        message,
-        content: Buffer.from(content, "utf8").toString("base64"),
-        ...branch ? { branch } : {},
-        ...sha ? { sha } : {}
+    },
+    ({ owner, repo, issueNumber }) => run(
+      () => githubRequest(
+        `/repos/${segment(owner)}/${segment(repo)}/issues/${issueNumber}`,
+        issueResponse
+      )
+    )
+  );
+  server2.registerTool(
+    "github_comment",
+    {
+      title: "Comment on a GitHub issue or pull request",
+      description: "Create a comment on an issue or pull request. GitHub uses the issues comments endpoint for both. Requires an authenticated token with repository write access.",
+      inputSchema: {
+        owner: external_exports.string().min(1).describe("Repository owner"),
+        repo: external_exports.string().min(1).describe("Repository name"),
+        issueNumber: external_exports.number().int().positive().describe("Issue or pull request number"),
+        body: external_exports.string().min(1).describe("Markdown comment body")
       }
-    );
-    return {
-      path: payload?.content?.path ?? path,
-      html_url: payload?.content?.html_url ?? null,
-      sha: payload?.content?.sha ?? null,
-      commit_sha: payload?.commit?.sha ?? null,
-      commit_url: payload?.commit?.html_url ?? null
-    };
+    },
+    ({ owner, repo, issueNumber, body }) => run(
+      () => githubWrite(
+        `/repos/${segment(owner)}/${segment(repo)}/issues/${issueNumber}/comments`,
+        "POST",
+        { body },
+        commentResponse
+      )
+    )
+  );
+  server2.registerTool(
+    "github_create_issue",
+    {
+      title: "Create a GitHub issue",
+      description: "Open a new issue. Requires an authenticated token with repository write access. Returns the projected issue details.",
+      inputSchema: {
+        owner: external_exports.string().min(1).describe("Repository owner"),
+        repo: external_exports.string().min(1).describe("Repository name"),
+        title: external_exports.string().min(1).describe("Issue title"),
+        body: external_exports.string().optional().describe("Markdown issue body"),
+        labels: external_exports.array(external_exports.string().min(1)).max(20).optional().describe("Label names to attach"),
+        assignees: external_exports.array(external_exports.string().min(1)).max(10).optional().describe("GitHub logins to assign")
+      }
+    },
+    ({ owner, repo, title, body, labels, assignees }) => run(
+      () => githubWrite(
+        `/repos/${segment(owner)}/${segment(repo)}/issues`,
+        "POST",
+        {
+          title,
+          ...body !== void 0 ? { body } : {},
+          ...labels !== void 0 ? { labels } : {},
+          ...assignees !== void 0 ? { assignees } : {}
+        },
+        issueResponse
+      )
+    )
+  );
+  server2.registerTool(
+    "github_update_issue",
+    {
+      title: "Update or close a GitHub issue",
+      description: "Change an issue or pull request: state, title, body, labels or assignees. At least one field is required. Requires an authenticated token with repository write access.",
+      inputSchema: {
+        owner: external_exports.string().min(1).describe("Repository owner"),
+        repo: external_exports.string().min(1).describe("Repository name"),
+        issueNumber: external_exports.number().int().positive().describe("Issue or pull request number"),
+        state: external_exports.enum(["open", "closed"]).optional().describe("Target state"),
+        title: external_exports.string().min(1).optional().describe("New title"),
+        body: external_exports.string().optional().describe("New markdown body"),
+        labels: external_exports.array(external_exports.string().min(1)).max(20).optional().describe("Replacement label names"),
+        assignees: external_exports.array(external_exports.string().min(1)).max(10).optional().describe("Replacement assignee logins")
+      }
+    },
+    ({ owner, repo, issueNumber, state, title, body, labels, assignees }) => run(async () => {
+      if (state === void 0 && title === void 0 && body === void 0 && labels === void 0 && assignees === void 0) {
+        throw new Error("At least one of state, title, body, labels or assignees is required.");
+      }
+      return githubWrite(
+        `/repos/${segment(owner)}/${segment(repo)}/issues/${issueNumber}`,
+        "PATCH",
+        {
+          ...state !== void 0 ? { state } : {},
+          ...title !== void 0 ? { title } : {},
+          ...body !== void 0 ? { body } : {},
+          ...labels !== void 0 ? { labels } : {},
+          ...assignees !== void 0 ? { assignees } : {}
+        },
+        issueResponse
+      );
+    })
+  );
+}
+
+// src/tools/pull-requests.ts
+var mergeResponse = external_exports.object({
+  merged: external_exports.boolean(),
+  sha: external_exports.string().nullable(),
+  message: external_exports.string()
+});
+var pullRequestReference = external_exports.object({
+  ref: external_exports.string(),
+  sha: external_exports.string()
+});
+var pullRequestRepository = external_exports.object({
+  id: external_exports.number(),
+  name: external_exports.string(),
+  full_name: external_exports.string(),
+  html_url: external_exports.string()
+}).nullable();
+var pullRequestSummaryResponse = external_exports.object({
+  number: external_exports.number(),
+  node_id: external_exports.string(),
+  html_url: external_exports.string(),
+  state: external_exports.string(),
+  title: external_exports.string(),
+  draft: external_exports.boolean(),
+  user: external_exports.object({ login: external_exports.string() }).nullable(),
+  head: pullRequestReference,
+  base: pullRequestReference,
+  created_at: external_exports.string(),
+  updated_at: external_exports.string()
+});
+var pullRequestDetailResponse = pullRequestSummaryResponse.extend({
+  body: external_exports.string().nullable(),
+  merged: external_exports.boolean(),
+  mergeable: external_exports.boolean().nullable(),
+  mergeable_state: external_exports.string(),
+  head: pullRequestReference.extend({ repo: pullRequestRepository }),
+  base: pullRequestReference.extend({ repo: pullRequestRepository })
+});
+var reviewResponse = external_exports.object({
+  id: external_exports.number(),
+  state: external_exports.string(),
+  html_url: external_exports.string(),
+  submitted_at: external_exports.string().nullable()
+});
+var lineCommentResponse = external_exports.object({
+  id: external_exports.number(),
+  path: external_exports.string(),
+  line: external_exports.number(),
+  side: external_exports.string(),
+  commit_id: external_exports.string(),
+  html_url: external_exports.string(),
+  body: external_exports.string(),
+  created_at: external_exports.string()
+});
+var revertPullRequestResponse = external_exports.object({
+  revertPullRequest: external_exports.object({
+    id: external_exports.string(),
+    number: external_exports.number(),
+    url: external_exports.string(),
+    title: external_exports.string(),
+    isDraft: external_exports.boolean(),
+    state: external_exports.string(),
+    headRefName: external_exports.string(),
+    baseRefName: external_exports.string()
   })
-);
-var transport = new StdioServerTransport();
-await server.connect(transport);
+});
+var revertPullRequestMutation = `
+  mutation RevertPullRequest($input: RevertPullRequestInput!) {
+    revertPullRequest(input: $input) {
+      revertPullRequest {
+        id
+        number
+        url
+        title
+        isDraft
+        state
+        headRefName
+        baseRefName
+      }
+    }
+  }
+`;
+function registerPullRequests(server2) {
+  server2.registerTool(
+    "github_list_pull_requests",
+    {
+      title: "List GitHub pull requests",
+      description: "List projected pull requests with state, draft, head/base refs and SHAs, GraphQL node IDs and Link-based pagination.",
+      inputSchema: {
+        owner: external_exports.string().min(1).describe("Repository owner"),
+        repo: external_exports.string().min(1).describe("Repository name"),
+        state: external_exports.enum(["open", "closed", "all"]).default("open").describe("Pull request state filter"),
+        page: pageInput,
+        perPage: external_exports.number().int().min(1).max(50).default(20).describe("Number of results per page (1-50)")
+      }
+    },
+    ({ owner, repo, state, page, perPage }) => run(async () => {
+      const { data, response } = await githubRequestWithResponse(
+        `/repos/${segment(owner)}/${segment(repo)}/pulls?${new URLSearchParams({
+          state,
+          page: String(page),
+          per_page: String(perPage)
+        })}`,
+        external_exports.array(pullRequestSummaryResponse)
+      );
+      return {
+        items: data,
+        pagination: paginationFromLink(response.headers.get("Link"), page, perPage)
+      };
+    })
+  );
+  server2.registerTool(
+    "github_get_pull_request",
+    {
+      title: "Get a GitHub pull request",
+      description: "Read one pull request including body, merge state, GraphQL node ID, head/base refs and SHAs, repository metadata and links.",
+      inputSchema: {
+        owner: external_exports.string().min(1).describe("Repository owner"),
+        repo: external_exports.string().min(1).describe("Repository name"),
+        pullNumber: external_exports.number().int().positive().describe("Pull request number")
+      }
+    },
+    ({ owner, repo, pullNumber }) => run(
+      () => githubRequest(
+        `/repos/${segment(owner)}/${segment(repo)}/pulls/${pullNumber}`,
+        pullRequestDetailResponse
+      )
+    )
+  );
+  server2.registerTool(
+    "github_merge_pull_request",
+    {
+      title: "Merge a GitHub pull request",
+      description: "Merge one pull request with merge, squash or rebase. Requires an authenticated token with repository write access. This does not retry the write.",
+      inputSchema: {
+        owner: external_exports.string().min(1).describe("Repository owner"),
+        repo: external_exports.string().min(1).describe("Repository name"),
+        pullNumber: external_exports.number().int().positive().describe("Pull request number"),
+        mergeMethod: external_exports.enum(["merge", "squash", "rebase"]).default("merge").describe("Merge strategy"),
+        commitTitle: external_exports.string().optional().describe("Title for the merge commit"),
+        commitMessage: external_exports.string().optional().describe("Extra detail for the merge commit message"),
+        sha: external_exports.string().optional().describe("Head SHA that must still match before merging")
+      }
+    },
+    ({ owner, repo, pullNumber, mergeMethod, commitTitle, commitMessage, sha }) => run(async () => {
+      const payload = await githubWrite(
+        `/repos/${segment(owner)}/${segment(repo)}/pulls/${pullNumber}/merge`,
+        "PUT",
+        {
+          merge_method: mergeMethod,
+          ...commitTitle !== void 0 ? { commit_title: commitTitle } : {},
+          ...commitMessage !== void 0 ? { commit_message: commitMessage } : {},
+          ...sha !== void 0 ? { sha } : {}
+        },
+        mergeResponse
+      );
+      return {
+        ...payload,
+        html_url: `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pull/${pullNumber}`
+      };
+    })
+  );
+  server2.registerTool(
+    "github_create_pull_request",
+    {
+      title: "Create a GitHub pull request",
+      description: "Open a pull request from head into base. The head branch must already exist on GitHub. Requires an authenticated token with repository write access.",
+      inputSchema: {
+        owner: external_exports.string().min(1).describe("Repository owner"),
+        repo: external_exports.string().min(1).describe("Repository name"),
+        title: external_exports.string().min(1).describe("Pull request title"),
+        head: external_exports.string().min(1).describe("Branch containing the changes, e.g. owner:feature"),
+        base: external_exports.string().min(1).describe("Branch to merge into, e.g. main"),
+        body: external_exports.string().optional().describe("Markdown pull request body"),
+        draft: external_exports.boolean().optional().describe("Open as a draft"),
+        maintainerCanModify: external_exports.boolean().optional().describe("Allow maintainers to push to the head branch")
+      }
+    },
+    ({ owner, repo, title, head, base, body, draft, maintainerCanModify }) => run(async () => {
+      const payload = await githubWrite(
+        `/repos/${segment(owner)}/${segment(repo)}/pulls`,
+        "POST",
+        {
+          title,
+          head,
+          base,
+          ...body !== void 0 ? { body } : {},
+          ...draft !== void 0 ? { draft } : {},
+          ...maintainerCanModify !== void 0 ? { maintainer_can_modify: maintainerCanModify } : {}
+        },
+        pullRequestSummaryResponse
+      );
+      return { ...payload, head: payload.head.ref, base: payload.base.ref };
+    })
+  );
+  server2.registerTool(
+    "github_review_pull_request",
+    {
+      title: "Review a GitHub pull request",
+      description: "Submit a pull request review: APPROVE, REQUEST_CHANGES or COMMENT. The latter two require a body and an authenticated token with repository write access.",
+      inputSchema: {
+        owner: external_exports.string().min(1).describe("Repository owner"),
+        repo: external_exports.string().min(1).describe("Repository name"),
+        pullNumber: external_exports.number().int().positive().describe("Pull request number"),
+        event: external_exports.enum(["APPROVE", "REQUEST_CHANGES", "COMMENT"]).describe("Review verdict"),
+        body: external_exports.string().optional().describe("Review comment body")
+      }
+    },
+    ({ owner, repo, pullNumber, event, body }) => run(async () => {
+      if (event !== "APPROVE" && !body?.trim()) {
+        throw new Error(`${event} requires a non-empty body.`);
+      }
+      return githubWrite(
+        `/repos/${segment(owner)}/${segment(repo)}/pulls/${pullNumber}/reviews`,
+        "POST",
+        { event, ...body !== void 0 ? { body } : {} },
+        reviewResponse
+      );
+    })
+  );
+  server2.registerTool(
+    "github_comment_pull_request_line",
+    {
+      title: "Comment on a pull request line",
+      description: "Create a submitted line-level review comment on a pull request diff using the modern line and side fields. Requires an authenticated token with repository write access.",
+      inputSchema: {
+        owner: external_exports.string().min(1).describe("Repository owner"),
+        repo: external_exports.string().min(1).describe("Repository name"),
+        pullNumber: external_exports.number().int().positive().describe("Pull request number"),
+        commitId: external_exports.string().min(1).describe("HEAD commit SHA containing the diff line"),
+        body: external_exports.string().min(1).describe("Markdown review comment body"),
+        path: external_exports.string().min(1).describe("Repository-relative file path in the diff"),
+        line: external_exports.number().int().positive().describe("Line number on the selected side of the diff"),
+        side: external_exports.enum(["LEFT", "RIGHT"]).describe("LEFT for a removed line or RIGHT for an added/context line")
+      }
+    },
+    ({ owner, repo, pullNumber, commitId, body, path, line, side }) => run(
+      () => githubWrite(
+        `/repos/${segment(owner)}/${segment(repo)}/pulls/${pullNumber}/comments`,
+        "POST",
+        { commit_id: commitId, body, path, line, side },
+        lineCommentResponse
+      )
+    )
+  );
+  server2.registerTool(
+    "github_revert_pull_request",
+    {
+      title: "Create a revert pull request",
+      description: "Use GitHub's revertPullRequest GraphQL mutation on an already merged pull request. Creates a new revert pull request; it neither undoes the merge nor automatically merges the revert. Authentication is required.",
+      inputSchema: {
+        pullRequestId: external_exports.string().min(1).describe("GraphQL node ID (ID/IPR) of the merged pull request"),
+        title: external_exports.string().min(1).optional().describe("Title for the new revert pull request"),
+        body: external_exports.string().optional().describe("Body for the new revert pull request"),
+        draft: external_exports.boolean().optional().describe("Create the revert pull request as a draft")
+      }
+    },
+    ({ pullRequestId, title, body, draft }) => run(async () => {
+      const payload = await githubGraphQL(
+        revertPullRequestMutation,
+        {
+          input: {
+            pullRequestId,
+            ...title !== void 0 ? { title } : {},
+            ...body !== void 0 ? { body } : {},
+            ...draft !== void 0 ? { draft } : {}
+          }
+        },
+        revertPullRequestResponse
+      );
+      return payload.revertPullRequest;
+    })
+  );
+}
+
+// src/tools/releases-and-files.ts
+var MAX_FILE_BYTES = 1e6;
+var directoryEntry = external_exports.object({
+  name: external_exports.string(),
+  type: external_exports.string(),
+  path: external_exports.string()
+});
+var fileResponse = external_exports.object({
+  type: external_exports.string(),
+  encoding: external_exports.string().optional(),
+  content: external_exports.string().optional(),
+  size: external_exports.number(),
+  html_url: external_exports.string().nullable(),
+  path: external_exports.string()
+});
+var contentsResponse = external_exports.union([external_exports.array(directoryEntry), fileResponse]);
+var releaseResponse = external_exports.object({
+  id: external_exports.number(),
+  tag_name: external_exports.string(),
+  name: external_exports.string().nullable(),
+  html_url: external_exports.string(),
+  draft: external_exports.boolean(),
+  prerelease: external_exports.boolean()
+});
+var releaseAssetResponse = external_exports.object({
+  id: external_exports.number(),
+  name: external_exports.string(),
+  label: external_exports.string().nullable(),
+  state: external_exports.string(),
+  size: external_exports.number(),
+  content_type: external_exports.string(),
+  browser_download_url: external_exports.string()
+});
+var putFileResponse = external_exports.object({
+  content: external_exports.object({ path: external_exports.string(), html_url: external_exports.string(), sha: external_exports.string() }),
+  commit: external_exports.object({ sha: external_exports.string(), html_url: external_exports.string() })
+});
+function lineBoundaries(text) {
+  if (!text) return [];
+  const lines = [];
+  let start = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+    if (character !== "\n" && character !== "\r") continue;
+    if (character === "\r" && text[index + 1] === "\n") index += 1;
+    lines.push({ start, end: index + 1 });
+    start = index + 1;
+  }
+  lines.push({ start, end: text.length });
+  return lines;
+}
+function selectLines(text, startLine, endLine) {
+  const lines = lineBoundaries(text);
+  if (!lines.length) return { text, range: null, totalLines: 0 };
+  const actualStart = startLine ?? 1;
+  if (actualStart > lines.length) {
+    throw new Error(
+      `startLine ${actualStart} exceeds the file's ${lines.length} lines. Choose a range within the file.`
+    );
+  }
+  const actualEnd = Math.min(endLine ?? lines.length, lines.length);
+  const selected = lines.slice(actualStart - 1, actualEnd);
+  const first = selected[0];
+  const last = selected.at(-1);
+  if (!first || !last) {
+    throw new Error("The requested line range does not contain any file content.");
+  }
+  return {
+    text: text.slice(first.start, last.end),
+    range: { startLine: actualStart, endLine: actualEnd },
+    totalLines: lines.length
+  };
+}
+function decodeReleaseAsset(contentBase64) {
+  const normalized = contentBase64.replace(/\s+/g, "");
+  if (!normalized || normalized.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(normalized)) {
+    throw new Error("contentBase64 must be non-empty, padded Base64 content.");
+  }
+  const content = Buffer.from(normalized, "base64");
+  if (!content.length || content.toString("base64") !== normalized) {
+    throw new Error("contentBase64 is not valid canonical Base64 content.");
+  }
+  const bytes = new Uint8Array(content.byteLength);
+  bytes.set(content);
+  return bytes;
+}
+function encodeRepositoryPath(path) {
+  return path.split("/").filter(Boolean).map(segment).join("/");
+}
+function registerReleasesAndFiles(server2) {
+  server2.registerTool(
+    "github_get_file",
+    {
+      title: "Read a GitHub file",
+      description: "Read a repository file as UTF-8 text with original line endings. Use startLine/endLine for a bounded range. Oversized results fail instead of truncating. Directory paths retain their listing response.",
+      inputSchema: {
+        owner: external_exports.string().min(1).describe("Repository owner"),
+        repo: external_exports.string().min(1).describe("Repository name"),
+        path: external_exports.string().min(1).describe("File path inside the repository"),
+        ref: external_exports.string().optional().describe("Branch, tag or commit SHA; defaults to the default branch"),
+        startLine: external_exports.number().int().positive().optional().describe("First line to return; defaults to 1"),
+        endLine: external_exports.number().int().positive().optional().describe("Last line to return; defaults to the file's last line")
+      }
+    },
+    ({ owner, repo, path, ref, startLine, endLine }) => run(async () => {
+      if (endLine !== void 0 && startLine !== void 0 && endLine < startLine) {
+        throw new Error("endLine must be greater than or equal to startLine.");
+      }
+      const query = ref ? `?${new URLSearchParams({ ref })}` : "";
+      const payload = await githubRequest(
+        `/repos/${segment(owner)}/${segment(repo)}/contents/${encodeRepositoryPath(path)}${query}`,
+        contentsResponse
+      );
+      if (Array.isArray(payload)) return payload;
+      const file = payload;
+      if (file.type !== "file") {
+        throw new Error(`GitHub path is not a file (type: ${file.type})`);
+      }
+      if (file.size > MAX_FILE_BYTES) {
+        throw new Error(
+          `File is ${file.size} bytes; GitHub's contents API boundary is ${MAX_FILE_BYTES} bytes. Line ranges cannot bypass that API boundary.`
+        );
+      }
+      if (file.encoding !== "base64" || typeof file.content !== "string") {
+        throw new Error("GitHub did not return base64 content for this file.");
+      }
+      const text = Buffer.from(file.content.replace(/\s+/g, ""), "base64").toString("utf8");
+      const range = selectLines(text, startLine, endLine);
+      const result = {
+        path: file.path,
+        html_url: file.html_url,
+        size: file.size,
+        ...range
+      };
+      assertResultSize(
+        result,
+        "Reduce the requested line range with startLine and endLine, then retry the read with a smaller range."
+      );
+      return result;
+    })
+  );
+  server2.registerTool(
+    "github_create_release",
+    {
+      title: "Create a GitHub release",
+      description: "Create a release for a tag. GitHub creates the tag at targetCommitish when it does not exist. Requires an authenticated token with repository write access.",
+      inputSchema: {
+        owner: external_exports.string().min(1).describe("Repository owner"),
+        repo: external_exports.string().min(1).describe("Repository name"),
+        tagName: external_exports.string().min(1).describe("Tag name, e.g. v1.2.0"),
+        name: external_exports.string().optional().describe("Release title"),
+        body: external_exports.string().optional().describe("Markdown release notes"),
+        targetCommitish: external_exports.string().optional().describe("Branch or commit the tag points at"),
+        draft: external_exports.boolean().optional().describe("Create as a draft"),
+        prerelease: external_exports.boolean().optional().describe("Mark as a prerelease")
+      }
+    },
+    ({ owner, repo, tagName, name, body, targetCommitish, draft, prerelease }) => run(
+      () => githubWrite(
+        `/repos/${segment(owner)}/${segment(repo)}/releases`,
+        "POST",
+        {
+          tag_name: tagName,
+          ...name !== void 0 ? { name } : {},
+          ...body !== void 0 ? { body } : {},
+          ...targetCommitish !== void 0 ? { target_commitish: targetCommitish } : {},
+          ...draft !== void 0 ? { draft } : {},
+          ...prerelease !== void 0 ? { prerelease } : {}
+        },
+        releaseResponse
+      )
+    )
+  );
+  server2.registerTool(
+    "github_upload_release_asset",
+    {
+      title: "Upload a GitHub release asset",
+      description: "Upload caller-provided, non-empty Base64 bytes to GitHub's release asset endpoint. This performs a remote write and does not read an arbitrary local file path. Authentication is required.",
+      inputSchema: {
+        owner: external_exports.string().min(1).describe("Repository owner"),
+        repo: external_exports.string().min(1).describe("Repository name"),
+        releaseId: external_exports.number().int().positive().describe("Numeric release ID, not the tag name"),
+        name: external_exports.string().min(1).describe("Asset file name shown by GitHub"),
+        contentBase64: external_exports.string().min(1).describe("Non-empty canonical Base64 content supplied by the caller"),
+        contentType: external_exports.string().trim().min(1).describe("MIME Content-Type for the raw asset bytes"),
+        label: external_exports.string().min(1).optional().describe("Optional short asset label")
+      }
+    },
+    ({ owner, repo, releaseId, name, contentBase64, contentType, label }) => run(async () => {
+      const content = decodeReleaseAsset(contentBase64);
+      const query = new URLSearchParams({ name });
+      if (label !== void 0) query.set("label", label);
+      return githubRequest(
+        `/repos/${segment(owner)}/${segment(repo)}/releases/${releaseId}/assets?${query}`,
+        releaseAssetResponse,
+        {
+          method: "POST",
+          headers: { "Content-Type": contentType },
+          body: content
+        },
+        { host: "uploads", requireToken: true }
+      );
+    })
+  );
+  server2.registerTool(
+    "github_put_file",
+    {
+      title: "Create or update a GitHub file",
+      description: "Commit one UTF-8 text file through the contents API. Provide sha to update an existing file. Requires an authenticated token with repository write access. This creates one commit on the branch.",
+      inputSchema: {
+        owner: external_exports.string().min(1).describe("Repository owner"),
+        repo: external_exports.string().min(1).describe("Repository name"),
+        path: external_exports.string().min(1).describe("File path inside the repository"),
+        message: external_exports.string().min(1).describe("Commit message"),
+        content: external_exports.string().describe("Full UTF-8 file content"),
+        branch: external_exports.string().optional().describe("Branch to commit to; defaults to the default branch"),
+        sha: external_exports.string().optional().describe("Blob SHA of the existing file when updating")
+      }
+    },
+    ({ owner, repo, path, message, content, branch, sha }) => run(async () => {
+      const payload = await githubWrite(
+        `/repos/${segment(owner)}/${segment(repo)}/contents/${encodeRepositoryPath(path)}`,
+        "PUT",
+        {
+          message,
+          content: Buffer.from(content, "utf8").toString("base64"),
+          ...branch !== void 0 ? { branch } : {},
+          ...sha !== void 0 ? { sha } : {}
+        },
+        putFileResponse
+      );
+      return {
+        path: payload.content.path,
+        html_url: payload.content.html_url,
+        sha: payload.content.sha,
+        commit_sha: payload.commit.sha,
+        commit_url: payload.commit.html_url
+      };
+    })
+  );
+}
+
+// src/tools/workflows.ts
+var ARTIFACT_DOWNLOAD_EXPIRES_SECONDS = 60;
+var workflowRunResponse = external_exports.object({
+  id: external_exports.number(),
+  name: external_exports.string().nullable(),
+  status: external_exports.string().nullable(),
+  conclusion: external_exports.string().nullable(),
+  event: external_exports.string(),
+  head_branch: external_exports.string().nullable(),
+  head_sha: external_exports.string(),
+  run_number: external_exports.number(),
+  run_attempt: external_exports.number(),
+  html_url: external_exports.string(),
+  created_at: external_exports.string(),
+  updated_at: external_exports.string()
+});
+var workflowRunListResponse = external_exports.object({
+  total_count: external_exports.number(),
+  workflow_runs: external_exports.array(workflowRunResponse)
+});
+var artifactResponse = external_exports.object({
+  id: external_exports.number(),
+  name: external_exports.string(),
+  size_in_bytes: external_exports.number(),
+  archive_download_url: external_exports.string(),
+  expired: external_exports.boolean(),
+  expires_at: external_exports.string(),
+  created_at: external_exports.string()
+});
+var artifactListResponse = external_exports.object({
+  total_count: external_exports.number(),
+  artifacts: external_exports.array(artifactResponse)
+});
+function registerWorkflows(server2) {
+  server2.registerTool(
+    "github_list_workflow_runs",
+    {
+      title: "List GitHub workflow runs",
+      description: "List Actions workflow runs with real run state, branch, commit and timestamps. Supports branch/status filters and Link-based pagination.",
+      inputSchema: {
+        owner: external_exports.string().min(1).describe("Repository owner"),
+        repo: external_exports.string().min(1).describe("Repository name"),
+        page: pageInput,
+        perPage: external_exports.number().int().min(1).max(100).default(20).describe("Number of results per page (1-100)"),
+        branch: external_exports.string().min(1).optional().describe("Only runs associated with this branch"),
+        status: external_exports.string().min(1).optional().describe("GitHub workflow run status or conclusion filter")
+      }
+    },
+    ({ owner, repo, page, perPage, branch, status }) => run(async () => {
+      const query = new URLSearchParams({
+        page: String(page),
+        per_page: String(perPage)
+      });
+      if (branch !== void 0) query.set("branch", branch);
+      if (status !== void 0) query.set("status", status);
+      const { data, response } = await githubRequestWithResponse(
+        `/repos/${segment(owner)}/${segment(repo)}/actions/runs?${query}`,
+        workflowRunListResponse
+      );
+      return {
+        total_count: data.total_count,
+        items: data.workflow_runs,
+        pagination: paginationFromLink(response.headers.get("Link"), page, perPage)
+      };
+    })
+  );
+  server2.registerTool(
+    "github_get_workflow_run",
+    {
+      title: "Get a GitHub workflow run",
+      description: "Read the real state, branch, commit, attempt and links for one Actions workflow run.",
+      inputSchema: {
+        owner: external_exports.string().min(1).describe("Repository owner"),
+        repo: external_exports.string().min(1).describe("Repository name"),
+        runId: external_exports.number().int().positive().describe("Workflow run ID")
+      }
+    },
+    ({ owner, repo, runId }) => run(
+      () => githubRequest(
+        `/repos/${segment(owner)}/${segment(repo)}/actions/runs/${runId}`,
+        workflowRunResponse
+      )
+    )
+  );
+  server2.registerTool(
+    "github_list_workflow_run_artifacts",
+    {
+      title: "List workflow run artifacts",
+      description: "List artifact metadata for one workflow run with Link-based pagination. archive_download_url is the API value, not a downloaded file.",
+      inputSchema: {
+        owner: external_exports.string().min(1).describe("Repository owner"),
+        repo: external_exports.string().min(1).describe("Repository name"),
+        runId: external_exports.number().int().positive().describe("Workflow run ID"),
+        page: pageInput,
+        perPage: external_exports.number().int().min(1).max(100).default(20).describe("Number of artifacts per page (1-100)")
+      }
+    },
+    ({ owner, repo, runId, page, perPage }) => run(async () => {
+      const { data, response } = await githubRequestWithResponse(
+        `/repos/${segment(owner)}/${segment(repo)}/actions/runs/${runId}/artifacts?${new URLSearchParams({
+          page: String(page),
+          per_page: String(perPage)
+        })}`,
+        artifactListResponse
+      );
+      return {
+        total_count: data.total_count,
+        items: data.artifacts,
+        pagination: paginationFromLink(response.headers.get("Link"), page, perPage)
+      };
+    })
+  );
+  server2.registerTool(
+    "github_download_workflow_artifact",
+    {
+      title: "Get a workflow artifact download URL",
+      description: "Resolve one artifact's official 302 redirect without following it or writing a file. Returns an HTTPS URL valid for one minute, delivered in this tool result; open it only on demand.",
+      inputSchema: {
+        owner: external_exports.string().min(1).describe("Repository owner"),
+        repo: external_exports.string().min(1).describe("Repository name"),
+        artifactId: external_exports.number().int().positive().describe("Workflow artifact ID")
+      }
+    },
+    ({ owner, repo, artifactId }) => run(async () => {
+      const downloadUrl = await githubArtifactRedirect(
+        `/repos/${segment(owner)}/${segment(repo)}/actions/artifacts/${artifactId}/zip`
+      );
+      return {
+        artifactId,
+        downloadUrl,
+        expiresInSeconds: ARTIFACT_DOWNLOAD_EXPIRES_SECONDS
+      };
+    })
+  );
+}
+
+// src/tools/graphql.ts
+function registerGraphQL(server2) {
+  server2.registerTool(
+    "github_graphql",
+    {
+      title: "Execute a GitHub GraphQL operation",
+      description: "POST a caller-authored GraphQL query or mutation with optional object variables. Authentication is required. Returns the real data payload or fails on GraphQL errors; mutations can perform remote writes and remain subject to host authorization.",
+      inputSchema: {
+        query: external_exports.string().min(1).describe("GraphQL query or mutation document"),
+        variables: external_exports.record(external_exports.unknown()).optional().describe("GraphQL variables as a JSON object")
+      }
+    },
+    ({ query, variables }) => run(() => githubGraphQL(query, variables, external_exports.unknown()))
+  );
+}
+
+// src/index.ts
+var server = new McpServer({ name: "github-tools", version: version2 });
+registerRepositories(server);
+registerIssues(server);
+registerPullRequests(server);
+registerReleasesAndFiles(server);
+registerWorkflows(server);
+registerGraphQL(server);
+await server.connect(new StdioServerTransport());
 console.error("[github-tools] MCP server ready over stdio");

@@ -7,19 +7,19 @@
     "zh-TW": "GitHub"
   },
   "description": {
-    "default": "GitHub tools with built-in result cards: search and inspect repositories, list issues and commits, read files, search code, merge pull requests, comment, open or update issues, create pull requests, submit reviews, publish releases and commit files.",
-    "en": "GitHub tools with built-in result cards: search and inspect repositories, list issues and commits, read files, search code, merge pull requests, comment, open or update issues, create pull requests, submit reviews, publish releases and commit files.",
-    "zh-CN": "GitHub 工具，自带结果卡片：搜索与查看仓库、列出议题与提交、读取文件、搜索代码，以及合并 PR、发表评论、创建议题、更新或关闭议题、创建 PR、提交审查、发布 Release 与提交文件。",
-    "zh-TW": "GitHub 工具，自帶結果卡片：搜尋與檢視儲存庫、列出議題與提交、讀取檔案、搜尋程式碼，以及合併 PR、發表評論、建立議題、更新或關閉議題、建立 PR、提交審查、發布 Release 與提交檔案。"
+    "default": "GitHub tools with built-in result cards for repositories, issues, commits, pull requests, files, code search, releases, Actions, GraphQL, comments, reviews and remote writes.",
+    "en": "GitHub tools with built-in result cards for repositories, issues, commits, pull requests, files, code search, releases, Actions, GraphQL, comments, reviews and remote writes.",
+    "zh-CN": "GitHub 工具，自带结果卡片：查询仓库、议题、提交、PR、文件、代码与 Actions，执行 GraphQL，并支持评论、审查、Revert PR、Release 资产和远端写操作。",
+    "zh-TW": "GitHub 工具，自帶結果卡片：查詢儲存庫、議題、提交、PR、檔案、程式碼與 Actions，執行 GraphQL，並支援評論、審查、Revert PR、Release 資產和遠端寫操作。"
   },
-  "version": "0.4.0",
+  "version": "0.4.1",
   "author": "BaSui",
   "license": "MIT",
   "icon": "assets/icon.svg",
   "kind": "tool",
   "renderMode": "esm",
   "entry": "index.js",
-  "minAppVersion": "0.5.11",
+  "minAppVersion": "0.5.12",
   "mcpServers": {
     "github": {
       "type": "stdio",
@@ -36,17 +36,29 @@
           "github_search_repositories",
           "github_get_repository",
           "github_list_issues",
+          "github_get_issue",
           "github_list_commits",
+          "github_get_commit",
           "github_get_file",
           "github_search_code",
+          "github_list_pull_requests",
+          "github_get_pull_request",
           "github_merge_pull_request",
           "github_comment",
           "github_create_issue",
           "github_update_issue",
           "github_create_pull_request",
           "github_review_pull_request",
+          "github_comment_pull_request_line",
+          "github_revert_pull_request",
           "github_create_release",
-          "github_put_file"
+          "github_upload_release_asset",
+          "github_put_file",
+          "github_list_workflow_runs",
+          "github_get_workflow_run",
+          "github_list_workflow_run_artifacts",
+          "github_download_workflow_artifact",
+          "github_graphql"
         ],
         "exportName": "renderGitHubTool",
         "priority": 20
@@ -62,6 +74,6 @@
   },
   "privacy": {
     "scopes": ["network", "messages"],
-    "note": "调用 GitHub REST API：仓库、议题、代码搜索与文件内容按查询外发到 api.github.com。只读工具可匿名使用；写工具（合并 PR、评论、议题、PR、审查、Release、提交文件）必须提供 GITHUB_TOKEN/GH_TOKEN 或本机 gh CLI 令牌，并以该令牌的权限修改远端仓库。令牌不写入插件目录。工具卡只读取宿主提供的当前工具调用快照（名称、参数、状态、结果），不读取其他消息。"
+    "note": "按调用参数访问 api.github.com；Release 资产原始字节上传至 uploads.github.com；GraphQL 查询或 mutation 会发送到 GitHub，mutation 可产生远端写副作用。只读 REST 工具可按 GitHub 规则匿名使用，代码搜索、GraphQL 与写工具需要 GITHUB_TOKEN/GH_TOKEN 或本机 gh CLI 令牌。Actions 构件工具只读取官方 302 的 HTTPS Location，不跟随重定向；一分钟有效的下载 URL 会作为当前工具结果交付并由用户点击打开。工具卡只读取宿主提供的当前工具调用快照。不读取任意本地资产路径、不写入本地输出路径，也不把令牌写入插件目录或额外日志。"
   }
 }
