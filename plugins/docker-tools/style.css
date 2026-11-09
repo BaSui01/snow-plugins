@@ -1,0 +1,720 @@
+/* Docker 工具卡：仅作用于自带渲染器输出的卡片，避免影响其他工具。 */
+.dk-tool-card {
+  /* Follow the active theme's blue accent instead of hard-coding Docker blue. */
+  --dk-accent: var(--accent-blue-text);
+}
+
+/* 宿主只在工具归属索引命中时渲染 .tool-call-plugin-origin，而该索引每个渲染进程
+   只加载一次；插件在会话中途安装后索引仍为空，卡片头部会丢掉 Docker 标识。
+   这里补一个与宿主同款的来源 chip（鲸鱼图标 + 插件名）：归属存在时自动让位，
+   既不会重复显示，也不依赖宿主索引状态。 */
+.dk-tool-card > summary.tcn-header > .tcn-dot {
+  order: -2;
+}
+
+.dk-tool-card > summary.tcn-header:not(:has(.tool-call-plugin-origin))::before {
+  content: "Docker";
+  order: -1;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 1.5px 6px 1.5px 22px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-active);
+  background-image: url("data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjMjQ5NkVEIiByb2xlPSJpbWciIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48dGl0bGU+RG9ja2VyPC90aXRsZT48cGF0aCBkPSJNMTMuOTgzIDExLjA3OGgyLjExOWEuMTg2LjE4NiAwIDAwLjE4Ni0uMTg1VjkuMDA2YS4xODYuMTg2IDAgMDAtLjE4Ni0uMTg2aC0yLjExOWEuMTg1LjE4NSAwIDAwLS4xODUuMTg1djEuODg4YzAgLjEwMi4wODMuMTg1LjE4NS4xODVtLTIuOTU0LTUuNDNoMi4xMThhLjE4Ni4xODYgMCAwMC4xODYtLjE4NlYzLjU3NGEuMTg2LjE4NiAwIDAwLS4xODYtLjE4NWgtMi4xMThhLjE4NS4xODUgMCAwMC0uMTg1LjE4NXYxLjg4OGMwIC4xMDIuMDgyLjE4NS4xODUuMTg1bTAgMi43MTZoMi4xMThhLjE4Ny4xODcgMCAwMC4xODYtLjE4NlY2LjI5YS4xODYuMTg2IDAgMDAtLjE4Ni0uMTg1aC0yLjExOGEuMTg1LjE4NSAwIDAwLS4xODUuMTg1djEuODg3YzAgLjEwMi4wODIuMTg1LjE4NS4xODZtLTIuOTMgMGgyLjEyYS4xODYuMTg2IDAgMDAuMTg0LS4xODZWNi4yOWEuMTg1LjE4NSAwIDAwLS4xODUtLjE4NUg4LjFhLjE4NS4xODUgMCAwMC0uMTg1LjE4NXYxLjg4N2MwIC4xMDIuMDgzLjE4NS4xODUuMTg2bS0yLjk2NCAwaDIuMTE5YS4xODYuMTg2IDAgMDAuMTg1LS4xODZWNi4yOWEuMTg1LjE4NSAwIDAwLS4xODUtLjE4NUg1LjEzNmEuMTg2LjE4NiAwIDAwLS4xODYuMTg1djEuODg3YzAgLjEwMi4wODQuMTg1LjE4Ni4xODZtNS44OTMgMi43MTVoMi4xMThhLjE4Ni4xODYgMCAwMC4xODYtLjE4NVY5LjAwNmEuMTg2LjE4NiAwIDAwLS4xODYtLjE4NmgtMi4xMThhLjE4NS4xODUgMCAwMC0uMTg1LjE4NXYxLjg4OGMwIC4xMDIuMDgyLjE4NS4xODUuMTg1bS0yLjkzIDBoMi4xMmEuMTg1LjE4NSAwIDAwLjE4NC0uMTg1VjkuMDA2YS4xODUuMTg1IDAgMDAtLjE4NC0uMTg2aC0yLjEyYS4xODUuMTg1IDAgMDAtLjE4NC4xODV2MS44ODhjMCAuMTAyLjA4My4xODUuMTg1LjE4NW0tMi45NjQgMGgyLjExOWEuMTg1LjE4NSAwIDAwLjE4NS0uMTg1VjkuMDA2YS4xODUuMTg1IDAgMDAtLjE4NC0uMTg2aC0yLjEyYS4xODYuMTg2IDAgMDAtLjE4Ni4xODZ2MS44ODdjMCAuMTAyLjA4NC4xODUuMTg2LjE4NW0tMi45MiAwaDIuMTJhLjE4NS4xODUgMCAwMC4xODQtLjE4NVY5LjAwNmEuMTg1LjE4NSAwIDAwLS4xODQtLjE4NmgtMi4xMmEuMTg1LjE4NSAwIDAwLS4xODQuMTg1djEuODg4YzAgLjEwMi4wODIuMTg1LjE4NS4xODVNMjMuNzYzIDkuODljLS4wNjUtLjA1MS0uNjcyLS41MS0xLjk1NC0uNTEtLjMzOC4wMDEtLjY3Ni4wMy0xLjAxLjA4Ny0uMjQ4LTEuNy0xLjY1My0yLjUzLTEuNzE2LTIuNTY2bC0uMzQ0LS4xOTktLjIyNi4zMjdjLS4yODQuNDM4LS40OS45MjItLjYxMiAxLjQzLS4yMy45Ny0uMDkgMS44ODIuNDAzIDIuNjYxLS41OTUuMzMyLTEuNTUuNDEzLTEuNzQ0LjQySC43NTFhLjc1MS43NTEgMCAwMC0uNzUuNzQ4IDExLjM3NiAxMS4zNzYgMCAwMC42OTIgNC4wNjJjLjU0NSAxLjQyOCAxLjM1NSAyLjQ4IDIuNDEgMy4xMjQgMS4xOC43MjMgMy4xIDEuMTM3IDUuMjc1IDEuMTM3Ljk4My4wMDMgMS45NjMtLjA4NiAyLjkzLS4yNjZhMTIuMjQ4IDEyLjI0OCAwIDAwMy44MjMtMS4zODljLjk4LS41NjcgMS44Ni0xLjI4OCAyLjYxLTIuMTM2IDEuMjUyLTEuNDE4IDEuOTk4LTIuOTk3IDIuNTUzLTQuNGguMjIxYzEuMzcyIDAgMi4yMTUtLjU0OSAyLjY4LTEuMDA5LjMwOS0uMjkzLjU1LS42NS43MDctMS4wNDZsLjA5OC0uMjg4WiIvPjwvc3ZnPg==");
+  background-repeat: no-repeat;
+  background-position: 6px center;
+  background-size: 12px 12px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.dk-tool-card > summary.tcn-header:not(:has(.tool-call-plugin-origin)):hover::before {
+  border-color: var(--border-color-hover, var(--border-color));
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* chips 主题把来源 chip 换成无边框的 20px 药丸，兜底同步换装。 */
+:root[data-tool-card-style="chips"]
+  .dk-tool-card
+  > summary.tcn-header:not(:has(.tool-call-plugin-origin))::before {
+  height: 20px;
+  padding: 0 6px 0 23px;
+  border: 0;
+  box-shadow: inset 0 0 0 1px var(--border-color);
+  line-height: 20px;
+}
+
+.dk-tool-card .dk-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.dk-tool-card .dk-icon {
+  display: block;
+  flex-shrink: 0;
+}
+
+.dk-tool-card .dk-params {
+  display: grid;
+  grid-template-columns: minmax(72px, max-content) minmax(0, 1fr);
+  gap: 4px 12px;
+  margin: 0;
+  padding: 9px 11px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+}
+
+.dk-tool-card .dk-param {
+  display: contents;
+}
+
+.dk-tool-card .dk-param dt {
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.dk-tool-card .dk-param dd {
+  min-width: 0;
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.dk-tool-card .dk-param-value {
+  display: block;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: text;
+}
+
+.dk-tool-card .dk-section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-tertiary);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.dk-tool-card .dk-section-title .dk-icon {
+  color: var(--dk-accent);
+}
+
+.dk-tool-card .dk-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 15px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--bg-active);
+  color: var(--dk-accent);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.dk-tool-card .dk-results,
+.dk-tool-card .dk-stack {
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+}
+
+.dk-tool-card .dk-results {
+  padding-left: 10px;
+  border-left: 2px solid color-mix(in srgb, var(--dk-accent) 45%, var(--border-light));
+}
+
+.dk-tool-card .dk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.dk-tool-card .dk-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 9px 11px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.dk-tool-card .dk-card:hover {
+  border-color: color-mix(in srgb, var(--dk-accent) 30%, var(--border-light));
+  background: var(--bg-tertiary);
+}
+
+.dk-tool-card .dk-card--compact {
+  gap: 5px;
+  padding: 7px 10px;
+}
+
+.dk-tool-card .dk-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dk-tool-card .dk-card-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.dk-tool-card .dk-card-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  min-width: 0;
+  color: var(--text-tertiary);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+.dk-tool-card .dk-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: text;
+}
+
+.dk-tool-card .dk-id {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  user-select: text;
+}
+
+.dk-tool-card .dk-image {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dk-tool-card .dk-dot {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+}
+
+.dk-tool-card .dk-dot--running,
+.dk-tool-card .dk-dot--healthy {
+  background: var(--accent-green-text);
+  box-shadow: 0 0 0 3px var(--accent-green-bg);
+}
+
+.dk-tool-card .dk-dot--exited,
+.dk-tool-card .dk-dot--created {
+  background: var(--text-tertiary);
+}
+
+.dk-tool-card .dk-dot--paused,
+.dk-tool-card .dk-dot--restarting,
+.dk-tool-card .dk-dot--starting {
+  background: var(--accent-amber-text);
+}
+
+.dk-tool-card .dk-dot--dead,
+.dk-tool-card .dk-dot--unhealthy {
+  background: var(--accent-red-text);
+}
+
+.dk-tool-card .dk-state {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--bg-active);
+  color: var(--text-secondary);
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.dk-tool-card .dk-state-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.dk-tool-card .dk-state--running,
+.dk-tool-card .dk-state--healthy {
+  background: var(--accent-green-bg);
+  color: var(--accent-green-text);
+}
+
+.dk-tool-card .dk-state--paused,
+.dk-tool-card .dk-state--restarting,
+.dk-tool-card .dk-state--starting {
+  background: var(--accent-amber-bg);
+  color: var(--accent-amber-text);
+}
+
+.dk-tool-card .dk-state--dead,
+.dk-tool-card .dk-state--unhealthy {
+  background: var(--accent-red-bg);
+  color: var(--accent-red-text);
+}
+
+.dk-tool-card .dk-state--exited,
+.dk-tool-card .dk-state--created,
+.dk-tool-card .dk-state--removing {
+  background: var(--bg-active);
+  color: var(--text-tertiary);
+}
+
+.dk-tool-card .dk-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.dk-tool-card .dk-chips--inline {
+  display: inline-flex;
+}
+
+.dk-tool-card .dk-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 1px 6px;
+  overflow: hidden;
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.6;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dk-tool-card .dk-chip--accent {
+  border-color: transparent;
+  background: var(--accent-blue-bg);
+  color: var(--dk-accent);
+}
+
+.dk-tool-card .dk-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+}
+
+.dk-tool-card .dk-panel--error {
+  border-color: color-mix(in srgb, var(--accent-red-text) 28%, var(--border-light));
+}
+
+.dk-tool-card .dk-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border-light);
+  background: color-mix(in srgb, var(--bg-active) 55%, var(--bg-secondary));
+}
+
+.dk-tool-card .dk-panel-label {
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.2px;
+}
+
+.dk-tool-card .dk-copy {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-tertiary);
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.dk-tool-card .dk-copy:hover {
+  background: var(--bg-hover);
+  color: var(--dk-accent);
+}
+
+.dk-tool-card .dk-copy--error {
+  color: var(--accent-red-text);
+}
+
+.dk-tool-card .dk-code {
+  max-height: 360px;
+  margin: 0;
+  padding: 8px 10px;
+  overflow: auto;
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+}
+
+.dk-tool-card .dk-command-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.dk-tool-card .dk-command {
+  min-width: 0;
+  flex: 1 1 220px;
+  overflow: hidden;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: text;
+}
+
+.dk-tool-card .dk-badge {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--bg-active);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.dk-tool-card .dk-badge--ok {
+  background: var(--accent-green-bg);
+  color: var(--accent-green-text);
+}
+
+.dk-tool-card .dk-badge--warn {
+  background: var(--accent-amber-bg);
+  color: var(--accent-amber-text);
+}
+
+.dk-tool-card .dk-meter {
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--bg-active);
+}
+
+.dk-tool-card .dk-meter > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent-color);
+  transition: width 0.25s ease;
+}
+
+.dk-tool-card .dk-meter--cpu > span {
+  background: var(--accent-blue-text, var(--accent-color));
+}
+
+.dk-tool-card .dk-meter--memory > span {
+  background: var(--accent-green-text);
+}
+
+.dk-tool-card .dk-meter--disk > span {
+  background: var(--accent-amber-text);
+}
+
+.dk-tool-card .dk-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 7px;
+  min-width: 0;
+}
+
+.dk-tool-card .dk-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+}
+
+.dk-tool-card .dk-metric-label {
+  color: var(--text-tertiary);
+  font-size: 10px;
+  letter-spacing: 0.2px;
+}
+
+.dk-tool-card .dk-metric code {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: text;
+}
+
+.dk-tool-card .dk-kv {
+  display: grid;
+  grid-template-columns: minmax(96px, max-content) minmax(0, 1fr);
+  gap: 5px 14px;
+  margin: 0;
+  padding: 9px 11px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+}
+
+.dk-tool-card .dk-kv dt {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.dk-tool-card .dk-kv dd {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  line-height: 1.6;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dk-tool-card .dk-kv code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  user-select: text;
+}
+
+.dk-tool-card .dk-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--accent-green-text) 26%, var(--border-light));
+  border-radius: var(--radius-md);
+  background: var(--accent-green-bg);
+  color: var(--accent-green-text);
+  font-size: 11.5px;
+}
+
+.dk-tool-card .dk-action-label {
+  font-weight: 600;
+}
+
+.dk-tool-card .dk-action-target {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-primary) 65%, transparent);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  user-select: text;
+}
+
+.dk-tool-card .dk-action-state {
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-size: 10.5px;
+}
+
+.dk-tool-card .dk-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: var(--radius-md);
+  background: var(--accent-amber-bg);
+  color: var(--accent-amber-text);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.dk-tool-card .dk-raw {
+  min-width: 0;
+}
+
+.dk-tool-card .dk-raw summary {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.dk-tool-card .dk-raw pre {
+  max-height: 260px;
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  overflow: auto;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  user-select: text;
+}
+
+.dk-tool-card .dk-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 12px;
+  border: 1px dashed var(--border-light);
+  border-radius: var(--radius-md);
+  color: var(--text-tertiary);
+  font-size: 11.5px;
+  text-align: center;
+}
+
+.dk-tool-card .dk-empty.dk-running .dk-icon {
+  animation: dk-spin 1s linear infinite;
+}
+
+.dk-tool-card .dk-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 9px 10px;
+  border: 1px solid color-mix(in srgb, var(--accent-red-text) 32%, transparent);
+  border-radius: var(--radius-md);
+  background: var(--accent-red-bg);
+  color: var(--accent-red-text);
+  font-size: 11.5px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+}
+
+.dk-tool-card .dk-error-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.dk-tool-card .dk-error-code {
+  align-self: flex-start;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-red-text) 12%, transparent);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  line-height: 1.6;
+}
+
+.dk-tool-card .dk-hint {
+  color: var(--text-tertiary);
+  font-size: 10.5px;
+}
+
+.dk-tool-card .dk-code,
+.dk-tool-card .dk-command,
+.dk-tool-card .dk-kv dd,
+.dk-tool-card .dk-metric code,
+.dk-tool-card .dk-card-sub,
+.dk-tool-card .dk-id {
+  font-variant-numeric: tabular-nums;
+}
+
+.dk-tool-card .dk-copy:focus-visible {
+  outline: 2px solid var(--dk-accent);
+  outline-offset: 2px;
+}
+
+@keyframes dk-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 520px) {
+  .dk-tool-card .dk-kv {
+    grid-template-columns: minmax(80px, max-content) minmax(0, 1fr);
+  }
+
+  .dk-tool-card .dk-card-head {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dk-tool-card .dk-empty.dk-running .dk-icon,
+  .dk-tool-card .dk-meter > span {
+    animation: none;
+    transition: none;
+  }
+}

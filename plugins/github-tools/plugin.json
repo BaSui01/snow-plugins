@@ -61,7 +61,8 @@
           "github_graphql"
         ],
         "exportName": "renderGitHubTool",
-        "priority": 20
+        "priority": 20,
+        "prefixes": ["plugin_com_snow_gi-"]
       }
     ]
   },

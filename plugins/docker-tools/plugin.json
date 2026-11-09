@@ -1,0 +1,68 @@
+{
+  "id": "com.snow.docker-tools",
+  "name": {
+    "default": "Docker",
+    "en": "Docker",
+    "zh-CN": "Docker",
+    "zh-TW": "Docker"
+  },
+  "description": {
+    "default": "Inspect and operate local Docker containers, images and Compose projects from the Agent.",
+    "en": "Inspect and operate local Docker containers, images and Compose projects from the Agent.",
+    "zh-CN": "在 Agent 中查看和操作本机 Docker 容器、镜像与 Compose 项目，支持日志、inspect、启停删、exec 和资源排查。",
+    "zh-TW": "在 Agent 中檢視和操作本機 Docker 容器、映像與 Compose 專案，支援日誌、inspect、啟停刪、exec 和資源排查。"
+  },
+  "version": "0.1.0",
+  "author": "BaSui",
+  "license": "MIT",
+  "icon": "assets/icon.svg",
+  "kind": "tool",
+  "renderMode": "esm",
+  "entry": "index.js",
+  "minAppVersion": "0.5.12",
+  "mcpServers": {
+    "docker": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["{{pluginDir}}/server.js"],
+      "timeoutMs": 300000
+    }
+  },
+  "contributions": {
+    "toolCallRenderers": [
+      {
+        "id": "docker-tools",
+        "tools": [
+          "containers_list",
+          "container_inspect",
+          "container_logs",
+          "container_stats",
+          "container_start",
+          "container_stop",
+          "container_restart",
+          "container_remove",
+          "container_exec",
+          "images_list",
+          "image_pull",
+          "compose_status",
+          "compose_control",
+          "system_info"
+        ],
+        "exportName": "renderDockerTool",
+        "priority": 20,
+        "prefixes": ["plugin_com_snow_do-"]
+      }
+    ]
+  },
+  "styles": ["style.css"],
+  "skills": ["skills/docker-workflow"],
+  "locales": {
+    "en": "locales/en.json",
+    "zh-CN": "locales/zh-CN.json",
+    "zh-TW": "locales/zh-TW.json"
+  },
+  "privacy": {
+    "scopes": ["network", "messages"],
+    "note": "通过本机 docker CLI 访问 Docker Engine 和当前 context；image_pull、compose build/pull 会访问镜像仓库；container_exec 会在目标容器内执行任意命令。Docker socket 访问等同本机高权限，所有写操作依赖 Snow App 的调用审批。工具卡只读取当前工具调用快照。"
+  }
+}
