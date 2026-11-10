@@ -39,24 +39,29 @@ const LIST_ARGUMENT: Record<InventoryKind, string> = {
   bitstream_filters: "-bsfs",
 };
 
-// Listing rows start with a flags column ("TSC", "V.....", "IO...", " E ").
-const FLAGGED_ROW = /^\s*[A-Z.]{2,6}\s+(\S+)/;
+// Listing rows start with a flags column ("TSC", "V.....", " E " for -muxers/-demuxers/-devices,
+// where ffmpeg prints a single flag character).
+const FLAGGED_ROW = /^\s*[A-Z.]{1,6}\s+(\S+)/;
 // `-protocols` prints sections ("Input:" / "Output:") with plain indented names.
 const INDENTED_NAME = /^\s{2,}(\S+)\s*$/;
-const HWACCEL_NAME = /^([A-Za-z0-9_]+)\s*$/;
-const SECTION_OR_HEADER = /^(Input|Output|Hardware acceleration methods|File formats|Filters|Encoders|Decoders|Pixel formats|Devices|Bitstream filters|Configuration)/i;
+// `-hwaccels` and `-bsfs` print one bare name per line.
+const BARE_NAME = /^([A-Za-z0-9_]+)\s*$/;
+// Legend rows ("D.. = Demuxing supported") describe the flags; they are not capabilities.
+const LEGEND_ROW = /\s=\s/;
+// ffmpeg 9 renamed the `-muxers`/`-demuxers` heading from "File formats" to "Formats".
+const SECTION_OR_HEADER = /^(Formats|Input|Output|Hardware acceleration methods|File formats|Filters|Encoders|Decoders|Pixel formats|Devices|Bitstream filters|Configuration)/i;
 
 const cache = new Map<InventoryKind, string[]>();
 
 function parseListing(kind: InventoryKind, output: string): string[] {
   const names: string[] = [];
   for (const line of output.split(/\r?\n/)) {
-    if (!line.trim() || SECTION_OR_HEADER.test(line.trim())) continue;
+    if (!line.trim() || SECTION_OR_HEADER.test(line.trim()) || LEGEND_ROW.test(line)) continue;
     let match: RegExpExecArray | null = null;
     if (kind === "protocols") {
       match = INDENTED_NAME.exec(line);
-    } else if (kind === "hwaccels") {
-      match = HWACCEL_NAME.exec(line.trim());
+    } else if (kind === "hwaccels" || kind === "bitstream_filters") {
+      match = BARE_NAME.exec(line.trim());
     } else {
       match = FLAGGED_ROW.exec(line);
     }

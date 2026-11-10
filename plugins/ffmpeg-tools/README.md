@@ -139,6 +139,12 @@ npm run check   # tsc --noEmit + 产物与源码一致性校验
 - `media_stream` 的 `push`/`record` 与 `media_capture` 的各录制路径只验证了参数规划与失败路径，未在真实网络端点或真实设备上完成端到端验收（本机无摄像头，也不主动联网推流）；
 - 大体积素材（多 GB）下的内存与耗时表现未验证，两遍类操作的长素材耗时未做压测。
 
+## 0.3.1 改动摘要
+
+- 修复 `media_layers` 的 `overlay` 在未传 `overlayScale` / `opacity` 时叠加输入标签缺少方括号、生成非法滤镜链（ffmpeg 报 `No option name near …`）的问题；现在裸 `overlay` 与带缩放/透明度的分支都可正常输出。
+- 修复 `media_capabilities` 的能力清单解析：识别 ffmpeg 9 的 `Formats:` 标题、接受单字符标志列（`-muxers` / `-demuxers` / `-devices`），并按裸名解析 `-bsfs`；`D.. = …` 这类图例不再被当成能力名。本机 ffmpeg 9.0.2 实测由 `muxers 1 / demuxers 1 / bitstream_filters null` 修正为 `184 / 367 / 51`。
+- `server.js` 由 `src/` 重新构建，`npm run check` 通过；工具名、参数与返回字段均未变化。
+
 ## 许可证
 
 MIT，见 [LICENSE](LICENSE)。

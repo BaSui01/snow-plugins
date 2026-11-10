@@ -114,7 +114,7 @@ async function runOverlay(input: Args): Promise<ToolResponse> {
     overlayChains.push("format=rgba", `colorchannelmixer=aa=${opacity}`);
   }
   const overlayLabel = overlayChains.length ? `[1:v]${overlayChains.join(",")}[ov];` : "";
-  const overlayRef = overlayChains.length ? "[ov]" : "1:v";
+  const overlayRef = overlayChains.length ? "[ov]" : "[1:v]";
 
   const graph = `${overlayLabel}[0:v]${overlayRef}overlay=${position.x}:${position.y}[v]`;
   const args = [

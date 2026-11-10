@@ -36670,7 +36670,7 @@ var plugin_default = {
     "zh-TW": "在本機用 ffmpeg/ffprobe 處理你指定的圖片、音訊與影片：環境自檢與能力查詢、資訊探測、黑幀／靜音／場景等分析、轉碼壓縮（含兩遍編碼與位元率控制）、剪輯、抽幀、GIF/WebP 動圖、波形與頻譜圖、特效調色、裁剪打字、字幕燒錄與封裝、中繼資料與章節、拼接與運鏡幻燈片、圖層與混音、HLS/DASH 打包與串流、螢幕與裝置擷取，以及任意參數的兜底直通。預設不連網、不上傳，未安裝 ffmpeg 時提供安裝引導。",
     en: "Drive this machine's ffmpeg/ffprobe from the agent: environment and capability checks, probing, black-frame/silence/scene analysis, transcoding with two-pass and rate control, trimming, frame grabs, GIF/WebP export, waveforms and spectrograms, effects and grading, crop and text, subtitle burn-in and muxing, metadata and chapters, concat and Ken Burns slideshows, overlay and audio mixing, HLS/DASH packaging and RTMP/SRT pushing, screen and device capture, plus a raw argv escape hatch. Local only, never uploads, and reports install guidance when ffmpeg is missing."
   },
-  version: "0.3.0",
+  version: "0.3.1",
   author: "BaSui",
   license: "MIT",
   icon: "assets/icon.svg",
@@ -37397,20 +37397,21 @@ var LIST_ARGUMENT = {
   devices: "-devices",
   bitstream_filters: "-bsfs"
 };
-var FLAGGED_ROW = /^\s*[A-Z.]{2,6}\s+(\S+)/;
+var FLAGGED_ROW = /^\s*[A-Z.]{1,6}\s+(\S+)/;
 var INDENTED_NAME = /^\s{2,}(\S+)\s*$/;
-var HWACCEL_NAME = /^([A-Za-z0-9_]+)\s*$/;
-var SECTION_OR_HEADER = /^(Input|Output|Hardware acceleration methods|File formats|Filters|Encoders|Decoders|Pixel formats|Devices|Bitstream filters|Configuration)/i;
+var BARE_NAME = /^([A-Za-z0-9_]+)\s*$/;
+var LEGEND_ROW = /\s=\s/;
+var SECTION_OR_HEADER = /^(Formats|Input|Output|Hardware acceleration methods|File formats|Filters|Encoders|Decoders|Pixel formats|Devices|Bitstream filters|Configuration)/i;
 var cache2 = /* @__PURE__ */ new Map();
 function parseListing(kind, output2) {
   const names = [];
   for (const line of output2.split(/\r?\n/)) {
-    if (!line.trim() || SECTION_OR_HEADER.test(line.trim())) continue;
+    if (!line.trim() || SECTION_OR_HEADER.test(line.trim()) || LEGEND_ROW.test(line)) continue;
     let match = null;
     if (kind === "protocols") {
       match = INDENTED_NAME.exec(line);
-    } else if (kind === "hwaccels") {
-      match = HWACCEL_NAME.exec(line.trim());
+    } else if (kind === "hwaccels" || kind === "bitstream_filters") {
+      match = BARE_NAME.exec(line.trim());
     } else {
       match = FLAGGED_ROW.exec(line);
     }
@@ -40329,7 +40330,7 @@ async function runOverlay(input2) {
     overlayChains.push("format=rgba", `colorchannelmixer=aa=${opacity}`);
   }
   const overlayLabel = overlayChains.length ? `[1:v]${overlayChains.join(",")}[ov];` : "";
-  const overlayRef = overlayChains.length ? "[ov]" : "1:v";
+  const overlayRef = overlayChains.length ? "[ov]" : "[1:v]";
   const graph = `${overlayLabel}[0:v]${overlayRef}overlay=${position.x}:${position.y}[v]`;
   const args = [
     "-hide_banner",
