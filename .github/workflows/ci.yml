@@ -28,18 +28,11 @@ jobs:
         run: bash -n scripts/market-pr.sh
       - name: Validate plugin manifests, resources and syntax
         run: python scripts/release.py validate
-      - name: Verify the TypeScript entry matches its sources
-        working-directory: plugins/prompt-optimizer
+      - name: Verify compiled plugin entries match their sources
         run: |
-          npm ci --no-audit --no-fund
-          npm run check
-      - name: Verify the session-file-count entry matches its sources
-        working-directory: plugins/session-file-count
-        run: |
-          npm ci --no-audit --no-fund
-          npm run check
-      - name: Verify the external-tool-renderer entry matches its sources
-        working-directory: plugins/external-tool-renderer
-        run: |
-          npm ci --no-audit --no-fund
-          npm run check
+          for manifest in plugins/*/package.json; do
+            directory="${manifest%/package.json}"
+            echo "::group::checking ${directory}"
+            (cd "${directory}" && npm ci --no-audit --no-fund && npm run check)
+            echo "::endgroup::"
+          done

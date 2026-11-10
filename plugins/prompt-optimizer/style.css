@@ -1,15 +1,28 @@
-/* Prompt Optimizer panel.
-   Selectors stay inside .snow-po-settings and reuse host theme variables so the
-   panel follows the active theme (light or dark) without overriding application
-   styles. Nothing here hardcodes a light-only surface colour. */
+/* Prompt Optimizer panel — styled entirely from the active Snow App theme.
+   Every colour, radius and surface is consumed from the host design tokens
+   (--accent-color / --on-solid / --bg-* / --text-* / --border-* / --radius-*),
+   so presets, light/dark mode and custom palettes restyle this panel together
+   with the application. No literal colour value is declared here: tints are
+   derived from the theme accent with color-mix, exactly like the host does for
+   its own primary buttons and selected rows. */
 .snow-po-settings {
-  --po-accent: var(--accent-blue);
+  /* Accent = the app accent role, the same token host primary buttons use.
+     Fallbacks stay inside the token set (never a literal colour). */
+  --po-accent: var(--accent-color, var(--text-primary));
+  --po-on-accent: var(--on-solid, var(--bg-primary));
+  --po-accent-soft: color-mix(in srgb, var(--po-accent) 12%, transparent);
+  --po-accent-line: color-mix(in srgb, var(--po-accent) 42%, transparent);
   --po-surface: var(--bg-secondary);
   --po-surface-strong: var(--bg-tertiary);
+  --po-field: var(--bg-primary);
   --po-line: var(--border-color);
+  --po-line-soft: var(--border-light);
   --po-soft: var(--text-secondary);
+  --po-muted: var(--text-tertiary);
+  --po-radius-card: var(--radius-lg);
+  --po-radius-control: var(--radius-sm);
   --po-transition: 0.16s ease;
-  color: var(--text-primary, inherit);
+  color: var(--text-primary);
   font: inherit;
   padding: 14px;
   display: flex;
@@ -20,6 +33,8 @@
   min-width: 0;
   container-type: inline-size;
   box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
 .snow-po-settings * {
@@ -34,6 +49,7 @@
 .snow-po-settings h2 {
   margin: 0;
   font-size: 16px;
+  font-weight: 650;
   line-height: 1.3;
 }
 
@@ -50,40 +66,44 @@
 }
 
 .snow-po-settings .po-muted {
-  color: var(--po-soft);
+  color: var(--po-muted);
   font-size: 12px;
 }
 
-/* Header */
+/* Header: an accent tile plus the panel title, closed by a hairline so the
+   first card reads as a separate block instead of floating under the title. */
 .snow-po-settings .po-header {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--po-line-soft);
 }
 
 .snow-po-settings .po-header-text {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
 }
 
 .snow-po-settings .po-icon {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
-  flex: 0 0 36px;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border: 1px solid var(--po-accent-line);
   border-radius: var(--radius-md);
   color: var(--po-accent);
-  background: var(--po-surface-strong);
-  font-size: 20px;
+  background: var(--po-accent-soft);
+  line-height: 0;
 }
 
 /* Cards share one level: the save bar is the only elevated surface. */
 .snow-po-settings .po-card {
   border: 1px solid var(--po-line);
-  border-radius: var(--radius-lg);
+  border-radius: var(--po-radius-card);
   padding: 14px 16px;
   background: var(--po-surface);
   display: flex;
@@ -113,8 +133,8 @@
   content: "";
   flex: 0 0 auto;
   width: 3px;
-  height: 13px;
-  border-radius: 2px;
+  height: 14px;
+  border-radius: var(--radius-pill);
   background: var(--po-accent);
 }
 
@@ -131,6 +151,9 @@
 }
 
 .snow-po-settings .po-field > span {
+  color: var(--po-soft);
+  font-size: 12.5px;
+  font-weight: 500;
   overflow-wrap: anywhere;
 }
 
@@ -149,23 +172,33 @@
   cursor: pointer;
 }
 
-.snow-po-settings input[type="checkbox"] {
-  accent-color: var(--po-accent);
-  margin-top: 3px;
-  flex: 0 0 auto;
+.snow-po-settings .po-check > span {
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
 }
 
+.snow-po-settings input[type="checkbox"] {
+  accent-color: var(--po-accent);
+  width: 15px;
+  height: 15px;
+  margin-top: 3px;
+  flex: 0 0 auto;
+  cursor: inherit;
+}
+
+/* Controls sit on the primary surface, like host search fields inside panels. */
 .snow-po-settings :is(input[type="number"], textarea, select) {
   font: inherit;
-  color: inherit;
-  background: var(--po-surface);
+  color: var(--text-primary);
+  background: var(--po-field);
   border: 1px solid var(--po-line);
-  border-radius: var(--radius-md);
-  padding: 9px 10px;
+  border-radius: var(--po-radius-control);
+  padding: 8px 10px;
   width: 100%;
   transition:
     border-color var(--po-transition),
-    background var(--po-transition);
+    background var(--po-transition),
+    box-shadow var(--po-transition);
 }
 
 .snow-po-settings :is(input[type="number"], textarea, select):hover:not(:disabled) {
@@ -174,6 +207,7 @@
 
 .snow-po-settings :is(input[type="number"], textarea, select):focus-visible {
   border-color: var(--po-accent);
+  box-shadow: 0 0 0 3px var(--po-accent-soft);
 }
 
 .snow-po-settings select option {
@@ -194,7 +228,7 @@
 }
 
 .snow-po-settings .po-counter {
-  color: var(--po-soft);
+  color: var(--po-muted);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -202,6 +236,7 @@
 
 .snow-po-settings .po-over-limit {
   color: var(--accent-red-text);
+  font-weight: 600;
 }
 
 /* Buttons */
@@ -209,38 +244,36 @@
   font: inherit;
   font-size: 13px;
   border: 1px solid var(--po-line);
-  background: var(--po-surface);
-  color: inherit;
-  border-radius: var(--radius-md);
+  background: var(--po-surface-strong);
+  color: var(--text-primary);
+  border-radius: var(--po-radius-control);
   padding: 8px 12px;
   cursor: pointer;
   transition:
     background var(--po-transition),
     border-color var(--po-transition),
-    color var(--po-transition),
-    filter var(--po-transition);
+    color var(--po-transition);
 }
 
 .snow-po-settings button:not(.po-primary):not(.po-ghost):hover:not(:disabled) {
-  background: var(--po-surface-strong);
+  background: var(--bg-hover);
   border-color: var(--po-soft);
 }
 
-/* 与宿主确认按钮同一套取色：正文色作底、on-solid 作字色，
-   保证任意主题（含暗色与各预设）都有足够对比度。 */
 .snow-po-settings button.po-primary {
-  background: var(--text-primary);
-  color: var(--on-solid);
+  background: var(--po-accent);
+  color: var(--po-on-accent);
   border-color: transparent;
   font-weight: 600;
 }
 
+/* Hover/active follow the host primary-button idiom (mix toward white/black). */
 .snow-po-settings button.po-primary:hover:not(:disabled) {
-  opacity: 0.88;
+  background: color-mix(in srgb, var(--po-accent) 88%, white);
 }
 
 .snow-po-settings button.po-primary:active:not(:disabled) {
-  opacity: 0.78;
+  background: color-mix(in srgb, var(--po-accent) 92%, black);
 }
 
 .snow-po-settings button.po-ghost {
@@ -249,12 +282,13 @@
   font-size: 12px;
   color: var(--po-soft);
   background: transparent;
+  border-color: transparent;
 }
 
 .snow-po-settings button.po-ghost:hover:not(:disabled) {
-  color: var(--text-primary, inherit);
-  border-color: var(--po-soft);
-  background: var(--po-surface-strong);
+  color: var(--text-primary);
+  border-color: var(--po-line);
+  background: var(--bg-hover);
 }
 
 .snow-po-settings :is(button, input, select, textarea):disabled {
@@ -262,10 +296,10 @@
   cursor: not-allowed;
 }
 
-/* Focus rings sit inside the control so they never overlay neighbouring rows. */
+/* Focus rings sit outside the control; every row keeps enough gap for them. */
 .snow-po-settings :is(button, input, select, textarea):focus-visible {
   outline: 2px solid var(--po-accent);
-  outline-offset: -2px;
+  outline-offset: 2px;
 }
 
 .snow-po-settings input[type="checkbox"]:focus-visible {
@@ -282,8 +316,9 @@
 /* Status blocks */
 .snow-po-settings .po-status {
   font-size: 13px;
-  padding: 10px 12px;
-  border-radius: var(--radius-md);
+  padding: 9px 11px;
+  border: 1px solid var(--po-line-soft);
+  border-radius: var(--po-radius-control);
   background: var(--po-surface-strong);
   line-height: 1.6;
 }
@@ -297,14 +332,15 @@
 }
 
 .snow-po-settings .po-status.po-warning {
-  border-left: 3px solid var(--accent-amber-text);
+  border-color: color-mix(in srgb, var(--accent-amber-text) 30%, transparent);
   background: var(--accent-amber-bg);
+  color: var(--accent-amber-text);
 }
 
 /* Collapsible reference blocks: the whole summary row is the click target. */
 .snow-po-settings .po-details {
   border: 1px solid var(--po-line);
-  border-radius: var(--radius-lg);
+  border-radius: var(--po-radius-card);
   background: var(--po-surface);
   overflow: hidden;
 }
@@ -331,10 +367,9 @@
   flex: 0 0 auto;
   width: 0;
   height: 0;
-  border-left: 5px solid currentColor;
+  border-left: 5px solid var(--po-accent);
   border-top: 4px solid transparent;
   border-bottom: 4px solid transparent;
-  opacity: 0.55;
   transition: transform var(--po-transition);
 }
 
@@ -343,13 +378,13 @@
 }
 
 .snow-po-settings summary:hover {
-  background: var(--po-surface-strong);
+  background: var(--bg-hover);
 }
 
 .snow-po-settings summary:focus-visible {
   outline: 2px solid var(--po-accent);
   outline-offset: -2px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--po-radius-control);
 }
 
 /* A label inside a summary keeps the title left and the counter right. */
@@ -369,23 +404,30 @@
 .snow-po-settings .po-preview {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  max-height: 260px;
+  max-height: 280px;
   overflow: auto;
   margin: 0;
   font: inherit;
+  font-size: 12px;
   line-height: 1.6;
+  padding: 10px 11px;
+  border: 1px solid var(--po-line-soft);
+  border-radius: var(--po-radius-control);
+  background: var(--po-surface-strong);
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
 /* Compact note: the top-level disclosure and the code-context disclosure both
-   use it, so the repeated privacy wording stays a short readable line instead of
-   a full paragraph block. */
+   use it, so the repeated privacy wording stays a short readable line instead
+   of a full paragraph block. */
 .snow-po-settings .po-note {
   font-size: 12px;
   line-height: 1.55;
-  color: var(--text-primary);
-  background: var(--po-surface-strong);
-  border-left: 2px solid var(--po-accent);
-  border-radius: var(--radius-sm);
+  color: var(--po-soft);
+  background: var(--po-accent-soft);
+  border: 1px solid var(--po-accent-line);
+  border-radius: var(--po-radius-control);
   padding: 8px 10px;
 }
 
@@ -417,7 +459,7 @@
   width: 6px;
   height: 6px;
   flex: 0 0 6px;
-  border-radius: 50%;
+  border-radius: var(--radius-pill);
   margin-top: 6px;
   background: currentColor;
   opacity: 0.6;
@@ -425,15 +467,21 @@
 
 /* Save bar: a regular card at the end of the flow.
    It deliberately avoids sticky/z-index/negative margins/shadow: a floating bar
-   covered the cards above it and broke the panel's single visual level. */
+   covered the cards above it and broke the panel's single visual level. The
+   accent border appears only while there are unsaved edits. */
 .snow-po-settings .po-savebar {
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 14px 16px;
   border: 1px solid var(--po-line);
-  border-radius: var(--radius-lg);
+  border-radius: var(--po-radius-card);
   background: var(--po-surface);
+  transition: border-color var(--po-transition);
+}
+
+.snow-po-settings .po-savebar.is-dirty {
+  border-color: var(--po-accent-line);
 }
 
 .snow-po-settings .po-savebar-body {
@@ -460,12 +508,25 @@
   width: 7px;
   height: 7px;
   flex: 0 0 7px;
-  border-radius: 50%;
+  border-radius: var(--radius-pill);
   background: var(--po-line);
+  transition:
+    background var(--po-transition),
+    box-shadow var(--po-transition);
 }
 
 .snow-po-settings .po-dot-dirty {
   background: var(--po-accent);
+  box-shadow: 0 0 0 3px var(--po-accent-soft);
+}
+
+.snow-po-settings .po-savebar-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 11px;
+  color: var(--po-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .snow-po-settings .po-savebar .po-actions button {
@@ -478,6 +539,11 @@
   gap: 8px;
   font-size: 12px;
   line-height: 1.6;
+  padding: 10px 11px;
+  border: 1px solid color-mix(in srgb, var(--accent-amber-text) 30%, transparent);
+  border-radius: var(--po-radius-control);
+  background: var(--accent-amber-bg);
+  color: var(--accent-amber-text);
 }
 
 .snow-po-settings .po-confirm .po-actions button {
@@ -493,5 +559,13 @@
 @media (max-width: 380px) {
   .snow-po-settings .po-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .snow-po-settings *,
+  .snow-po-settings *::before,
+  .snow-po-settings *::after {
+    transition: none;
   }
 }

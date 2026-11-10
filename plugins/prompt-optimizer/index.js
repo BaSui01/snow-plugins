@@ -995,7 +995,32 @@ function PromptOptimizerSettings({ api }) {
       "aria-label": t("title"),
       "aria-busy": busy
     },
-    /* @__PURE__ */ h("header", { className: "po-header" }, /* @__PURE__ */ h("span", { className: "po-icon", "aria-hidden": "true" }, renderableIcon ? h(brandIcon, { size: 20 }) : "✦"), /* @__PURE__ */ h("div", { className: "po-header-text" }, /* @__PURE__ */ h("h2", null, t("title")))),
+    /* @__PURE__ */ h("header", { className: "po-header" }, /* @__PURE__ */ h("span", { className: "po-icon", "aria-hidden": "true" }, renderableIcon ? h(brandIcon, { size: 20 }) : (
+      // Vector fallback when the host icon lookup returns nothing: the
+      // same geometry as the Lucide `wand-sparkles` icon, inlined so the
+      // header never depends on a font glyph.
+      /* @__PURE__ */ h(
+        "svg",
+        {
+          width: "20",
+          height: "20",
+          viewBox: "0 0 24 24",
+          fill: "none",
+          stroke: "currentColor",
+          strokeWidth: "2",
+          strokeLinecap: "round",
+          strokeLinejoin: "round"
+        },
+        /* @__PURE__ */ h("path", { d: "m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72" }),
+        /* @__PURE__ */ h("path", { d: "m14 7 3 3" }),
+        /* @__PURE__ */ h("path", { d: "M5 6v4" }),
+        /* @__PURE__ */ h("path", { d: "M19 14v4" }),
+        /* @__PURE__ */ h("path", { d: "M10 2v2" }),
+        /* @__PURE__ */ h("path", { d: "M7 8H3" }),
+        /* @__PURE__ */ h("path", { d: "M21 16h-4" }),
+        /* @__PURE__ */ h("path", { d: "M11 3H9" })
+      )
+    )), /* @__PURE__ */ h("div", { className: "po-header-text" }, /* @__PURE__ */ h("h2", null, t("title")))),
     !supported && /* @__PURE__ */ h("div", { className: "po-status po-warning", role: "alert" }, t("unavailable")),
     /* @__PURE__ */ h("p", { className: "po-note" }, t("privacy")),
     /* @__PURE__ */ h("div", { className: "po-card" }, /* @__PURE__ */ h("div", { className: "po-card-head" }, /* @__PURE__ */ h("h3", null, t("rulesTitle")), /* @__PURE__ */ h("p", { className: "po-muted" }, t("strategyHelp"))), /* @__PURE__ */ h("label", { className: "po-field" }, /* @__PURE__ */ h("span", null, t("strategy")), select("strategy", Object.keys(STRATEGIES))), /* @__PURE__ */ h("details", { className: "po-details" }, /* @__PURE__ */ h("summary", null, /* @__PURE__ */ h("span", { className: "po-label" }, /* @__PURE__ */ h("span", null, t("promptDetailsTitle")), /* @__PURE__ */ h(
@@ -1122,7 +1147,7 @@ function PromptOptimizerSettings({ api }) {
       },
       t("retry")
     )),
-    /* @__PURE__ */ h("footer", { className: "po-savebar" }, resetPending ? /* @__PURE__ */ h("div", { className: "po-confirm", role: "alert" }, /* @__PURE__ */ h("p", null, t("resetWarning")), /* @__PURE__ */ h("div", { className: "po-actions" }, /* @__PURE__ */ h(
+    /* @__PURE__ */ h("footer", { className: "po-savebar" + (dirty ? " is-dirty" : "") }, resetPending ? /* @__PURE__ */ h("div", { className: "po-confirm", role: "alert" }, /* @__PURE__ */ h("p", null, t("resetWarning")), /* @__PURE__ */ h("div", { className: "po-actions" }, /* @__PURE__ */ h(
       "button",
       {
         type: "button",

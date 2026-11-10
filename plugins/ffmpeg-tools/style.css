@@ -1,0 +1,109 @@
+/* FFmpeg media tools plugin styles. Injected as <style data-snow-plugin="com.snow.ffmpeg-tools">.
+   Every class is namespaced with .ffmpeg-tools- so the host UI is never affected.
+   Flat and dense on purpose: no nested island card, no literal colors, no inline styles —
+   only host theme tokens, so light/dark and every preset keep working. */
+
+.ffmpeg-tools-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.ffmpeg-tools-grid {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 10px;
+  row-gap: 4px;
+  align-items: start;
+}
+
+/* Artifact previews: the host owns the player chrome, the card only lays them out. */
+.ffmpeg-tools-previews {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.ffmpeg-tools-preview {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+/* Thumbnails and image buttons are <button>s: keep their intrinsic width instead of
+   stretching them to a full row. */
+button.ffmpeg-tools-preview {
+  flex: 0 0 auto;
+}
+
+.ffmpeg-tools-key {
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.ffmpeg-tools-value {
+  min-width: 0;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* Ctrl+click opens path cells through the host's [data-path] delegation. */
+.ffmpeg-tools-value.ffmpeg-tools-path {
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+
+.ffmpeg-tools-value.ffmpeg-tools-path:hover {
+  text-decoration-color: var(--accent-color);
+}
+
+body.ctrl-held .ffmpeg-tools-value.ffmpeg-tools-path {
+  text-decoration-color: var(--accent-color);
+  cursor: pointer;
+}
+
+.ffmpeg-tools-running {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Native <progress> keeps the bar out of inline styles; only host tokens set the colour. */
+.ffmpeg-tools-progress {
+  flex: 1 1 auto;
+  min-width: 96px;
+  height: 4px;
+  border: 0;
+  border-radius: 2px;
+  appearance: none;
+  background: color-mix(in srgb, currentColor 20%, transparent);
+}
+
+.ffmpeg-tools-progress::-webkit-progress-bar {
+  background: transparent;
+}
+
+.ffmpeg-tools-progress::-webkit-progress-value {
+  background: var(--accent-color);
+  border-radius: 2px;
+}
+
+.ffmpeg-tools-table {
+  width: 100%;
+}
+
+.ffmpeg-tools-failure {
+  color: var(--accent-red-text);
+}
+
+.ffmpeg-tools-detail {
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
