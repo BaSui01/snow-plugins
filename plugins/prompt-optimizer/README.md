@@ -1,10 +1,16 @@
+<p align="left">
+  <img src="assets/icon.svg" alt="提示词优化" width="36" height="36">
+</p>
+
 # 提示词优化
+
+`com.snow.prompt-optimizer` · 版本 `1.4.3` · 最低宿主 `0.4.16` · [Release](https://github.com/BaSui01/snow-plugins/releases/tag/prompt-optimizer/v1.4.3 "提示词优化 v1.4.3 安装包") · [返回仓库首页](../../README.md)
 
 为 Snow App 聊天草稿改善表达、整理任务或去除重复内容。**右侧面板负责配置，输入栏魔杖负责执行**；优化后自动回填草稿，「还原」收在魔杖右侧的「更多操作」下拉菜单里，发送始终由您决定。
 
 ## 安装与宿主要求
 
-在 Snow App 插件管理页点击「从目录安装」，从您下载或克隆仓库的实际位置选择 `plugins/prompt-optimizer`，确认目录内直接包含 `plugin.json`。插件标识为 `com.snow.prompt-optimizer`，清单版本为 `1.4.2`。
+在 Snow App 插件管理页点击「从目录安装」，从您下载或克隆仓库的实际位置选择 `plugins/prompt-optimizer`，确认目录内直接包含 `plugin.json`。插件标识为 `com.snow.prompt-optimizer`，清单版本为 `1.4.3`。
 
 需要 **Snow App v0.4.16 或更新版本**提供专用提示词优化接口、输入栏动作和安全草稿回填。配套改动已通过 [PR #179](https://github.com/MayDay-wpf/snow-app/pull/179 "提示词优化所需宿主增强已合并") 合并，并进入正式版 v0.4.16；v0.4.15 不包含该能力。仅安装插件或刷新旧应用不能补齐这些能力。
 

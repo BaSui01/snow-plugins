@@ -1,6 +1,12 @@
+<p align="left">
+  <img src="assets/icon.svg" alt="GitHub" width="36" height="36">
+</p>
+
 # GitHub
 
-GitHub 插件向模型注册 **41 个**可调用工具，通过 MCP stdio 进程访问 GitHub REST 与 GraphQL API。版本保持 **0.5.2**；本文描述当前源码，不表示已发布、已更新安装副本或已完成真实 UI 验收。
+`com.snow.github-tools` · 版本 `0.5.2` · 最低宿主 `0.5.12` · [Release](https://github.com/BaSui01/snow-plugins/releases/tag/github-tools/v0.5.2 "GitHub v0.5.2 安装包") · [返回仓库首页](../../README.md)
+
+GitHub 插件向模型注册 **41 个**可调用工具，通过 MCP stdio 进程访问 GitHub REST 与 GraphQL API。本文描述当前源码，不表示已发布、已更新安装副本或已完成真实 UI 验收。
 
 ## 工具能力
 

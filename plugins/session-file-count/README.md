@@ -1,4 +1,10 @@
+<p align="left">
+  <img src="assets/icon.svg" alt="会话文件统计" width="36" height="36">
+</p>
+
 # 会话文件统计
+
+`com.snow.session-file-count` · 版本 `1.1.8` · 最低宿主 `0.4.16` · [Release](https://github.com/BaSui01/snow-plugins/releases/tag/session-file-count/v1.1.8 "会话文件统计 v1.1.8 安装包") · [返回仓库首页](../../README.md)
 
 在 Snow App **每次 Agent 任务的结束回复下方**展示该任务及其子代理已记录的独立文件数量和清单，不累计、不继承前次任务。仅提供回复卡片，**没有独立面板、路径筛选或采集覆盖详情展开区**。
 

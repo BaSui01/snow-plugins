@@ -1,4 +1,10 @@
+<p align="left">
+  <img src="assets/icon.svg" alt="Docker" width="36" height="36">
+</p>
+
 # Docker 工具插件
+
+`com.snow.docker-tools` · 版本 `0.1.0` · 最低宿主 `0.5.12` · [Release](https://github.com/BaSui01/snow-plugins/releases/tag/docker-tools/v0.1.0 "Docker v0.1.0 安装包") · [返回仓库首页](../../README.md)
 
 Snow App 工具插件：通过本机 `docker` CLI 查看和操作容器、镜像与 Compose 项目。
 

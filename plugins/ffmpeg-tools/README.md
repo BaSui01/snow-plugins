@@ -1,4 +1,10 @@
+<p align="left">
+  <img src="assets/icon.svg" alt="FFmpeg 媒体工具" width="36" height="36">
+</p>
+
 # FFmpeg 媒体工具
+
+`com.snow.ffmpeg-tools` · 版本 `0.3.1` · 最低宿主 未声明 · [Release](https://github.com/BaSui01/snow-plugins/releases/tag/ffmpeg-tools/v0.3.1 "FFmpeg 媒体工具 v0.3.1 安装包") · [返回仓库首页](../../README.md)
 
 `com.snow.ffmpeg-tools` 是 Snow App 的**工具插件**：插件服务器在本机以子进程调用 ffmpeg / ffprobe，把媒体处理能力交给 AI 助手按需检索和调用，并随包提供一个 **Skill** 说明工作流。用户把图片、音频或视频发进对话（附件），或指向项目内的媒体文件，助手即可探测、分析、转码、压缩、剪辑、抽帧、提取音轨、拼接合成、加特效与字幕、改元数据、导出动图、打包分片、推流与录屏。
 

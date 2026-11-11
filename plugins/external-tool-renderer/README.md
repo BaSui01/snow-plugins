@@ -1,8 +1,12 @@
+<p align="left">
+  <img src="assets/icon.svg" alt="工具画廊" width="36" height="36">
+</p>
+
 # 工具画廊（桌面 MCP 扩展，开发版本）
 
-- ID：`com.snow.external-tool-renderer`（保持稳定，未随显示名变更）
+`com.snow.external-tool-renderer` · 版本 `0.3.4` · 最低宿主 `0.4.24` · [Release](https://github.com/BaSui01/snow-plugins/releases/tag/external-tool-renderer/v0.3.4 "工具画廊 v0.3.4 安装包") · [返回仓库首页](../../README.md)
+
 - 显示名：`工具画廊` / `Tool Gallery` / `工具畫廊`
-- 独立版本：`0.3.3`
 - 作者：`BaSui`
 - 安装目录：`plugins/external-tool-renderer`（直接包含 `plugin.json`），不能安装仓库根目录。
 

@@ -15,14 +15,14 @@
 
 ## 插件一览
 
-| 插件 | ID | 版本 | 发行 | 最低宿主 |
-| --- | --- | --- | --- | --- |
-| [提示词优化](plugins/prompt-optimizer/README.md) | `com.snow.prompt-optimizer` | `1.4.3` | [prompt-optimizer/v1.4.3](https://github.com/BaSui01/snow-plugins/releases/tag/prompt-optimizer/v1.4.3 "提示词优化 v1.4.3 安装包") | Snow App `0.4.16`（基础功能） |
-| [会话文件统计](plugins/session-file-count/README.md) | `com.snow.session-file-count` | `1.1.8` | [session-file-count/v1.1.8](https://github.com/BaSui01/snow-plugins/releases/tag/session-file-count/v1.1.8 "会话文件统计 v1.1.8 安装包") | Snow App `0.4.16`（基础功能） |
-| [GitHub](plugins/github-tools/README.md) | `com.snow.github-tools` | `0.5.2` | [github-tools/v0.5.2](https://github.com/BaSui01/snow-plugins/releases/tag/github-tools/v0.5.2 "GitHub v0.5.2 安装包") | Snow App `0.5.12` |
-| [Docker](plugins/docker-tools/README.md) | `com.snow.docker-tools` | `0.1.0` | [docker-tools/v0.1.0](https://github.com/BaSui01/snow-plugins/releases/tag/docker-tools/v0.1.0 "Docker v0.1.0 安装包") | Snow App `0.5.12` |
-| [FFmpeg 媒体工具](plugins/ffmpeg-tools/README.md) | `com.snow.ffmpeg-tools` | `0.3.1` | [ffmpeg-tools/v0.3.1](https://github.com/BaSui01/snow-plugins/releases/tag/ffmpeg-tools/v0.3.1 "FFmpeg 媒体工具 v0.3.1 安装包") | 未声明（工具插件契约需宿主支持） |
-| [工具画廊](plugins/external-tool-renderer/README.md) | `com.snow.external-tool-renderer` | `0.3.4` | [external-tool-renderer/v0.3.4](https://github.com/BaSui01/snow-plugins/releases/tag/external-tool-renderer/v0.3.4 "工具画廊 v0.3.4 安装包") | Snow App `0.4.24` + 工具卡插槽 |
+| 插件 | 类型 | ID | 版本 | 发行 | 最低宿主 |
+| --- | --- | --- | --- | --- | --- |
+| <img src="plugins/prompt-optimizer/assets/icon.svg" width="18" height="18" alt=""> [提示词优化](plugins/prompt-optimizer/README.md) | 面板 | `com.snow.prompt-optimizer` | `1.4.3` | [prompt-optimizer/v1.4.3](https://github.com/BaSui01/snow-plugins/releases/tag/prompt-optimizer/v1.4.3 "提示词优化 v1.4.3 安装包") | Snow App `0.4.16`（基础功能） |
+| <img src="plugins/session-file-count/assets/icon.svg" width="18" height="18" alt=""> [会话文件统计](plugins/session-file-count/README.md) | footer | `com.snow.session-file-count` | `1.1.8` | [session-file-count/v1.1.8](https://github.com/BaSui01/snow-plugins/releases/tag/session-file-count/v1.1.8 "会话文件统计 v1.1.8 安装包") | Snow App `0.4.16`（基础功能） |
+| <img src="plugins/github-tools/assets/icon.svg" width="18" height="18" alt=""> [GitHub](plugins/github-tools/README.md) | MCP 工具 | `com.snow.github-tools` | `0.5.2` | [github-tools/v0.5.2](https://github.com/BaSui01/snow-plugins/releases/tag/github-tools/v0.5.2 "GitHub v0.5.2 安装包") | Snow App `0.5.12` |
+| <img src="plugins/docker-tools/assets/icon.svg" width="18" height="18" alt=""> [Docker](plugins/docker-tools/README.md) | MCP 工具 | `com.snow.docker-tools` | `0.1.0` | [docker-tools/v0.1.0](https://github.com/BaSui01/snow-plugins/releases/tag/docker-tools/v0.1.0 "Docker v0.1.0 安装包") | Snow App `0.5.12` |
+| <img src="plugins/ffmpeg-tools/assets/icon.svg" width="18" height="18" alt=""> [FFmpeg 媒体工具](plugins/ffmpeg-tools/README.md) | MCP 工具 + Skill | `com.snow.ffmpeg-tools` | `0.3.1` | [ffmpeg-tools/v0.3.1](https://github.com/BaSui01/snow-plugins/releases/tag/ffmpeg-tools/v0.3.1 "FFmpeg 媒体工具 v0.3.1 安装包") | 未声明（工具插件契约需宿主支持） |
+| <img src="plugins/external-tool-renderer/assets/icon.svg" width="18" height="18" alt=""> [工具画廊](plugins/external-tool-renderer/README.md) | 工具卡渲染器 | `com.snow.external-tool-renderer` | `0.3.4` | [external-tool-renderer/v0.3.4](https://github.com/BaSui01/snow-plugins/releases/tag/external-tool-renderer/v0.3.4 "工具画廊 v0.3.4 安装包") | Snow App `0.4.24` + 工具卡插槽 |
 
 发行版本、标签与安装包按插件独立管理；历史统一预发行标签 `v1.1.0-preview.1` 不是各插件当前版本的下载入口。
 
