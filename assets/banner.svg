@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" width="1200" height="320" role="img" aria-label="Snow Plugins：Snow App 独立插件集合">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#060a14"/>
+      <stop offset="0.55" stop-color="#0a1223"/>
+      <stop offset="1" stop-color="#0e1b33"/>
+    </linearGradient>
+    <radialGradient id="glowA" cx="0.16" cy="0.08" r="0.62">
+      <stop offset="0" stop-color="#38bdf8" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#38bdf8" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowB" cx="0.88" cy="0.95" r="0.6">
+      <stop offset="0" stop-color="#a78bfa" stop-opacity="0.24"/>
+      <stop offset="1" stop-color="#a78bfa" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="title" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#e6f5ff"/>
+      <stop offset="0.48" stop-color="#8fdcff"/>
+      <stop offset="1" stop-color="#c9b8ff"/>
+    </linearGradient>
+    <linearGradient id="sweep" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#7dd3fc" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#bae6fd" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#7dd3fc" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="pulse" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#38bdf8"/>
+      <stop offset="0.5" stop-color="#818cf8"/>
+      <stop offset="1" stop-color="#34d399"/>
+    </linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#7dd3fc" stroke-opacity="0.06"/>
+    </pattern>
+    <clipPath id="frame">
+      <rect width="1200" height="320" rx="18"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#frame)">
+    <rect width="1200" height="320" fill="url(#bg)"/>
+    <rect width="1200" height="320" fill="url(#grid)"/>
+    <ellipse cx="190" cy="30" rx="420" ry="230" fill="url(#glowA)"/>
+    <ellipse cx="1050" cy="310" rx="430" ry="250" fill="url(#glowB)"/>
+
+    <g fill="#dbeafe">
+      <circle cx="90" cy="0" r="1.6" opacity="0.45"><animateTransform attributeName="transform" type="translate" values="0 -40;0 350" dur="11s" begin="-3s" repeatCount="indefinite"/></circle>
+      <circle cx="168" cy="0" r="2.2" opacity="0.55"><animateTransform attributeName="transform" type="translate" values="0 -40;0 350" dur="8.5s" begin="-6.5s" repeatCount="indefinite"/></circle>
+      <circle cx="252" cy="0" r="1.3" opacity="0.4"><animateTransform attributeName="transform" type="translate" values="0 -40;0 350" dur="13s" begin="-1s" repeatCount="indefinite"/></circle>
+      <circle cx="338" cy="0" r="1.9" opacity="0.5"><animateTransform attributeName="transform" type="translate" values="0 -40;0 350" dur="9.5s" begin="-8s" repeatCount="indefinite"/></circle>
+      <circle cx="424" cy="0" r="1.4" opacity="0.38"><animateTransform attributeName="transform" type="translate" values="0 -40;0 350" dur="12s" begin="-4.5s" repeatCount="indefinite"/></circle>
+      <circle cx="512" cy="0" r="2" opacity="0.5"><animateTransform attributeName="transform" type="translate" values="0 -40;0 350" dur="10.5s" begin="-9s" repeatCount="indefinite"/></circle>
+      <circle cx="596" cy="0" r="1.2" opacity="0.35"><animateTransform attributeName="transform" type="translate" values="0 -40;0 350" dur="14s" begin="-2.5s" repeatCount="indefinite"/></circle>
+      <circle cx="684" cy="0" r="1.8" opacity="0.48"><animateTransform attributeName="transform" type="translate" values="0 -40;0 350" dur="9s" begin="-7s" repeatCount="indefinite"/></circle>
+      <circle cx="772" cy="0" r="1.5" opacity="0.42"><animateTransform attributeName="transform" type="translate" values="0 -40;0 350" dur="12.5s" begin="-5.5s" repeatCount="indefinite"/></circle>
+      <circle cx="858" cy="0" r="2.1" opacity="0.55"><animateTransform attributeName="transform" type="translate" values="0 -40;0 350" dur="8s" begin="-1.5s" repeatCount="indefinite"/></circle>
+      <circle cx="944" cy="0" r="1.3" opacity="0.36"><animateTransform attributeName="transform" type="translate" values="0 -40;0 350" dur="13.5s" begin="-10s" repeatCount="indefinite"/></circle>
+      <circle cx="1032" cy="0" r="1.9" opacity="0.5"><animateTransform attributeName="transform" type="translate" values="0 -40;0 350" dur="10s" begin="-6s" repeatCount="indefinite"/></circle>
+      <circle cx="1112" cy="0" r="1.4" opacity="0.4"><animateTransform attributeName="transform" type="translate" values="0 -40;0 350" dur="11.5s" begin="-3.5s" repeatCount="indefinite"/></circle>
+      <circle cx="1168" cy="0" r="1.7" opacity="0.46"><animateTransform attributeName="transform" type="translate" values="0 -40;0 350" dur="9.8s" begin="-8.5s" repeatCount="indefinite"/></circle>
+    </g>
+
+    <g>
+      <rect x="-300" y="-120" width="220" height="560" fill="url(#sweep)" transform="rotate(18 0 160)">
+        <animate attributeName="x" values="-320;1120" dur="7.5s" repeatCount="indefinite"/>
+      </rect>
+    </g>
+
+    <text x="64" y="84" font-family="'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="13" font-weight="600" fill="#7dd3fc" fill-opacity="0.85" letter-spacing="3.2">SNOW APP · PLUGIN SUITE</text>
+    <text x="62" y="158" font-family="'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="62" font-weight="700" fill="url(#title)" letter-spacing="0.5">Snow Plugins</text>
+    <text x="65" y="196" font-family="'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="17" fill="#b8c8de">独立插件 · 各自安装 · 各自发版 · 全部开源</text>
+
+    <g font-family="'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="13.5" fill="#dbeafe">
+      <g transform="translate(64 228)">
+        <rect width="152" height="36" rx="18" fill="#101c33" stroke="#38bdf8" stroke-opacity="0.35"/>
+        <circle cx="20" cy="18" r="4" fill="#38bdf8"><animate attributeName="fill-opacity" values="0.35;1;0.35" dur="6s" begin="0s" repeatCount="indefinite"/></circle>
+        <text x="36" y="23">提示词优化</text>
+        <rect width="152" height="36" rx="18" fill="none" stroke="#7dd3fc" stroke-width="1.4" stroke-opacity="0"><animate attributeName="stroke-opacity" values="0;0.55;0" dur="6s" begin="0s" repeatCount="indefinite"/></rect>
+      </g>
+      <g transform="translate(228 228)">
+        <rect width="152" height="36" rx="18" fill="#101c33" stroke="#a78bfa" stroke-opacity="0.35"/>
+        <circle cx="20" cy="18" r="4" fill="#a78bfa"><animate attributeName="fill-opacity" values="0.35;1;0.35" dur="6s" begin="1s" repeatCount="indefinite"/></circle>
+        <text x="36" y="23">GitHub</text>
+        <rect width="152" height="36" rx="18" fill="none" stroke="#c4b5fd" stroke-width="1.4" stroke-opacity="0"><animate attributeName="stroke-opacity" values="0;0.55;0" dur="6s" begin="1s" repeatCount="indefinite"/></rect>
+      </g>
+      <g transform="translate(392 228)">
+        <rect width="152" height="36" rx="18" fill="#101c33" stroke="#34d399" stroke-opacity="0.35"/>
+        <circle cx="20" cy="18" r="4" fill="#34d399"><animate attributeName="fill-opacity" values="0.35;1;0.35" dur="6s" begin="2s" repeatCount="indefinite"/></circle>
+        <text x="36" y="23">Docker</text>
+        <rect width="152" height="36" rx="18" fill="none" stroke="#6ee7b7" stroke-width="1.4" stroke-opacity="0"><animate attributeName="stroke-opacity" values="0;0.55;0" dur="6s" begin="2s" repeatCount="indefinite"/></rect>
+      </g>
+      <g transform="translate(556 228)">
+        <rect width="152" height="36" rx="18" fill="#101c33" stroke="#fbbf24" stroke-opacity="0.35"/>
+        <circle cx="20" cy="18" r="4" fill="#fbbf24"><animate attributeName="fill-opacity" values="0.35;1;0.35" dur="6s" begin="3s" repeatCount="indefinite"/></circle>
+        <text x="36" y="23">FFmpeg</text>
+        <rect width="152" height="36" rx="18" fill="none" stroke="#fcd34d" stroke-width="1.4" stroke-opacity="0"><animate attributeName="stroke-opacity" values="0;0.55;0" dur="6s" begin="3s" repeatCount="indefinite"/></rect>
+      </g>
+      <g transform="translate(720 228)">
+        <rect width="152" height="36" rx="18" fill="#101c33" stroke="#f472b6" stroke-opacity="0.35"/>
+        <circle cx="20" cy="18" r="4" fill="#f472b6"><animate attributeName="fill-opacity" values="0.35;1;0.35" dur="6s" begin="4s" repeatCount="indefinite"/></circle>
+        <text x="36" y="23">工具画廊</text>
+        <rect width="152" height="36" rx="18" fill="none" stroke="#f9a8d4" stroke-width="1.4" stroke-opacity="0"><animate attributeName="stroke-opacity" values="0;0.55;0" dur="6s" begin="4s" repeatCount="indefinite"/></rect>
+      </g>
+      <g transform="translate(884 228)">
+        <rect width="152" height="36" rx="18" fill="#101c33" stroke="#22d3ee" stroke-opacity="0.35"/>
+        <circle cx="20" cy="18" r="4" fill="#22d3ee"><animate attributeName="fill-opacity" values="0.35;1;0.35" dur="6s" begin="5s" repeatCount="indefinite"/></circle>
+        <text x="36" y="23">文件统计</text>
+        <rect width="152" height="36" rx="18" fill="none" stroke="#67e8f9" stroke-width="1.4" stroke-opacity="0"><animate attributeName="stroke-opacity" values="0;0.55;0" dur="6s" begin="5s" repeatCount="indefinite"/></rect>
+      </g>
+    </g>
+
+    <g>
+      <rect x="64" y="292" width="1072" height="2" rx="1" fill="#ffffff" fill-opacity="0.06"/>
+      <rect x="64" y="292" width="240" height="2" rx="1" fill="url(#pulse)" fill-opacity="0.9">
+        <animate attributeName="x" values="64;896;64" dur="9s" repeatCount="indefinite"/>
+      </rect>
+    </g>
+    <text x="1136" y="86" text-anchor="end" font-family="'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="12" fill="#8fa6c4" letter-spacing="1.2">6 PLUGINS · MIT</text>
+    <rect x="0.6" y="0.6" width="1198.8" height="318.8" rx="17.4" fill="none" stroke="#7dd3fc" stroke-opacity="0.14"/>
+  </g>
+</svg>
