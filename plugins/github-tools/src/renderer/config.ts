@@ -36,7 +36,22 @@ type ToolKind =
   | "getWorkflowRun"
   | "listWorkflowRunArtifacts"
   | "downloadWorkflowArtifact"
-  | "graphql";
+  | "graphql"
+  | "listDiscussions"
+  | "getDiscussion"
+  | "listNotifications"
+  | "getNotification"
+  | "listDeployments"
+  | "getDeployment"
+  | "listCheckRuns"
+  | "getCheckRun"
+  | "getOrganization"
+  | "listTeams"
+  | "getTeam"
+  | "listGists"
+  | "getGist"
+  | "listPackages"
+  | "getPackage";
 
 type Args = Record<string, unknown>;
 type Payload = Record<string, unknown> | unknown[] | string | null;
@@ -68,6 +83,21 @@ const TOOL_KINDS: Record<string, ToolKind> = {
   github_list_workflow_run_artifacts: "listWorkflowRunArtifacts",
   github_download_workflow_artifact: "downloadWorkflowArtifact",
   github_graphql: "graphql",
+  github_list_discussions: "listDiscussions",
+  github_get_discussion: "getDiscussion",
+  github_list_notifications: "listNotifications",
+  github_get_notification: "getNotification",
+  github_list_deployments: "listDeployments",
+  github_get_deployment: "getDeployment",
+  github_list_check_runs: "listCheckRuns",
+  github_get_check_run: "getCheckRun",
+  github_get_organization: "getOrganization",
+  github_list_teams: "listTeams",
+  github_get_team: "getTeam",
+  github_list_gists: "listGists",
+  github_get_gist: "getGist",
+  github_list_packages: "listPackages",
+  github_get_package: "getPackage",
 };
 
 const TOOL_CATEGORIES: Record<ToolKind, ToolCategory> = {
@@ -97,6 +127,21 @@ const TOOL_CATEGORIES: Record<ToolKind, ToolCategory> = {
   listWorkflowRunArtifacts: "workflow",
   downloadWorkflowArtifact: "web",
   graphql: "git",
+  listDiscussions: "message",
+  getDiscussion: "message",
+  listNotifications: "message",
+  getNotification: "message",
+  listDeployments: "git",
+  getDeployment: "git",
+  listCheckRuns: "workflow",
+  getCheckRun: "workflow",
+  getOrganization: "read",
+  listTeams: "read",
+  getTeam: "read",
+  listGists: "read",
+  getGist: "read",
+  listPackages: "read",
+  getPackage: "read",
 };
 
 const TOOL_FIELDS: Record<ToolKind, string[]> = {
@@ -126,6 +171,21 @@ const TOOL_FIELDS: Record<ToolKind, string[]> = {
   listWorkflowRunArtifacts: ["page", "perPage"],
   downloadWorkflowArtifact: [],
   graphql: [],
+  listDiscussions: ["first", "after", "categoryId", "answered"],
+  getDiscussion: [],
+  listNotifications: ["all", "participating", "since", "before", "page", "perPage"],
+  getNotification: ["threadId"],
+  listDeployments: ["ref", "task", "environment", "page", "perPage"],
+  getDeployment: ["deploymentId"],
+  listCheckRuns: ["ref", "checkName", "status", "filter", "appId", "page", "perPage", "includeOutput"],
+  getCheckRun: ["checkRunId", "includeOutput"],
+  getOrganization: [],
+  listTeams: ["teamType", "page", "perPage"],
+  getTeam: ["teamSlug"],
+  listGists: ["since", "page", "perPage"],
+  getGist: ["gistId", "includeContent"],
+  listPackages: ["ownerType", "packageType", "visibility", "page", "perPage"],
+  getPackage: ["ownerType", "packageType", "packageName"],
 };
 
 const WRITE_KINDS: ReadonlySet<ToolKind> = new Set<ToolKind>([
@@ -208,6 +268,69 @@ function summarize(t: Translate, kind: ToolKind, args: Args): string {
         : t("github.graphql.query");
       return `${t("github.tool.graphql")} · ${operation}`;
     }
+    case "listDiscussions":
+    case "getDiscussion": {
+      const discussionNumber = asNumber(args.number);
+      const discussionTarget = discussionNumber !== null ? `${ownerRepo}#${discussionNumber}` : ownerRepo;
+      return summarizeText(discussionTarget, t(`github.tool.${kind}`));
+    }
+    case "listNotifications": {
+      const scope = [
+        args.all === true ? t("github.field.all") : "",
+        args.participating === true ? t("github.field.participating") : "",
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      return summarizeText(scope, t("github.tool.listNotifications"));
+    }
+    case "getNotification":
+      return summarizeText(asText(args.threadId), t("github.tool.getNotification"));
+    case "listDeployments":
+      return summarizeText(
+        [ownerRepo, asText(args.environment)].filter(Boolean).join(" · "),
+        t("github.tool.listDeployments"),
+      );
+    case "getDeployment": {
+      const deploymentId = asNumber(args.deploymentId);
+      return deploymentId !== null
+        ? `${ownerRepo} · ${t("github.result.deployment")} ${deploymentId}`
+        : ownerRepo || t("github.tool.getDeployment");
+    }
+    case "listCheckRuns":
+      return summarizeText(
+        [ownerRepo, asText(args.ref)].filter(Boolean).join("@"),
+        t("github.tool.listCheckRuns"),
+      );
+    case "getCheckRun": {
+      const checkRunId = asNumber(args.checkRunId);
+      return checkRunId !== null
+        ? `${ownerRepo} · ${t("github.result.checkRun")} ${checkRunId}`
+        : ownerRepo || t("github.tool.getCheckRun");
+    }
+    case "getOrganization":
+    case "listTeams":
+      return summarizeText(asText(args.org), t(`github.tool.${kind}`));
+    case "getTeam":
+      return summarizeText(
+        [asText(args.org), asText(args.teamSlug)].filter(Boolean).join("/"),
+        t("github.tool.getTeam"),
+      );
+    case "listGists":
+      return summarizeText(asText(args.username), t("github.tool.listGists"));
+    case "getGist":
+      return summarizeText(asText(args.gistId), t("github.tool.getGist"));
+    case "listPackages":
+      return summarizeText(
+        [asText(args.owner) || asText(args.ownerType), asText(args.packageType)]
+          .filter(Boolean)
+          .join(" · "),
+        t("github.tool.listPackages"),
+      );
+    case "getPackage":
+      return summarizeText(
+        [asText(args.owner), asText(args.packageName)].filter(Boolean).join("/"),
+        t("github.tool.getPackage"),
+      );
     default:
       return t("github.tool.searchRepositories");
   }

@@ -79,7 +79,22 @@ var TOOL_KINDS = {
   github_get_workflow_run: "getWorkflowRun",
   github_list_workflow_run_artifacts: "listWorkflowRunArtifacts",
   github_download_workflow_artifact: "downloadWorkflowArtifact",
-  github_graphql: "graphql"
+  github_graphql: "graphql",
+  github_list_discussions: "listDiscussions",
+  github_get_discussion: "getDiscussion",
+  github_list_notifications: "listNotifications",
+  github_get_notification: "getNotification",
+  github_list_deployments: "listDeployments",
+  github_get_deployment: "getDeployment",
+  github_list_check_runs: "listCheckRuns",
+  github_get_check_run: "getCheckRun",
+  github_get_organization: "getOrganization",
+  github_list_teams: "listTeams",
+  github_get_team: "getTeam",
+  github_list_gists: "listGists",
+  github_get_gist: "getGist",
+  github_list_packages: "listPackages",
+  github_get_package: "getPackage"
 };
 var TOOL_CATEGORIES = {
   searchRepositories: "git",
@@ -107,7 +122,22 @@ var TOOL_CATEGORIES = {
   getWorkflowRun: "workflow",
   listWorkflowRunArtifacts: "workflow",
   downloadWorkflowArtifact: "web",
-  graphql: "git"
+  graphql: "git",
+  listDiscussions: "message",
+  getDiscussion: "message",
+  listNotifications: "message",
+  getNotification: "message",
+  listDeployments: "git",
+  getDeployment: "git",
+  listCheckRuns: "workflow",
+  getCheckRun: "workflow",
+  getOrganization: "read",
+  listTeams: "read",
+  getTeam: "read",
+  listGists: "read",
+  getGist: "read",
+  listPackages: "read",
+  getPackage: "read"
 };
 var TOOL_FIELDS = {
   searchRepositories: ["page", "perPage"],
@@ -135,7 +165,22 @@ var TOOL_FIELDS = {
   getWorkflowRun: [],
   listWorkflowRunArtifacts: ["page", "perPage"],
   downloadWorkflowArtifact: [],
-  graphql: []
+  graphql: [],
+  listDiscussions: ["first", "after", "categoryId", "answered"],
+  getDiscussion: [],
+  listNotifications: ["all", "participating", "since", "before", "page", "perPage"],
+  getNotification: ["threadId"],
+  listDeployments: ["ref", "task", "environment", "page", "perPage"],
+  getDeployment: ["deploymentId"],
+  listCheckRuns: ["ref", "checkName", "status", "filter", "appId", "page", "perPage", "includeOutput"],
+  getCheckRun: ["checkRunId", "includeOutput"],
+  getOrganization: [],
+  listTeams: ["teamType", "page", "perPage"],
+  getTeam: ["teamSlug"],
+  listGists: ["since", "page", "perPage"],
+  getGist: ["gistId", "includeContent"],
+  listPackages: ["ownerType", "packageType", "visibility", "page", "perPage"],
+  getPackage: ["ownerType", "packageType", "packageName"]
 };
 var WRITE_KINDS = /* @__PURE__ */ new Set([
   "mergePullRequest",
@@ -214,6 +259,61 @@ function summarize(t, kind, args) {
       const operation = /^(?:\s|#[^\r\n]*(?:\r\n|\n|\r|$))*mutation\b/i.test(asText(args.query)) ? t("github.graphql.mutation") : t("github.graphql.query");
       return `${t("github.tool.graphql")} · ${operation}`;
     }
+    case "listDiscussions":
+    case "getDiscussion": {
+      const discussionNumber = asNumber(args.number);
+      const discussionTarget = discussionNumber !== null ? `${ownerRepo}#${discussionNumber}` : ownerRepo;
+      return summarizeText(discussionTarget, t(`github.tool.${kind}`));
+    }
+    case "listNotifications": {
+      const scope = [
+        args.all === true ? t("github.field.all") : "",
+        args.participating === true ? t("github.field.participating") : ""
+      ].filter(Boolean).join(" · ");
+      return summarizeText(scope, t("github.tool.listNotifications"));
+    }
+    case "getNotification":
+      return summarizeText(asText(args.threadId), t("github.tool.getNotification"));
+    case "listDeployments":
+      return summarizeText(
+        [ownerRepo, asText(args.environment)].filter(Boolean).join(" · "),
+        t("github.tool.listDeployments")
+      );
+    case "getDeployment": {
+      const deploymentId = asNumber(args.deploymentId);
+      return deploymentId !== null ? `${ownerRepo} · ${t("github.result.deployment")} ${deploymentId}` : ownerRepo || t("github.tool.getDeployment");
+    }
+    case "listCheckRuns":
+      return summarizeText(
+        [ownerRepo, asText(args.ref)].filter(Boolean).join("@"),
+        t("github.tool.listCheckRuns")
+      );
+    case "getCheckRun": {
+      const checkRunId = asNumber(args.checkRunId);
+      return checkRunId !== null ? `${ownerRepo} · ${t("github.result.checkRun")} ${checkRunId}` : ownerRepo || t("github.tool.getCheckRun");
+    }
+    case "getOrganization":
+    case "listTeams":
+      return summarizeText(asText(args.org), t(`github.tool.${kind}`));
+    case "getTeam":
+      return summarizeText(
+        [asText(args.org), asText(args.teamSlug)].filter(Boolean).join("/"),
+        t("github.tool.getTeam")
+      );
+    case "listGists":
+      return summarizeText(asText(args.username), t("github.tool.listGists"));
+    case "getGist":
+      return summarizeText(asText(args.gistId), t("github.tool.getGist"));
+    case "listPackages":
+      return summarizeText(
+        [asText(args.owner) || asText(args.ownerType), asText(args.packageType)].filter(Boolean).join(" · "),
+        t("github.tool.listPackages")
+      );
+    case "getPackage":
+      return summarizeText(
+        [asText(args.owner), asText(args.packageName)].filter(Boolean).join("/"),
+        t("github.tool.getPackage")
+      );
     default:
       return t("github.tool.searchRepositories");
   }
@@ -764,6 +864,570 @@ function ArtifactDownload({
   )), /* @__PURE__ */ React.createElement("p", { className: "gh-write-warning" }, expiration));
 }
 
+// src/renderer/views/discussions.tsx
+function DiscussionItem({
+  api,
+  discussion,
+  detailed = false
+}) {
+  const { t } = api;
+  const number = asNumber(discussion.number);
+  const title = asText(discussion.title);
+  const category = isRecord(discussion.category) ? asText(discussion.category.name) : "";
+  const author = isRecord(discussion.author) ? asText(discussion.author.login) : "";
+  const comments = isRecord(discussion.comments) ? asNumber(discussion.comments.totalCount) : null;
+  const answered = discussion.isAnswered === true;
+  const upvotes = asNumber(discussion.upvoteCount);
+  const created = asText(discussion.createdAt);
+  const updated = asText(discussion.updatedAt);
+  const body = asText(discussion.body);
+  return /* @__PURE__ */ React.createElement(
+    "article",
+    {
+      className: `gh-item gh-issue-item${detailed ? "" : " gh-item--compact"}`
+    },
+    /* @__PURE__ */ React.createElement("div", { className: "gh-item-head" }, /* @__PURE__ */ React.createElement(
+      OpenButton,
+      {
+        api,
+        url: asText(discussion.url),
+        title,
+        label: /* @__PURE__ */ React.createElement("span", { className: "gh-issue-title" }, /* @__PURE__ */ React.createElement(HostIcon, { api, name: "MessageSquare" }), number !== null ? /* @__PURE__ */ React.createElement("span", { className: "gh-issue-number" }, "#", number) : null, /* @__PURE__ */ React.createElement("span", null, title || t("github.result.discussion"))),
+        className: "gh-link gh-link--strong"
+      }
+    ), /* @__PURE__ */ React.createElement("span", { className: "gh-state-row" }, category ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag gh-tag--muted" }, category) : null, answered ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag" }, t("github.result.answered")) : null)),
+    body ? /* @__PURE__ */ React.createElement("pre", { className: "gh-comment-body" }, body) : null,
+    /* @__PURE__ */ React.createElement("div", { className: "gh-item-foot" }, author ? /* @__PURE__ */ React.createElement("span", { title: t("github.field.author") }, /* @__PURE__ */ React.createElement(HostIcon, { api, name: "User" }), author) : null, upvotes !== null ? /* @__PURE__ */ React.createElement("span", null, t("github.result.upvotes"), ": ", upvotes) : null, comments !== null ? /* @__PURE__ */ React.createElement(
+      "span",
+      {
+        title: t("github.result.comments"),
+        "aria-label": `${t("github.result.comments")}: ${comments}`
+      },
+      /* @__PURE__ */ React.createElement(HostIcon, { api, name: "MessageSquare" }),
+      comments
+    ) : null, detailed && created ? /* @__PURE__ */ React.createElement("time", { dateTime: created }, t("github.result.created", { values: { date: created } })) : null, updated ? /* @__PURE__ */ React.createElement("time", { dateTime: updated }, t("github.result.updated", { values: { date: updated } })) : null)
+  );
+}
+function DiscussionList({
+  api,
+  items
+}) {
+  const { t } = api;
+  const [limit, setLimit] = useState(10);
+  if (!items.length)
+    return /* @__PURE__ */ React.createElement("div", { className: "gh-empty" }, t("github.result.empty"));
+  const visible = items.slice(0, limit);
+  return /* @__PURE__ */ React.createElement("div", { className: "gh-list" }, visible.map((discussion, index) => /* @__PURE__ */ React.createElement(
+    DiscussionItem,
+    {
+      api,
+      discussion,
+      key: `${asNumber(discussion.number) ?? index}`
+    }
+  )), items.length > visible.length ? /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      type: "button",
+      className: "gh-more",
+      onClick: () => setLimit((current) => current + 10)
+    },
+    t("github.action.more"),
+    " · ",
+    items.length - visible.length
+  ) : null);
+}
+function DiscussionDetails({
+  api,
+  discussion
+}) {
+  return /* @__PURE__ */ React.createElement(DiscussionItem, { api, discussion, detailed: true });
+}
+
+// src/renderer/views/notifications.tsx
+function NotificationItem({
+  api,
+  notification
+}) {
+  const { t } = api;
+  const subject = isRecord(notification.subject) ? notification.subject : {};
+  const subjectTitle = asText(subject.title);
+  const subjectType = asText(subject.type);
+  const reason = asText(notification.reason);
+  const unread = notification.unread === true;
+  const repository = isRecord(notification.repository) ? notification.repository : null;
+  const repositoryName = repository ? asText(repository.full_name) : "";
+  const repositoryUrl = repository ? asText(repository.html_url) : "";
+  const updated = asText(notification.updated_at);
+  return /* @__PURE__ */ React.createElement("article", { className: "gh-item gh-issue-item gh-item--compact" }, /* @__PURE__ */ React.createElement("div", { className: "gh-item-head" }, /* @__PURE__ */ React.createElement("span", { className: "gh-issue-title" }, /* @__PURE__ */ React.createElement(HostIcon, { api, name: "Bell" }), /* @__PURE__ */ React.createElement("span", null, subjectTitle || t("github.result.notification"))), /* @__PURE__ */ React.createElement("span", { className: "gh-state-row" }, unread ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag" }, t("github.result.unread")) : null)), /* @__PURE__ */ React.createElement("div", { className: "gh-meta-row" }, subjectType ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag gh-tag--muted" }, t("github.result.subject"), ": ", subjectType) : null, reason ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag gh-tag--muted" }, t("github.result.reason"), ":", " ", t(`github.state.${reason}`, { defaultValue: reason })) : null, repositoryName ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag" }, t("github.result.repository"), ":", " ", /* @__PURE__ */ React.createElement(
+    OpenButton,
+    {
+      api,
+      url: repositoryUrl,
+      label: repositoryName,
+      className: "gh-link"
+    }
+  )) : null), updated ? /* @__PURE__ */ React.createElement("div", { className: "gh-item-foot" }, /* @__PURE__ */ React.createElement("time", { dateTime: updated }, t("github.result.updated", { values: { date: updated } }))) : null);
+}
+function NotificationList({
+  api,
+  items
+}) {
+  const { t } = api;
+  const [limit, setLimit] = useState(10);
+  if (!items.length)
+    return /* @__PURE__ */ React.createElement("div", { className: "gh-empty" }, t("github.result.empty"));
+  const visible = items.slice(0, limit);
+  return /* @__PURE__ */ React.createElement("div", { className: "gh-list" }, visible.map((notification, index) => /* @__PURE__ */ React.createElement(
+    NotificationItem,
+    {
+      api,
+      notification,
+      key: `${asText(notification.id) || index}`
+    }
+  )), items.length > visible.length ? /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      type: "button",
+      className: "gh-more",
+      onClick: () => setLimit((current) => current + 10)
+    },
+    t("github.action.more"),
+    " · ",
+    items.length - visible.length
+  ) : null);
+}
+function NotificationDetails({
+  api,
+  notification
+}) {
+  return /* @__PURE__ */ React.createElement(NotificationItem, { api, notification });
+}
+
+// src/renderer/views/deployments.tsx
+function StateTag2({
+  api,
+  value
+}) {
+  const text = asText(value);
+  if (!text) return null;
+  return /* @__PURE__ */ React.createElement("span", { className: "gh-tag gh-tag--muted" }, api.t(`github.state.${text}`, { defaultValue: text }));
+}
+function DeploymentItem({
+  api,
+  deployment,
+  detailed = false
+}) {
+  const { t } = api;
+  const id = asNumber(deployment.id);
+  const environment = asText(deployment.environment);
+  const task = asText(deployment.task);
+  const ref = asText(deployment.ref);
+  const sha = asText(deployment.sha);
+  const description = asText(deployment.description);
+  const creator = isRecord(deployment.creator) ? asText(deployment.creator.login) : "";
+  const created = asText(deployment.created_at);
+  const updated = asText(deployment.updated_at);
+  const payload = deployment.payload;
+  return /* @__PURE__ */ React.createElement(
+    "article",
+    {
+      className: `gh-item gh-issue-item${detailed ? "" : " gh-item--compact"}`
+    },
+    /* @__PURE__ */ React.createElement("div", { className: "gh-item-head" }, /* @__PURE__ */ React.createElement("span", { className: "gh-issue-title" }, /* @__PURE__ */ React.createElement(HostIcon, { api, name: "Rocket" }), id !== null ? /* @__PURE__ */ React.createElement("span", { className: "gh-issue-number" }, "#", id) : null, /* @__PURE__ */ React.createElement("span", null, t("github.result.deployment"))), /* @__PURE__ */ React.createElement("span", { className: "gh-state-row" }, deployment.production_environment === true ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag" }, t("github.result.production")) : null, deployment.transient_environment === true ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag gh-tag--muted" }, t("github.result.transient")) : null)),
+    description ? /* @__PURE__ */ React.createElement("p", { className: "gh-desc" }, description) : null,
+    /* @__PURE__ */ React.createElement("div", { className: "gh-meta-row" }, environment ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag" }, t("github.result.environment"), ": ", environment) : null, task ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag" }, t("github.result.task"), ": ", task) : null, ref ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag" }, /* @__PURE__ */ React.createElement(HostIcon, { api, name: "GitBranch" }), ref) : null),
+    sha ? /* @__PURE__ */ React.createElement("div", { className: "gh-branch-flow" }, /* @__PURE__ */ React.createElement(HostIcon, { api, name: "GitBranch" }), /* @__PURE__ */ React.createElement("code", { title: sha }, sha.slice(0, 10))) : null,
+    detailed && payload !== void 0 && payload !== null ? /* @__PURE__ */ React.createElement("details", { className: "gh-raw" }, /* @__PURE__ */ React.createElement("summary", null, t("github.result.payload")), /* @__PURE__ */ React.createElement("pre", null, JSON.stringify(payload, null, 2))) : null,
+    /* @__PURE__ */ React.createElement("div", { className: "gh-item-foot" }, creator ? /* @__PURE__ */ React.createElement("span", { title: t("github.field.author") }, /* @__PURE__ */ React.createElement(HostIcon, { api, name: "User" }), creator) : null, created ? /* @__PURE__ */ React.createElement("time", { dateTime: created }, t("github.result.created", { values: { date: created } })) : null, updated ? /* @__PURE__ */ React.createElement("time", { dateTime: updated }, t("github.result.updated", { values: { date: updated } })) : null)
+  );
+}
+function DeploymentList({
+  api,
+  items
+}) {
+  const { t } = api;
+  const [limit, setLimit] = useState(10);
+  if (!items.length)
+    return /* @__PURE__ */ React.createElement("div", { className: "gh-empty" }, t("github.result.empty"));
+  const visible = items.slice(0, limit);
+  return /* @__PURE__ */ React.createElement("div", { className: "gh-list" }, visible.map((deployment, index) => /* @__PURE__ */ React.createElement(
+    DeploymentItem,
+    {
+      api,
+      deployment,
+      key: `${asNumber(deployment.id) ?? index}`
+    }
+  )), items.length > visible.length ? /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      type: "button",
+      className: "gh-more",
+      onClick: () => setLimit((current) => current + 10)
+    },
+    t("github.action.more"),
+    " · ",
+    items.length - visible.length
+  ) : null);
+}
+function DeploymentDetails({
+  api,
+  deployment
+}) {
+  return /* @__PURE__ */ React.createElement(DeploymentItem, { api, deployment, detailed: true });
+}
+function CheckRunItem({
+  api,
+  checkRun,
+  detailed = false
+}) {
+  const { t } = api;
+  const id = asNumber(checkRun.id);
+  const name = asText(checkRun.name);
+  const headSha = asText(checkRun.head_sha);
+  const app = isRecord(checkRun.app) ? asText(checkRun.app.slug) : "";
+  const checkSuite = isRecord(checkRun.check_suite) ? asNumber(checkRun.check_suite.id) : null;
+  const output = isRecord(checkRun.output) ? checkRun.output : {};
+  const outputTitle = asText(output.title);
+  const summary = asText(output.summary);
+  const text = asText(output.text);
+  const annotations = asNumber(output.annotations_count);
+  const started = asText(checkRun.started_at);
+  const completed = asText(checkRun.completed_at);
+  const detailsUrl = asText(checkRun.details_url);
+  return /* @__PURE__ */ React.createElement(
+    "article",
+    {
+      className: `gh-item gh-issue-item${detailed ? "" : " gh-item--compact"}`
+    },
+    /* @__PURE__ */ React.createElement("div", { className: "gh-item-head" }, /* @__PURE__ */ React.createElement(
+      OpenButton,
+      {
+        api,
+        url: asText(checkRun.html_url),
+        title: name,
+        label: /* @__PURE__ */ React.createElement("span", { className: "gh-issue-title" }, /* @__PURE__ */ React.createElement(HostIcon, { api, name: "CircleCheck" }), id !== null ? /* @__PURE__ */ React.createElement("span", { className: "gh-issue-number" }, "#", id) : null, /* @__PURE__ */ React.createElement("span", null, name || t("github.result.checkRun"))),
+        className: "gh-link gh-link--strong"
+      }
+    ), /* @__PURE__ */ React.createElement("span", { className: "gh-state-row" }, /* @__PURE__ */ React.createElement(StateTag2, { api, value: checkRun.status }), /* @__PURE__ */ React.createElement(StateTag2, { api, value: checkRun.conclusion }))),
+    /* @__PURE__ */ React.createElement("div", { className: "gh-meta-row" }, outputTitle ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag" }, truncate(outputTitle, 120)) : null, app ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag gh-tag--muted" }, t("github.result.app"), ": ", app) : null, checkSuite !== null ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag gh-tag--muted" }, t("github.result.checkSuite"), ": ", checkSuite) : null, annotations !== null ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag gh-tag--muted" }, t("github.result.annotations"), ": ", annotations) : null, detailed && detailsUrl ? /* @__PURE__ */ React.createElement(
+      OpenButton,
+      {
+        api,
+        url: detailsUrl,
+        label: t("github.action.open"),
+        className: "gh-link"
+      }
+    ) : null),
+    headSha ? /* @__PURE__ */ React.createElement("div", { className: "gh-branch-flow" }, /* @__PURE__ */ React.createElement(HostIcon, { api, name: "GitBranch" }), /* @__PURE__ */ React.createElement("code", { title: headSha }, headSha.slice(0, 10))) : null,
+    detailed && summary ? /* @__PURE__ */ React.createElement("pre", { className: "gh-comment-body" }, summary) : null,
+    detailed && text ? /* @__PURE__ */ React.createElement("details", { className: "gh-raw" }, /* @__PURE__ */ React.createElement("summary", null, t("github.result.output")), /* @__PURE__ */ React.createElement("pre", null, text)) : null,
+    /* @__PURE__ */ React.createElement("div", { className: "gh-item-foot" }, started ? /* @__PURE__ */ React.createElement("time", { dateTime: started }, t("github.result.started", { values: { date: started } })) : null, completed ? /* @__PURE__ */ React.createElement("time", { dateTime: completed }, t("github.result.completed", { values: { date: completed } })) : null)
+  );
+}
+function CheckRunList({
+  api,
+  items
+}) {
+  const { t } = api;
+  const [limit, setLimit] = useState(10);
+  if (!items.length)
+    return /* @__PURE__ */ React.createElement("div", { className: "gh-empty" }, t("github.result.empty"));
+  const visible = items.slice(0, limit);
+  return /* @__PURE__ */ React.createElement("div", { className: "gh-list" }, visible.map((checkRun, index) => /* @__PURE__ */ React.createElement(
+    CheckRunItem,
+    {
+      api,
+      checkRun,
+      key: `${asNumber(checkRun.id) ?? index}`
+    }
+  )), items.length > visible.length ? /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      type: "button",
+      className: "gh-more",
+      onClick: () => setLimit((current) => current + 10)
+    },
+    t("github.action.more"),
+    " · ",
+    items.length - visible.length
+  ) : null);
+}
+function CheckRunDetails({
+  api,
+  checkRun
+}) {
+  return /* @__PURE__ */ React.createElement(CheckRunItem, { api, checkRun, detailed: true });
+}
+
+// src/renderer/views/organizations.tsx
+function OrganizationDetails({
+  api,
+  organization
+}) {
+  const { t } = api;
+  const login = asText(organization.login);
+  const name = asText(organization.name);
+  const description = asText(organization.description);
+  const type = asText(organization.type);
+  const company = asText(organization.company);
+  const location = asText(organization.location);
+  const email = asText(organization.email);
+  const twitter = asText(organization.twitter_username);
+  const blog = asText(organization.blog);
+  const blogUrl = safeUrl(blog);
+  const repos = asNumber(organization.public_repos);
+  const gists = asNumber(organization.public_gists);
+  const followers = asNumber(organization.followers);
+  const created = asText(organization.created_at);
+  const updated = asText(organization.updated_at);
+  return /* @__PURE__ */ React.createElement("article", { className: "gh-item gh-issue-item" }, /* @__PURE__ */ React.createElement("div", { className: "gh-item-head" }, /* @__PURE__ */ React.createElement(
+    OpenButton,
+    {
+      api,
+      url: asText(organization.html_url),
+      title: name || login,
+      label: /* @__PURE__ */ React.createElement("span", { className: "gh-issue-title" }, /* @__PURE__ */ React.createElement(HostIcon, { api, name: "Building2" }), /* @__PURE__ */ React.createElement("span", null, name || login || t("github.result.organization"))),
+      className: "gh-link gh-link--strong"
+    }
+  ), /* @__PURE__ */ React.createElement("span", { className: "gh-state-row" }, type ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag gh-tag--muted" }, type) : null, organization.is_verified === true ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag" }, t("github.result.verified")) : null)), description ? /* @__PURE__ */ React.createElement("p", { className: "gh-desc" }, description) : null, /* @__PURE__ */ React.createElement("div", { className: "gh-meta-row" }, repos !== null ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag" }, t("github.result.repos"), ": ", repos) : null, gists !== null ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag" }, t("github.result.gists"), ": ", gists) : null, followers !== null ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag" }, t("github.result.followers"), ": ", followers) : null, company ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag" }, t("github.result.company"), ": ", company) : null, location ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag" }, t("github.result.location"), ": ", location) : null, email ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag" }, t("github.result.email"), ": ", email) : null, twitter ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag" }, "@", twitter) : null, blogUrl ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag" }, t("github.result.blog"), ":", " ", /* @__PURE__ */ React.createElement(
+    OpenButton,
+    {
+      api,
+      url: blogUrl,
+      label: blogUrl.replace(/^https?:\/\//, ""),
+      className: "gh-link"
+    }
+  )) : blog ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag" }, t("github.result.blog"), ": ", blog) : null), /* @__PURE__ */ React.createElement("div", { className: "gh-item-foot" }, created ? /* @__PURE__ */ React.createElement("time", { dateTime: created }, t("github.result.created", { values: { date: created } })) : null, updated ? /* @__PURE__ */ React.createElement("time", { dateTime: updated }, t("github.result.updated", { values: { date: updated } })) : null));
+}
+function TeamItem({
+  api,
+  team,
+  detailed = false
+}) {
+  const { t } = api;
+  const name = asText(team.name);
+  const slug = asText(team.slug);
+  const description = asText(team.description);
+  const privacy = asText(team.privacy);
+  const permission = asText(team.permission);
+  const notificationSetting = asText(team.notification_setting);
+  const members = asNumber(team.members_count);
+  const repos = asNumber(team.repos_count);
+  const organization = isRecord(team.organization) ? asText(team.organization.login) : "";
+  const parent = isRecord(team.parent) ? asText(team.parent.name) || asText(team.parent.slug) : "";
+  const created = asText(team.created_at);
+  const updated = asText(team.updated_at);
+  return /* @__PURE__ */ React.createElement(
+    "article",
+    {
+      className: `gh-item gh-issue-item${detailed ? "" : " gh-item--compact"}`
+    },
+    /* @__PURE__ */ React.createElement("div", { className: "gh-item-head" }, /* @__PURE__ */ React.createElement("span", { className: "gh-issue-title" }, /* @__PURE__ */ React.createElement(HostIcon, { api, name: "Users" }), /* @__PURE__ */ React.createElement("span", null, name || slug || t("github.result.team"))), /* @__PURE__ */ React.createElement("span", { className: "gh-state-row" }, slug ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag gh-tag--muted" }, slug) : null)),
+    description ? /* @__PURE__ */ React.createElement("p", { className: "gh-desc" }, truncate(description, 180)) : null,
+    /* @__PURE__ */ React.createElement("div", { className: "gh-meta-row" }, privacy ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag" }, t("github.result.privacy"), ": ", privacy) : null, permission ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag" }, t("github.result.permission"), ": ", permission) : null, members !== null ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag" }, t("github.result.members"), ": ", members) : null, repos !== null ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag" }, t("github.result.repos"), ": ", repos) : null, detailed && notificationSetting ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag gh-tag--muted" }, t("github.result.notificationSetting"), ": ", notificationSetting) : null, detailed && organization ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag gh-tag--muted" }, t("github.result.organization"), ": ", organization) : null, detailed && parent ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag gh-tag--muted" }, t("github.result.parentTeam"), ": ", parent) : null),
+    /* @__PURE__ */ React.createElement("div", { className: "gh-item-foot" }, detailed && created ? /* @__PURE__ */ React.createElement("time", { dateTime: created }, t("github.result.created", { values: { date: created } })) : null, updated ? /* @__PURE__ */ React.createElement("time", { dateTime: updated }, t("github.result.updated", { values: { date: updated } })) : null)
+  );
+}
+function TeamList({
+  api,
+  items
+}) {
+  const { t } = api;
+  const [limit, setLimit] = useState(10);
+  if (!items.length)
+    return /* @__PURE__ */ React.createElement("div", { className: "gh-empty" }, t("github.result.empty"));
+  const visible = items.slice(0, limit);
+  return /* @__PURE__ */ React.createElement("div", { className: "gh-list" }, visible.map((team, index) => /* @__PURE__ */ React.createElement(
+    TeamItem,
+    {
+      api,
+      team,
+      key: `${asText(team.slug) || asNumber(team.id) || index}`
+    }
+  )), items.length > visible.length ? /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      type: "button",
+      className: "gh-more",
+      onClick: () => setLimit((current) => current + 10)
+    },
+    t("github.action.more"),
+    " · ",
+    items.length - visible.length
+  ) : null);
+}
+function TeamDetails({
+  api,
+  team
+}) {
+  return /* @__PURE__ */ React.createElement(TeamItem, { api, team, detailed: true });
+}
+
+// src/renderer/views/gists.tsx
+var gistFiles = (gist) => isRecord(gist.files) ? Object.values(gist.files).filter(isRecord) : [];
+function GistItem({
+  api,
+  gist,
+  detailed = false
+}) {
+  const { t } = api;
+  const id = asText(gist.id);
+  const description = asText(gist.description);
+  const owner = isRecord(gist.owner) ? asText(gist.owner.login) : "";
+  const files = gistFiles(gist);
+  const comments = asNumber(gist.comments);
+  const created = asText(gist.created_at);
+  const updated = asText(gist.updated_at);
+  return /* @__PURE__ */ React.createElement(
+    "article",
+    {
+      className: `gh-item gh-issue-item${detailed ? "" : " gh-item--compact"}`
+    },
+    /* @__PURE__ */ React.createElement("div", { className: "gh-item-head" }, /* @__PURE__ */ React.createElement(
+      OpenButton,
+      {
+        api,
+        url: asText(gist.html_url),
+        title: description,
+        label: /* @__PURE__ */ React.createElement("span", { className: "gh-issue-title" }, /* @__PURE__ */ React.createElement(HostIcon, { api, name: "FileCode2" }), /* @__PURE__ */ React.createElement("span", null, description ? truncate(description, 120) : t("github.result.gist"))),
+        className: "gh-link gh-link--strong"
+      }
+    ), /* @__PURE__ */ React.createElement("span", { className: "gh-state-row" }, /* @__PURE__ */ React.createElement("span", { className: "gh-tag" }, t(
+      gist.public === true ? "github.result.public" : "github.result.private"
+    )))),
+    /* @__PURE__ */ React.createElement("div", { className: "gh-meta-row" }, id ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag gh-tag--muted" }, /* @__PURE__ */ React.createElement("code", null, id)) : null, /* @__PURE__ */ React.createElement("span", { className: "gh-tag" }, t("github.result.files"), ": ", files.length), comments !== null ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag" }, t("github.result.comments"), ": ", comments) : null),
+    /* @__PURE__ */ React.createElement("div", { className: "gh-item-foot" }, owner ? /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement(HostIcon, { api, name: "User" }), owner) : null, detailed && created ? /* @__PURE__ */ React.createElement("time", { dateTime: created }, t("github.result.created", { values: { date: created } })) : null, updated ? /* @__PURE__ */ React.createElement("time", { dateTime: updated }, t("github.result.updated", { values: { date: updated } })) : null)
+  );
+}
+function GistList({
+  api,
+  items
+}) {
+  const { t } = api;
+  const [limit, setLimit] = useState(10);
+  if (!items.length)
+    return /* @__PURE__ */ React.createElement("div", { className: "gh-empty" }, t("github.result.empty"));
+  const visible = items.slice(0, limit);
+  return /* @__PURE__ */ React.createElement("div", { className: "gh-list" }, visible.map((gist, index) => /* @__PURE__ */ React.createElement(
+    GistItem,
+    {
+      api,
+      gist,
+      key: `${asText(gist.id) || index}`
+    }
+  )), items.length > visible.length ? /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      type: "button",
+      className: "gh-more",
+      onClick: () => setLimit((current) => current + 10)
+    },
+    t("github.action.more"),
+    " · ",
+    items.length - visible.length
+  ) : null);
+}
+function GistDetails({
+  api,
+  gist
+}) {
+  const { t } = api;
+  const files = gistFiles(gist);
+  return /* @__PURE__ */ React.createElement("div", { className: "gh-list" }, /* @__PURE__ */ React.createElement(GistItem, { api, gist, detailed: true }), files.map((file, index) => {
+    const filename = asText(file.filename);
+    const language = asText(file.language);
+    const size = asNumber(file.size);
+    const content = asText(file.content);
+    return /* @__PURE__ */ React.createElement(
+      "article",
+      {
+        className: "gh-item gh-item--compact",
+        key: `${filename}-${index}`
+      },
+      /* @__PURE__ */ React.createElement("div", { className: "gh-item-head" }, /* @__PURE__ */ React.createElement(
+        OpenButton,
+        {
+          api,
+          url: asText(file.raw_url),
+          title: filename,
+          label: /* @__PURE__ */ React.createElement("span", { className: "gh-issue-title" }, /* @__PURE__ */ React.createElement(HostIcon, { api, name: "FileCode2" }), /* @__PURE__ */ React.createElement("span", null, filename || t("github.result.file"))),
+          className: "gh-link gh-link--strong"
+        }
+      ), /* @__PURE__ */ React.createElement("span", { className: "gh-state-row" }, language ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag gh-tag--muted" }, language) : null, size !== null ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag gh-tag--muted" }, t("github.result.size"), ": ", size.toLocaleString()) : null)),
+      content ? /* @__PURE__ */ React.createElement("pre", { className: "gh-comment-body" }, truncate(content, 4e3)) : null
+    );
+  }));
+}
+
+// src/renderer/views/packages.tsx
+function PackageItem({
+  api,
+  manifest,
+  detailed = false
+}) {
+  const { t } = api;
+  const id = asNumber(manifest.id);
+  const name = asText(manifest.name);
+  const packageType = asText(manifest.package_type);
+  const owner = isRecord(manifest.owner) ? asText(manifest.owner.login) : "";
+  const versions = asNumber(manifest.version_count);
+  const visibility = asText(manifest.visibility);
+  const created = asText(manifest.created_at);
+  const updated = asText(manifest.updated_at);
+  return /* @__PURE__ */ React.createElement(
+    "article",
+    {
+      className: `gh-item gh-issue-item${detailed ? "" : " gh-item--compact"}`
+    },
+    /* @__PURE__ */ React.createElement("div", { className: "gh-item-head" }, /* @__PURE__ */ React.createElement(
+      OpenButton,
+      {
+        api,
+        url: asText(manifest.html_url),
+        title: name,
+        label: /* @__PURE__ */ React.createElement("span", { className: "gh-issue-title" }, /* @__PURE__ */ React.createElement(HostIcon, { api, name: "Package" }), /* @__PURE__ */ React.createElement("span", null, name || t("github.result.package"))),
+        className: "gh-link gh-link--strong"
+      }
+    )),
+    /* @__PURE__ */ React.createElement("div", { className: "gh-meta-row" }, packageType ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag gh-tag--muted" }, packageType) : null, visibility ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag" }, t("github.result.visibility"), ":", " ", t(`github.state.${visibility}`, { defaultValue: visibility })) : null, versions !== null ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag" }, t("github.result.versionCount"), ": ", versions) : null, owner ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag" }, t("github.field.owner"), ": ", owner) : null, detailed && id !== null ? /* @__PURE__ */ React.createElement("span", { className: "gh-tag gh-tag--muted" }, "#", id) : null),
+    /* @__PURE__ */ React.createElement("div", { className: "gh-item-foot" }, detailed && created ? /* @__PURE__ */ React.createElement("time", { dateTime: created }, t("github.result.created", { values: { date: created } })) : null, updated ? /* @__PURE__ */ React.createElement("time", { dateTime: updated }, t("github.result.updated", { values: { date: updated } })) : null)
+  );
+}
+function PackageList({
+  api,
+  items
+}) {
+  const { t } = api;
+  const [limit, setLimit] = useState(10);
+  if (!items.length)
+    return /* @__PURE__ */ React.createElement("div", { className: "gh-empty" }, t("github.result.empty"));
+  const visible = items.slice(0, limit);
+  return /* @__PURE__ */ React.createElement("div", { className: "gh-list" }, visible.map((manifest, index) => /* @__PURE__ */ React.createElement(
+    PackageItem,
+    {
+      api,
+      manifest,
+      key: `${asNumber(manifest.id) ?? index}`
+    }
+  )), items.length > visible.length ? /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      type: "button",
+      className: "gh-more",
+      onClick: () => setLimit((current) => current + 10)
+    },
+    t("github.action.more"),
+    " · ",
+    items.length - visible.length
+  ) : null);
+}
+function PackageDetails({
+  api,
+  manifest
+}) {
+  return /* @__PURE__ */ React.createElement(PackageItem, { api, manifest, detailed: true });
+}
+
 // src/renderer/views/writes.tsx
 function writeBadge(t, kind, record) {
   if (kind === "mergePullRequest") {
@@ -902,6 +1566,51 @@ function ResultView({
   }
   if (kind === "downloadWorkflowArtifact" && isRecord(payload)) {
     return /* @__PURE__ */ React.createElement(ArtifactDownload, { api, payload });
+  }
+  if (kind === "listDiscussions" && items) {
+    return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(DiscussionList, { api, items }), pagination);
+  }
+  if (kind === "getDiscussion" && isRecord(payload)) {
+    return /* @__PURE__ */ React.createElement(DiscussionDetails, { api, discussion: payload });
+  }
+  if (kind === "listNotifications" && items) {
+    return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(NotificationList, { api, items }), pagination);
+  }
+  if (kind === "getNotification" && isRecord(payload)) {
+    return /* @__PURE__ */ React.createElement(NotificationDetails, { api, notification: payload });
+  }
+  if (kind === "listDeployments" && items) {
+    return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(DeploymentList, { api, items }), pagination);
+  }
+  if (kind === "getDeployment" && isRecord(payload)) {
+    return /* @__PURE__ */ React.createElement(DeploymentDetails, { api, deployment: payload });
+  }
+  if (kind === "listCheckRuns" && items) {
+    return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(CheckRunList, { api, items }), pagination);
+  }
+  if (kind === "getCheckRun" && isRecord(payload)) {
+    return /* @__PURE__ */ React.createElement(CheckRunDetails, { api, checkRun: payload });
+  }
+  if (kind === "getOrganization" && isRecord(payload)) {
+    return /* @__PURE__ */ React.createElement(OrganizationDetails, { api, organization: payload });
+  }
+  if (kind === "listTeams" && items) {
+    return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(TeamList, { api, items }), pagination);
+  }
+  if (kind === "getTeam" && isRecord(payload)) {
+    return /* @__PURE__ */ React.createElement(TeamDetails, { api, team: payload });
+  }
+  if (kind === "listGists" && items) {
+    return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(GistList, { api, items }), pagination);
+  }
+  if (kind === "getGist" && isRecord(payload)) {
+    return /* @__PURE__ */ React.createElement(GistDetails, { api, gist: payload });
+  }
+  if (kind === "listPackages" && items) {
+    return /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(PackageList, { api, items }), pagination);
+  }
+  if (kind === "getPackage" && isRecord(payload)) {
+    return /* @__PURE__ */ React.createElement(PackageDetails, { api, manifest: payload });
   }
   return /* @__PURE__ */ React.createElement(RawBlock, { t, payload });
 }

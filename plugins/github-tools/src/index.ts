@@ -7,6 +7,12 @@ import { registerPullRequests } from "./tools/pull-requests";
 import { registerReleasesAndFiles } from "./tools/releases-and-files";
 import { registerWorkflows } from "./tools/workflows";
 import { registerGraphQL } from "./tools/graphql";
+import { registerDiscussions } from "./tools/discussions";
+import { registerNotifications } from "./tools/notifications";
+import { registerDeployments } from "./tools/deployments";
+import { registerOrganizations } from "./tools/organizations";
+import { registerGists } from "./tools/gists";
+import { registerPackages } from "./tools/packages";
 
 const server = new McpServer({ name: "github-tools", version });
 registerRepositories(server);
@@ -15,6 +21,12 @@ registerPullRequests(server);
 registerReleasesAndFiles(server);
 registerWorkflows(server);
 registerGraphQL(server);
+registerDiscussions(server);
+registerNotifications(server);
+registerDeployments(server);
+registerOrganizations(server);
+registerGists(server);
+registerPackages(server);
 
 await server.connect(new StdioServerTransport());
 console.error("[github-tools] MCP server ready over stdio");

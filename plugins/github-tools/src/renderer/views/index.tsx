@@ -11,6 +11,12 @@ import { CommitDetails, CommitList } from "./commits";
 import { DirectoryList, FileView, CodeList } from "./files";
 import { PullRequestDetails, PullRequestList } from "./pull-requests";
 import { ArtifactDownload, ArtifactList, WorkflowRunDetails, WorkflowRunList } from "./actions";
+import { DiscussionDetails, DiscussionList } from "./discussions";
+import { NotificationDetails, NotificationList } from "./notifications";
+import { CheckRunDetails, CheckRunList, DeploymentDetails, DeploymentList } from "./deployments";
+import { OrganizationDetails, TeamDetails, TeamList } from "./organizations";
+import { GistDetails, GistList } from "./gists";
+import { PackageDetails, PackageList } from "./packages";
 import { WriteResult } from "./writes";
 
 export function ResultView({
@@ -74,6 +80,51 @@ export function ResultView({
   }
   if (kind === "downloadWorkflowArtifact" && isRecord(payload)) {
     return <ArtifactDownload api={api} payload={payload} />;
+  }
+  if (kind === "listDiscussions" && items) {
+    return <><DiscussionList api={api} items={items} />{pagination}</>;
+  }
+  if (kind === "getDiscussion" && isRecord(payload)) {
+    return <DiscussionDetails api={api} discussion={payload} />;
+  }
+  if (kind === "listNotifications" && items) {
+    return <><NotificationList api={api} items={items} />{pagination}</>;
+  }
+  if (kind === "getNotification" && isRecord(payload)) {
+    return <NotificationDetails api={api} notification={payload} />;
+  }
+  if (kind === "listDeployments" && items) {
+    return <><DeploymentList api={api} items={items} />{pagination}</>;
+  }
+  if (kind === "getDeployment" && isRecord(payload)) {
+    return <DeploymentDetails api={api} deployment={payload} />;
+  }
+  if (kind === "listCheckRuns" && items) {
+    return <><CheckRunList api={api} items={items} />{pagination}</>;
+  }
+  if (kind === "getCheckRun" && isRecord(payload)) {
+    return <CheckRunDetails api={api} checkRun={payload} />;
+  }
+  if (kind === "getOrganization" && isRecord(payload)) {
+    return <OrganizationDetails api={api} organization={payload} />;
+  }
+  if (kind === "listTeams" && items) {
+    return <><TeamList api={api} items={items} />{pagination}</>;
+  }
+  if (kind === "getTeam" && isRecord(payload)) {
+    return <TeamDetails api={api} team={payload} />;
+  }
+  if (kind === "listGists" && items) {
+    return <><GistList api={api} items={items} />{pagination}</>;
+  }
+  if (kind === "getGist" && isRecord(payload)) {
+    return <GistDetails api={api} gist={payload} />;
+  }
+  if (kind === "listPackages" && items) {
+    return <><PackageList api={api} items={items} />{pagination}</>;
+  }
+  if (kind === "getPackage" && isRecord(payload)) {
+    return <PackageDetails api={api} manifest={payload} />;
   }
   return <RawBlock t={t} payload={payload} />;
 }

@@ -1,6 +1,6 @@
 # 工具操作地图
 
-以下列出插件全部 **26 个**工具操作标识及用途，不复制完整参数 schema。`github_*` 是供 `toolsearch-discover` 检索的操作标识，不是完整公开名；真实名称与参数契约以发现结果为准。
+以下列出插件全部 **41 个**工具操作标识及用途，不复制完整参数 schema。`github_*` 是供 `toolsearch-discover` 检索的操作标识，不是完整公开名；真实名称与参数契约以发现结果为准。
 
 ## REST 读取
 
@@ -39,6 +39,36 @@
 - `github_get_workflow_run`：按真实 `runId` 读取单次运行。
 - `github_list_workflow_run_artifacts`：按运行 ID 和真实 Link 分页列构件名称、大小、过期信息及 API `archive_download_url`。
 - `github_download_workflow_artifact`：按真实 `artifactId` 只解析官方 302 的 HTTPS Location。得到一分钟有效的 URL，不跟随、不写文件；URL 会作为当前工具结果交付并进入展示链，只在用户点击时打开。
+
+## 讨论（GraphQL）
+
+- `github_list_discussions`：按更新时间倒序列出仓库讨论；`first`/`after` 游标分页，可选 `categoryId`、`answered`。必须认证。
+- `github_get_discussion`：读取单个讨论的正文、作者、分类、是否已回答、票数与评论总数。必须认证。
+
+## 通知
+
+- `github_list_notifications`：列出当前用户通知，支持 `all`、`participating`、`since`、`before`；`per_page` 上限 50。必须认证。
+- `github_get_notification`：读取单个通知 thread。必须认证。
+
+## 部署与 check run
+
+- `github_list_deployments`：按 `sha`、`ref`、`task`、`environment` 列出仓库部署。
+- `github_get_deployment`：读取单个部署。
+- `github_list_check_runs`：按 ref 列出 check run，支持 `check_name`、`status`、`filter`、`app_id`；默认不含 `output.summary/text`，需要时 `includeOutput: true`。
+- `github_get_check_run`：读取单个 check run；默认返回输出标题与注解计数，`includeOutput: true` 时附带摘要与正文。
+
+## 组织与团队
+
+- `github_get_organization`：读取组织公开资料。
+- `github_list_teams`：列出组织团队，支持 `team_type`。必须认证。
+- `github_get_team`：按 slug 读取团队。必须认证。
+
+## Gist 与软件包
+
+- `github_list_gists`：列出用户 Gist。
+- `github_get_gist`：读取单个 Gist；默认不返回文件内容，`includeContent: true` 时返回，单文件最多 1MB。
+- `github_list_packages`：按 `ownerType`（authenticated/user/org）与 `packageType` 列出软件包；必须认证。
+- `github_get_package`：读取单个软件包；必须认证。
 
 ## GraphQL
 

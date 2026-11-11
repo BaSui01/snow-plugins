@@ -21562,7 +21562,7 @@ var StdioServerTransport = class {
 };
 
 // plugin.json
-var version2 = "0.4.1";
+var version2 = "0.5.2";
 
 // src/github/auth.ts
 import { execFile } from "node:child_process";
@@ -22820,6 +22820,680 @@ function registerGraphQL(server2) {
   );
 }
 
+// src/tools/discussions.ts
+var discussionSummary = external_exports.object({
+  number: external_exports.number(),
+  title: external_exports.string(),
+  url: external_exports.string(),
+  createdAt: external_exports.string(),
+  updatedAt: external_exports.string(),
+  isAnswered: external_exports.boolean().nullable(),
+  author: external_exports.object({ login: external_exports.string() }).nullable(),
+  category: external_exports.object({ name: external_exports.string(), slug: external_exports.string() }),
+  comments: external_exports.object({ totalCount: external_exports.number() })
+});
+var discussionDetail = discussionSummary.extend({
+  body: external_exports.string(),
+  bodyText: external_exports.string(),
+  upvoteCount: external_exports.number(),
+  answer: external_exports.object({ id: external_exports.string() }).nullable()
+});
+var discussionListResponse = external_exports.object({
+  repository: external_exports.object({
+    discussions: external_exports.object({
+      totalCount: external_exports.number(),
+      pageInfo: external_exports.object({ hasNextPage: external_exports.boolean(), endCursor: external_exports.string().nullable() }),
+      nodes: external_exports.array(discussionSummary)
+    })
+  }).nullable()
+});
+var discussionDetailResponse = external_exports.object({
+  repository: external_exports.object({ discussion: discussionDetail.nullable() }).nullable()
+});
+var listDiscussionsQuery = `
+  query ListDiscussions($owner: String!, $name: String!, $first: Int!, $after: String, $categoryId: ID, $answered: Boolean) {
+    repository(owner: $owner, name: $name) {
+      discussions(
+        first: $first
+        after: $after
+        categoryId: $categoryId
+        answered: $answered
+        orderBy: { field: UPDATED_AT, direction: DESC }
+      ) {
+        totalCount
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          number
+          title
+          url
+          createdAt
+          updatedAt
+          isAnswered
+          author { login }
+          category { name slug }
+          comments { totalCount }
+        }
+      }
+    }
+  }
+`;
+var getDiscussionQuery = `
+  query GetDiscussion($owner: String!, $name: String!, $number: Int!) {
+    repository(owner: $owner, name: $name) {
+      discussion(number: $number) {
+        number
+        title
+        url
+        body
+        bodyText
+        createdAt
+        updatedAt
+        isAnswered
+        upvoteCount
+        author { login }
+        category { name slug }
+        comments { totalCount }
+        answer { id }
+      }
+    }
+  }
+`;
+function registerDiscussions(server2) {
+  server2.registerTool(
+    "github_list_discussions",
+    {
+      title: "List GitHub discussions",
+      description: "List repository discussions ordered by last update, with answered state, author, category and comment counts. Supports category and answered filters with cursor pagination.",
+      inputSchema: {
+        owner: external_exports.string().min(1).describe("Repository owner"),
+        repo: external_exports.string().min(1).describe("Repository name"),
+        first: external_exports.number().int().min(1).max(100).default(20).describe("Number of discussions to return (1-100)"),
+        after: external_exports.string().min(1).optional().describe("Cursor from a previous page's endCursor"),
+        categoryId: external_exports.string().min(1).optional().describe("Only discussions in this discussion category ID"),
+        answered: external_exports.boolean().optional().describe("Only answered or only unanswered discussions")
+      }
+    },
+    ({ owner, repo, first, after, categoryId, answered }) => run(async () => {
+      const payload = await githubGraphQL(
+        listDiscussionsQuery,
+        {
+          owner,
+          name: repo,
+          first,
+          ...after !== void 0 ? { after } : {},
+          ...categoryId !== void 0 ? { categoryId } : {},
+          ...answered !== void 0 ? { answered } : {}
+        },
+        discussionListResponse
+      );
+      if (!payload.repository) {
+        throw new Error(`GitHub repository ${owner}/${repo} was not found or is not accessible.`);
+      }
+      const { discussions } = payload.repository;
+      return {
+        totalCount: discussions.totalCount,
+        items: discussions.nodes,
+        pagination: discussions.pageInfo
+      };
+    })
+  );
+  server2.registerTool(
+    "github_get_discussion",
+    {
+      title: "Get a GitHub discussion",
+      description: "Read one discussion with its full body, body text, category, author, upvotes, answered state and comment count.",
+      inputSchema: {
+        owner: external_exports.string().min(1).describe("Repository owner"),
+        repo: external_exports.string().min(1).describe("Repository name"),
+        number: external_exports.number().int().positive().describe("Discussion number")
+      }
+    },
+    ({ owner, repo, number: number3 }) => run(async () => {
+      const payload = await githubGraphQL(
+        getDiscussionQuery,
+        { owner, name: repo, number: number3 },
+        discussionDetailResponse
+      );
+      if (!payload.repository) {
+        throw new Error(`GitHub repository ${owner}/${repo} was not found or is not accessible.`);
+      }
+      const { discussion } = payload.repository;
+      if (!discussion) {
+        throw new Error(`GitHub discussion #${number3} was not found in ${owner}/${repo}.`);
+      }
+      return discussion;
+    })
+  );
+}
+
+// src/tools/notifications.ts
+var notificationResponse = external_exports.object({
+  id: external_exports.string(),
+  unread: external_exports.boolean(),
+  reason: external_exports.string(),
+  updated_at: external_exports.string(),
+  last_read_at: external_exports.string().nullable(),
+  url: external_exports.string(),
+  subscription_url: external_exports.string(),
+  subject: external_exports.object({
+    title: external_exports.string(),
+    url: external_exports.string().nullable(),
+    latest_comment_url: external_exports.string().nullable(),
+    type: external_exports.string()
+  }),
+  repository: external_exports.object({ full_name: external_exports.string(), html_url: external_exports.string() }).nullable()
+});
+function registerNotifications(server2) {
+  server2.registerTool(
+    "github_list_notifications",
+    {
+      title: "List GitHub notifications",
+      description: "List the authenticated user's notification threads with reason, unread state and subject. Requires authentication and returns Link-based pagination.",
+      inputSchema: {
+        all: external_exports.boolean().optional().describe("Include notifications already marked as read"),
+        participating: external_exports.boolean().optional().describe("Only notifications the user is participating in"),
+        since: external_exports.string().min(1).optional().describe("ISO 8601 timestamp; only notifications updated after this time"),
+        before: external_exports.string().min(1).optional().describe("ISO 8601 timestamp; only notifications updated before this time"),
+        page: pageInput,
+        perPage: external_exports.number().int().min(1).max(50).default(20).describe("Number of notifications per page (1-50)")
+      }
+    },
+    ({ all, participating, since, before, page, perPage }) => run(async () => {
+      const query = new URLSearchParams({
+        page: String(page),
+        per_page: String(perPage)
+      });
+      if (all !== void 0) query.set("all", String(all));
+      if (participating !== void 0) query.set("participating", String(participating));
+      if (since !== void 0) query.set("since", since);
+      if (before !== void 0) query.set("before", before);
+      const { data, response } = await githubRequestWithResponse(
+        `/notifications?${query}`,
+        external_exports.array(notificationResponse),
+        {},
+        { requireToken: true }
+      );
+      return {
+        items: data,
+        pagination: paginationFromLink(response.headers.get("Link"), page, perPage)
+      };
+    })
+  );
+  server2.registerTool(
+    "github_get_notification",
+    {
+      title: "Get a GitHub notification thread",
+      description: "Read one notification thread with its reason, unread state and subject. Requires authentication.",
+      inputSchema: {
+        threadId: external_exports.string().min(1).describe("Notification thread ID")
+      }
+    },
+    ({ threadId }) => run(
+      () => githubRequest(
+        `/notifications/threads/${segment(threadId)}`,
+        notificationResponse,
+        {},
+        { requireToken: true }
+      )
+    )
+  );
+}
+
+// src/tools/deployments.ts
+var deploymentResponse = external_exports.object({
+  id: external_exports.number(),
+  sha: external_exports.string(),
+  ref: external_exports.string(),
+  task: external_exports.string(),
+  payload: external_exports.unknown(),
+  environment: external_exports.string(),
+  original_environment: external_exports.string(),
+  description: external_exports.string().nullable(),
+  creator: external_exports.object({ login: external_exports.string() }).nullable(),
+  created_at: external_exports.string(),
+  updated_at: external_exports.string(),
+  statuses_url: external_exports.string(),
+  repository_url: external_exports.string(),
+  transient_environment: external_exports.boolean(),
+  production_environment: external_exports.boolean()
+});
+var checkRunPullRequest = external_exports.object({
+  id: external_exports.number(),
+  number: external_exports.number(),
+  head: external_exports.object({ ref: external_exports.string(), sha: external_exports.string() }).nullable(),
+  base: external_exports.object({ ref: external_exports.string(), sha: external_exports.string() }).nullable()
+});
+var checkRunResponse = external_exports.object({
+  id: external_exports.number(),
+  name: external_exports.string(),
+  head_sha: external_exports.string(),
+  external_id: external_exports.string().nullable(),
+  status: external_exports.string(),
+  conclusion: external_exports.string().nullable(),
+  started_at: external_exports.string().nullable(),
+  completed_at: external_exports.string().nullable(),
+  output: external_exports.object({
+    title: external_exports.string().nullable(),
+    summary: external_exports.string().nullable().optional(),
+    text: external_exports.string().nullable().optional(),
+    annotations_count: external_exports.number(),
+    annotations_url: external_exports.string()
+  }),
+  check_suite: external_exports.object({ id: external_exports.number() }),
+  app: external_exports.object({ id: external_exports.number(), slug: external_exports.string() }).nullable(),
+  pull_requests: external_exports.array(checkRunPullRequest),
+  html_url: external_exports.string().nullable(),
+  details_url: external_exports.string().nullable()
+});
+var checkRunListResponse = external_exports.object({
+  total_count: external_exports.number(),
+  check_runs: external_exports.array(checkRunResponse)
+});
+function projectCheckRun(run2, includeOutput) {
+  return {
+    ...run2,
+    output: includeOutput ? run2.output : {
+      title: run2.output.title,
+      annotations_count: run2.output.annotations_count,
+      annotations_url: run2.output.annotations_url
+    }
+  };
+}
+function registerDeployments(server2) {
+  server2.registerTool(
+    "github_list_deployments",
+    {
+      title: "List GitHub deployments",
+      description: "List deployments for a repository with optional commit SHA, ref, task and environment filters. Returns Link-based pagination.",
+      inputSchema: {
+        owner: external_exports.string().min(1).describe("Repository owner"),
+        repo: external_exports.string().min(1).describe("Repository name"),
+        sha: external_exports.string().min(1).optional().describe("Only deployments for this commit SHA"),
+        ref: external_exports.string().min(1).optional().describe("Only deployments for this branch or tag"),
+        task: external_exports.string().min(1).optional().describe("Only deployments with this task name"),
+        environment: external_exports.string().min(1).optional().describe("Only deployments to this environment"),
+        page: pageInput,
+        perPage: external_exports.number().int().min(1).max(100).default(20).describe("Number of deployments per page (1-100)")
+      }
+    },
+    ({ owner, repo, sha, ref, task, environment, page, perPage }) => run(async () => {
+      const query = new URLSearchParams({
+        page: String(page),
+        per_page: String(perPage)
+      });
+      if (sha !== void 0) query.set("sha", sha);
+      if (ref !== void 0) query.set("ref", ref);
+      if (task !== void 0) query.set("task", task);
+      if (environment !== void 0) query.set("environment", environment);
+      const { data, response } = await githubRequestWithResponse(
+        `/repos/${segment(owner)}/${segment(repo)}/deployments?${query}`,
+        external_exports.array(deploymentResponse)
+      );
+      return {
+        items: data,
+        pagination: paginationFromLink(response.headers.get("Link"), page, perPage)
+      };
+    })
+  );
+  server2.registerTool(
+    "github_get_deployment",
+    {
+      title: "Get a GitHub deployment",
+      description: "Read one deployment with its commit SHA, ref, environment, creator, task payload and status URL.",
+      inputSchema: {
+        owner: external_exports.string().min(1).describe("Repository owner"),
+        repo: external_exports.string().min(1).describe("Repository name"),
+        deploymentId: external_exports.number().int().positive().describe("Deployment ID")
+      }
+    },
+    ({ owner, repo, deploymentId }) => run(
+      () => githubRequest(
+        `/repos/${segment(owner)}/${segment(repo)}/deployments/${deploymentId}`,
+        deploymentResponse
+      )
+    )
+  );
+  server2.registerTool(
+    "github_list_check_runs",
+    {
+      title: "List check runs for a commit ref",
+      description: "List check runs for a commit ref with name, status, latest/all filter and app filters. Returns real status, conclusion, output title and annotation counts by default, and Link-based pagination. Set includeOutput to add output.summary and output.text.",
+      inputSchema: {
+        owner: external_exports.string().min(1).describe("Repository owner"),
+        repo: external_exports.string().min(1).describe("Repository name"),
+        ref: external_exports.string().min(1).describe("Commit SHA, branch or tag"),
+        checkName: external_exports.string().min(1).optional().describe("Only check runs with this name"),
+        status: external_exports.string().min(1).optional().describe("Only check runs with this status or conclusion"),
+        filter: external_exports.enum(["latest", "all"]).default("latest").describe("Return the latest check runs per name, or all of them"),
+        appId: external_exports.number().int().positive().optional().describe("Only check runs created by this GitHub App ID"),
+        page: pageInput,
+        perPage: external_exports.number().int().min(1).max(100).default(20).describe("Number of check runs per page (1-100)"),
+        includeOutput: external_exports.boolean().default(false).describe("Include output.summary and output.text; off by default to avoid exceeding the 20k character limit")
+      }
+    },
+    ({ owner, repo, ref, checkName, status, filter, appId, page, perPage, includeOutput }) => run(async () => {
+      const query = new URLSearchParams({
+        filter,
+        page: String(page),
+        per_page: String(perPage)
+      });
+      if (checkName !== void 0) query.set("check_name", checkName);
+      if (status !== void 0) query.set("status", status);
+      if (appId !== void 0) query.set("app_id", String(appId));
+      const { data, response } = await githubRequestWithResponse(
+        `/repos/${segment(owner)}/${segment(repo)}/commits/${segment(ref)}/check-runs?${query}`,
+        checkRunListResponse
+      );
+      return {
+        total_count: data.total_count,
+        items: data.check_runs.map((run2) => projectCheckRun(run2, includeOutput)),
+        pagination: paginationFromLink(response.headers.get("Link"), page, perPage)
+      };
+    })
+  );
+  server2.registerTool(
+    "github_get_check_run",
+    {
+      title: "Get a GitHub check run",
+      description: "Read one check run with its status, conclusion, timestamps, check suite, app and pull requests. Output returns the title and annotation counts by default; set includeOutput to add summary and text.",
+      inputSchema: {
+        owner: external_exports.string().min(1).describe("Repository owner"),
+        repo: external_exports.string().min(1).describe("Repository name"),
+        checkRunId: external_exports.number().int().positive().describe("Check run ID"),
+        includeOutput: external_exports.boolean().default(false).describe("Include output.summary and output.text; off by default to avoid exceeding the 20k character limit")
+      }
+    },
+    ({ owner, repo, checkRunId, includeOutput }) => run(async () => {
+      const checkRun = await githubRequest(
+        `/repos/${segment(owner)}/${segment(repo)}/check-runs/${checkRunId}`,
+        checkRunResponse
+      );
+      return projectCheckRun(checkRun, includeOutput);
+    })
+  );
+}
+
+// src/tools/organizations.ts
+var organizationResponse = external_exports.object({
+  login: external_exports.string(),
+  id: external_exports.number(),
+  node_id: external_exports.string(),
+  url: external_exports.string(),
+  html_url: external_exports.string(),
+  name: external_exports.string().nullable(),
+  company: external_exports.string().nullable(),
+  blog: external_exports.string().nullable(),
+  location: external_exports.string().nullable(),
+  email: external_exports.string().nullable(),
+  twitter_username: external_exports.string().nullable(),
+  description: external_exports.string().nullable(),
+  public_repos: external_exports.number(),
+  public_gists: external_exports.number(),
+  followers: external_exports.number(),
+  following: external_exports.number(),
+  created_at: external_exports.string(),
+  updated_at: external_exports.string(),
+  type: external_exports.string(),
+  is_verified: external_exports.boolean()
+});
+var teamResponse = external_exports.object({
+  id: external_exports.number(),
+  node_id: external_exports.string(),
+  name: external_exports.string(),
+  slug: external_exports.string(),
+  description: external_exports.string().nullable(),
+  privacy: external_exports.string(),
+  notification_setting: external_exports.string(),
+  permission: external_exports.string(),
+  members_count: external_exports.number(),
+  repos_count: external_exports.number(),
+  organization: external_exports.object({ login: external_exports.string() }),
+  parent: external_exports.object({ id: external_exports.number(), name: external_exports.string(), slug: external_exports.string() }).nullable(),
+  created_at: external_exports.string(),
+  updated_at: external_exports.string()
+});
+function registerOrganizations(server2) {
+  server2.registerTool(
+    "github_get_organization",
+    {
+      title: "Get a GitHub organization",
+      description: "Read a public organization profile: description, contact fields, repository and follower counts, creation date and verification state.",
+      inputSchema: {
+        org: external_exports.string().min(1).describe("Organization login")
+      }
+    },
+    ({ org }) => run(() => githubRequest(`/orgs/${segment(org)}`, organizationResponse))
+  );
+  server2.registerTool(
+    "github_list_teams",
+    {
+      title: "List GitHub organization teams",
+      description: "List teams of an organization with privacy, permission, member and repository counts. Requires authentication and returns Link-based pagination.",
+      inputSchema: {
+        org: external_exports.string().min(1).describe("Organization login"),
+        teamType: external_exports.enum(["all", "enterprise", "organization"]).default("all").describe("Filter teams by their type"),
+        page: pageInput,
+        perPage: external_exports.number().int().min(1).max(100).default(20).describe("Number of teams per page (1-100)")
+      }
+    },
+    ({ org, teamType, page, perPage }) => run(async () => {
+      const { data, response } = await githubRequestWithResponse(
+        `/orgs/${segment(org)}/teams?${new URLSearchParams({
+          team_type: teamType,
+          page: String(page),
+          per_page: String(perPage)
+        })}`,
+        external_exports.array(teamResponse),
+        {},
+        { requireToken: true }
+      );
+      return {
+        items: data,
+        pagination: paginationFromLink(response.headers.get("Link"), page, perPage)
+      };
+    })
+  );
+  server2.registerTool(
+    "github_get_team",
+    {
+      title: "Get a GitHub team",
+      description: "Read one team by slug with privacy, notification setting, permission, member and repository counts, parent team and organization. Requires authentication.",
+      inputSchema: {
+        org: external_exports.string().min(1).describe("Organization login"),
+        teamSlug: external_exports.string().min(1).describe("Team slug")
+      }
+    },
+    ({ org, teamSlug }) => run(
+      () => githubRequest(
+        `/orgs/${segment(org)}/teams/${segment(teamSlug)}`,
+        teamResponse,
+        {},
+        { requireToken: true }
+      )
+    )
+  );
+}
+
+// src/tools/gists.ts
+var gistFileResponse = external_exports.object({
+  filename: external_exports.string(),
+  type: external_exports.string(),
+  language: external_exports.string().nullable(),
+  raw_url: external_exports.string(),
+  size: external_exports.number(),
+  truncated: external_exports.boolean().optional(),
+  content: external_exports.string().optional(),
+  encoding: external_exports.string().optional()
+});
+var gistResponse = external_exports.object({
+  id: external_exports.string(),
+  description: external_exports.string().nullable(),
+  public: external_exports.boolean(),
+  owner: external_exports.object({ login: external_exports.string() }).nullable(),
+  comments: external_exports.number(),
+  created_at: external_exports.string(),
+  updated_at: external_exports.string(),
+  html_url: external_exports.string(),
+  git_pull_url: external_exports.string(),
+  comments_url: external_exports.string(),
+  comments_enabled: external_exports.boolean(),
+  files: external_exports.record(gistFileResponse)
+});
+function projectGist(gist, includeContent) {
+  return {
+    id: gist.id,
+    description: gist.description,
+    public: gist.public,
+    owner: gist.owner,
+    comments: gist.comments,
+    created_at: gist.created_at,
+    updated_at: gist.updated_at,
+    html_url: gist.html_url,
+    git_pull_url: gist.git_pull_url,
+    comments_url: gist.comments_url,
+    comments_enabled: gist.comments_enabled,
+    files: Object.fromEntries(
+      Object.entries(gist.files).map(([name, file]) => [
+        name,
+        {
+          filename: file.filename,
+          type: file.type,
+          language: file.language,
+          raw_url: file.raw_url,
+          size: file.size,
+          ...file.truncated !== void 0 ? { truncated: file.truncated } : {},
+          ...includeContent ? { content: file.content, encoding: file.encoding } : {}
+        }
+      ])
+    )
+  };
+}
+function registerGists(server2) {
+  server2.registerTool(
+    "github_list_gists",
+    {
+      title: "List gists of a GitHub user",
+      description: "List a user's gists with description, visibility, comment count, file metadata and timestamps. Returns Link-based pagination and never includes file content.",
+      inputSchema: {
+        username: external_exports.string().min(1).describe("GitHub login whose gists to list"),
+        since: external_exports.string().min(1).optional().describe("ISO 8601 timestamp; only gists updated after this time"),
+        page: pageInput,
+        perPage: external_exports.number().int().min(1).max(100).default(20).describe("Number of gists per page (1-100)")
+      }
+    },
+    ({ username, since, page, perPage }) => run(async () => {
+      const query = new URLSearchParams({
+        page: String(page),
+        per_page: String(perPage)
+      });
+      if (since !== void 0) query.set("since", since);
+      const { data, response } = await githubRequestWithResponse(
+        `/users/${segment(username)}/gists?${query}`,
+        external_exports.array(gistResponse)
+      );
+      return {
+        items: data.map((gist) => projectGist(gist, false)),
+        pagination: paginationFromLink(response.headers.get("Link"), page, perPage)
+      };
+    })
+  );
+  server2.registerTool(
+    "github_get_gist",
+    {
+      title: "Get a GitHub gist",
+      description: "Read one gist with its description, owner, comment settings and file metadata. File content and encoding are included only when includeContent=true; leave it false to stay under the 20k character result limit.",
+      inputSchema: {
+        gistId: external_exports.string().min(1).describe("Gist ID"),
+        includeContent: external_exports.boolean().default(false).describe("Include each file's content and encoding; off by default to avoid exceeding the 20k character limit")
+      }
+    },
+    ({ gistId, includeContent }) => run(async () => {
+      const gist = await githubRequest(`/gists/${segment(gistId)}`, gistResponse);
+      return projectGist(gist, includeContent);
+    })
+  );
+}
+
+// src/tools/packages.ts
+var packageResponse = external_exports.object({
+  id: external_exports.number(),
+  name: external_exports.string(),
+  package_type: external_exports.string(),
+  owner: external_exports.object({ login: external_exports.string() }).nullable(),
+  version_count: external_exports.number(),
+  visibility: external_exports.string(),
+  url: external_exports.string(),
+  html_url: external_exports.string().nullable(),
+  created_at: external_exports.string(),
+  updated_at: external_exports.string()
+});
+var ownerTypeInput = external_exports.enum(["authenticated", "user", "org"]).describe("Package owner scope: the authenticated user, a specific user or an organization");
+var ownerInput = external_exports.string().min(1).optional().describe("User or organization login; required when ownerType is user or org");
+var packageTypeInput = external_exports.enum(["npm", "maven", "rubygems", "docker", "nuget", "container"]).describe("Package type");
+function packageOwnerBase(ownerType, owner) {
+  if (ownerType === "authenticated") return "/user";
+  if (owner === void 0) {
+    throw new Error("owner is required when ownerType is user or org.");
+  }
+  return ownerType === "user" ? `/users/${segment(owner)}` : `/orgs/${segment(owner)}`;
+}
+function registerPackages(server2) {
+  server2.registerTool(
+    "github_list_packages",
+    {
+      title: "List GitHub packages",
+      description: "List packages for the authenticated user, a user or an organization, filtered by package type and optional visibility. Requires authentication.",
+      inputSchema: {
+        ownerType: ownerTypeInput,
+        owner: ownerInput,
+        packageType: packageTypeInput,
+        visibility: external_exports.enum(["public", "private", "internal"]).optional().describe("Only packages with this visibility"),
+        page: pageInput,
+        perPage: external_exports.number().int().min(1).max(100).default(20).describe("Number of packages per page (1-100)")
+      }
+    },
+    ({ ownerType, owner, packageType, visibility, page, perPage }) => run(async () => {
+      const query = new URLSearchParams({
+        package_type: packageType,
+        page: String(page),
+        per_page: String(perPage)
+      });
+      if (visibility !== void 0) query.set("visibility", visibility);
+      const { data, response } = await githubRequestWithResponse(
+        `${packageOwnerBase(ownerType, owner)}/packages?${query}`,
+        external_exports.array(packageResponse),
+        {},
+        { requireToken: true }
+      );
+      return {
+        items: data,
+        pagination: paginationFromLink(response.headers.get("Link"), page, perPage)
+      };
+    })
+  );
+  server2.registerTool(
+    "github_get_package",
+    {
+      title: "Get a GitHub package",
+      description: "Read one package of the authenticated user, a user or an organization with its type, owner, version count and visibility. Requires authentication.",
+      inputSchema: {
+        ownerType: ownerTypeInput,
+        owner: ownerInput,
+        packageType: packageTypeInput,
+        packageName: external_exports.string().min(1).describe("Package name, e.g. @scope/name for npm")
+      }
+    },
+    ({ ownerType, owner, packageType, packageName }) => run(
+      () => githubRequest(
+        `${packageOwnerBase(ownerType, owner)}/packages/${packageType}/${segment(packageName)}`,
+        packageResponse,
+        {},
+        { requireToken: true }
+      )
+    )
+  );
+}
+
 // src/index.ts
 var server = new McpServer({ name: "github-tools", version: version2 });
 registerRepositories(server);
@@ -22828,5 +23502,11 @@ registerPullRequests(server);
 registerReleasesAndFiles(server);
 registerWorkflows(server);
 registerGraphQL(server);
+registerDiscussions(server);
+registerNotifications(server);
+registerDeployments(server);
+registerOrganizations(server);
+registerGists(server);
+registerPackages(server);
 await server.connect(new StdioServerTransport());
 console.error("[github-tools] MCP server ready over stdio");

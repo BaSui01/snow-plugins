@@ -1,6 +1,6 @@
 # GitHub
 
-GitHub 插件向模型注册 **26 个**可调用工具，通过 MCP stdio 进程访问 GitHub REST 与 GraphQL API。版本保持 **0.4.1**；本文描述当前源码，不表示已发布、已更新安装副本或已完成真实 UI 验收。
+GitHub 插件向模型注册 **41 个**可调用工具，通过 MCP stdio 进程访问 GitHub REST 与 GraphQL API。版本保持 **0.5.2**；本文描述当前源码，不表示已发布、已更新安装副本或已完成真实 UI 验收。
 
 ## 工具能力
 
@@ -21,7 +21,18 @@ GitHub 插件向模型注册 **26 个**可调用工具，通过 MCP stdio 进程
 - `github_list_workflow_run_artifacts`：读取运行构件的名称、大小、过期状态、时间与真实 API 下载端点。
 - `github_download_workflow_artifact`：只解析官方 302 中的 HTTPS `Location`，返回一分钟有效的临时下载 URL；不跟随重定向、不下载或写入本地文件。
 
-普通公开仓库 REST 读取可按 GitHub 规则匿名使用；实际可见性与限流由 GitHub 决定。代码搜索必须认证，私有资源与 Actions 访问仍取决于当前身份和仓库权限。匿名读取不代表已认证或具有写权限。
+### 讨论、通知、部署、组织、Gist 与软件包（只读）
+
+- `github_list_discussions` / `github_get_discussion`：通过 GraphQL 列出仓库讨论或读取单个讨论正文与计数；游标分页，必须认证。
+- `github_list_notifications` / `github_get_notification`：读取当前用户通知或单个 thread；必须认证。
+- `github_list_deployments` / `github_get_deployment`：列出或读取仓库部署。
+- `github_list_check_runs` / `github_get_check_run`：按 ref 列出或读取 check run。
+- `github_get_organization`：读取组织公开资料。
+- `github_list_teams` / `github_get_team`：列出或读取组织团队；必须认证。
+- `github_list_gists` / `github_get_gist`：列出用户 Gist 或读取单个 Gist；默认不返回文件内容，`includeContent` 显式开启。公开 Gist 可匿名读取。
+- `github_list_packages` / `github_get_package`：按用户、组织或当前身份列出或读取软件包；必须认证。
+
+普通公开仓库 REST 读取可按 GitHub 规则匿名使用；实际可见性与限流由 GitHub 决定。代码搜索、Notifications、Teams、Packages 与 Discussions 必须认证；私有资源与 Actions 访问仍取决于当前身份和仓库权限。匿名读取不代表已认证或具有写权限。Notifications 不支持 fine-grained PAT 或 GitHub App token。
 
 ### 远端写操作
 
@@ -47,11 +58,13 @@ GitHub 插件向模型注册 **26 个**可调用工具，通过 MCP stdio 进程
 
 ## 分页、文件范围与大小
 
-- 仓库搜索、代码搜索、议题、提交、PR、Actions 运行与构件列表接受可选正整数 `page`，并使用各自的 `perPage`。
-- 返回 `pagination: { page, perPage, hasNextPage }`。`hasNextPage` 只由 GitHub 真实 `Link` 响应头的 `rel="next"` 得出，不按数组长度猜测；搜索与 Actions 同时保留真实 `total_count`。
+- 仓库搜索、代码搜索、议题、提交、PR、Actions 运行与构件、部署、check run、通知、团队、Gist 与软件包列表接受可选正整数 `page`，并使用各自的 `perPage`；Notifications 的 `perPage` 上限为 **50**。
+- 返回 `pagination: { page, perPage, hasNextPage }`。`hasNextPage` 只由 GitHub 真实 `Link` 响应头的 `rel="next"` 得出，不按数组长度猜测；搜索、Actions 与 check run 同时保留真实 `total_count`。
+- `github_list_discussions` 使用 GraphQL 游标分页：`first` / `after` 与 `pageInfo { hasNextPage, endCursor }`，不使用 REST 的 `page` / `perPage`。
 - `github_get_file` 的 `startLine` / `endLine` 为正整数，且两者同时提供时必须 `endLine >= startLine`。不指定则读取全文；只指定一端时另一端分别是文件开头或末尾。目录仍返回原有列表契约。
 - 文件文本按原始行边界切片，保留内容及 CRLF/LF/CR 换行。返回 `path/html_url/size/text/range/totalLines`，范围以实际返回内容为依据；起始行超出文件会报错。
 - 文件仍受 GitHub contents API 的 1,000,000 字节边界约束。若最终 JSON 序列化结果会超过 **20,000** 字符，文件工具明确要求缩小 `startLine/endLine` 范围后重新读取，其他工具也返回明确大小错误；不静默裁剪、不输出破损 JSON。
+- `github_get_gist` 默认不返回文件内容；`includeContent: true` 时每个文件最多返回 1MB，超出时 `truncated` 为 true。多文件 Gist 与长 Discussion 正文、Deployment 的 `payload` 都可能触发 20,000 字符上限，需要缩小查询范围。Check run 的 `output.summary` / `output.text`（各上限 65,535 字符）默认不返回，`includeOutput: true` 时才附带，并可能因超限失败。
 - 写操作可能已在 GitHub 生效；序列化或后续结果错误不表示远端已回滚，应先只读确认状态。
 
 ## 网络、凭据与隐私
@@ -67,8 +80,8 @@ GitHub 插件向模型注册 **26 个**可调用工具，通过 MCP stdio 进程
 
 ## 与 git / gh CLI 的分工
 
-- **插件**：结构化 GitHub 读取、PR、议题、Release、Actions 与 GraphQL，不依赖本机 `gh` 发起 HTTP；找不到环境令牌时才尝试复用 `gh auth token`。
-- **`gh` CLI / `gh` skill**：负责本机登录态及插件未封装的 CLI 工作流。本机安装并使用 `gh` 时需要启用对应的 `gh` skill。
+- **插件**：结构化 GitHub 读取、PR、议题、Release、Actions、讨论、通知、部署、check run、组织/团队、Gist、软件包与 GraphQL，不依赖本机 `gh` 发起 HTTP；找不到环境令牌时才尝试复用 `gh auth token`。
+- **`gh` CLI**：负责本机登录态及插件未封装的 CLI 工作流；插件只复用 `gh auth token`，不依赖它发起 HTTP。
 - **git**：本地分支、提交、push、合并与冲突处理仍由终端完成。多文件提交应在本地 commit + push 后再创建 PR，不用单文件工具循环替代。
 
 ## 运行、安装与宿主
@@ -78,7 +91,7 @@ GitHub 插件向模型注册 **26 个**可调用工具，通过 MCP stdio 进程
 - 在 Snow App「插件列表 → 从目录安装」选择本目录，并在当前项目启用。模型通过 `toolsearch-discover` 获取实际公开全名和参数。
 - 当前配套宿主行为描述对应源码，不代表已经随正式版本发布；安装或更新插件不会更新宿主。
 
-插件自带[工作流技能](skills/github-workflow/SKILL.md)，入口保留能力地图、任务路由和共同约束，按需链接到[全部 26 项工具操作](skills/github-workflow/references/tools.md)、[PR 流程](skills/github-workflow/references/pull-requests.md)、[议题管理](skills/github-workflow/references/issues.md)及 [Release 与文件](skills/github-workflow/references/releases-and-files.md)。操作标识不是完整公开名，技能启停跟随插件。
+插件自带[工作流技能](skills/github-workflow/SKILL.md)，入口保留能力地图、任务路由和共同约束，按需链接到[全部 41 项工具操作](skills/github-workflow/references/tools.md)、[PR 流程](skills/github-workflow/references/pull-requests.md)、[议题管理](skills/github-workflow/references/issues.md)及 [Release 与文件](skills/github-workflow/references/releases-and-files.md)。操作标识不是完整公开名，技能启停跟随插件。
 
 ## 官方接口参考
 
@@ -88,6 +101,14 @@ GitHub 插件向模型注册 **26 个**可调用工具，通过 MCP stdio 进程
 - [上传 Release 资产](https://docs.github.com/en/rest/releases/assets#upload-a-release-asset "GitHub 官方 Release 资产上传端点")：原始字节发送到 `uploads.github.com`。
 - [下载 Actions 构件](https://docs.github.com/en/rest/actions/artifacts#download-an-artifact "GitHub 官方构件 302 下载说明")：插件只解析短期 URL，不跟随重定向。
 - [GraphQL 调用](https://docs.github.com/en/graphql/guides/forming-calls-with-graphql "GitHub 官方 GraphQL endpoint 与认证说明")：查询与变更共用 GraphQL endpoint。
+- [Discussions GraphQL](https://docs.github.com/en/graphql/guides/using-the-graphql-api-for-discussions "Discussions 仅通过 GraphQL 提供")：仓库讨论的查询字段与分页。
+- [Notifications](https://docs.github.com/en/rest/activity/notifications "GitHub 官方通知端点")：认证范围、`per_page` 上限与 thread 端点。
+- [Deployments](https://docs.github.com/en/rest/deployments/deployments "GitHub 官方部署端点")：公开资源可匿名读取。
+- [Check runs](https://docs.github.com/en/rest/checks/runs "GitHub 官方 check run 端点")：按 ref 或 check suite 列出运行。
+- [Organizations](https://docs.github.com/en/rest/orgs/orgs "GitHub 官方组织端点")、[Teams](https://docs.github.com/en/rest/teams/teams "GitHub 官方团队端点")：组织资料与团队读取的认证要求。
+- [Gists](https://docs.github.com/en/rest/gists/gists "GitHub 官方 Gist 端点")：公开 Gist 匿名读取与单文件 1MB 截断。
+- [Packages](https://docs.github.com/en/rest/packages/packages "GitHub 官方软件包端点")：`package_type` 枚举与认证要求。
+- [API 版本](https://docs.github.com/en/rest/about-the-rest-api/api-versions "GitHub 官方 API 版本说明")：请求头 `X-GitHub-Api-Version` 与支持窗口。
 
 ## 工程结构与检查
 
@@ -103,6 +124,12 @@ src/
   tools/pull-requests.ts      # PR 读取、行级评论、审查、合并、Revert
   tools/releases-and-files.ts # 文件范围、Release、资产上传、单文件提交
   tools/workflows.ts          # Actions 运行与构件
+  tools/discussions.ts        # 讨论（GraphQL）
+  tools/notifications.ts      # 用户通知
+  tools/deployments.ts        # 部署与 check run
+  tools/organizations.ts      # 组织与团队
+  tools/gists.ts              # Gist
+  tools/packages.ts           # 软件包
   tools/graphql.ts            # 通用 GraphQL
   renderer/                   # 精确工具匹配、参数摘要、三语专用卡片
 scripts/build.mjs             # src → server.js / index.js
