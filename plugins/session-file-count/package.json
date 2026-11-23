@@ -1,6 +1,6 @@
 {
   "name": "snow-plugin-session-file-count",
-  "version": "1.1.8",
+  "version": "1.1.9",
   "author": "BaSui",
   "private": true,
   "type": "module",

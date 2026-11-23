@@ -68,12 +68,26 @@ export const relativePath = (record: NormalizedFile): string => {
 
 /**
  * Countable diff lines, or `null` when the record has no usable text diff.
- * Terminal records, binary diffs and missing patches stay "not collected"
- * instead of being reported as zero.
+ * Prefers the host-provided `lineStats` (terminal creations/deletions carry no
+ * text); terminal records without it, binary diffs and missing patches stay
+ * "not collected" instead of being reported as zero.
  */
 export const linesFor = (record: NormalizedFile): LineStats | null => {
+  const stats = record.lineStats;
+  if (stats) {
+    const { additions, deletions } = stats;
+    if (
+      typeof additions === "number" &&
+      Number.isSafeInteger(additions) &&
+      additions >= 0 &&
+      typeof deletions === "number" &&
+      Number.isSafeInteger(deletions) &&
+      deletions >= 0
+    ) {
+      return { additions, deletions };
+    }
+  }
   if (
-    record.source === "terminal" ||
     record.diff?.isBinary ||
     typeof record.diff?.patch !== "string" ||
     !record.diff.patch

@@ -87,6 +87,7 @@ export type FileChangeRecord = {
   agent?: unknown;
   subAgentName?: unknown;
   diff?: FileChangeDiff | null;
+  lineStats?: { additions?: unknown; deletions?: unknown } | null;
 };
 
 /** Frozen `context.task` snapshot: this task's file evidence, never a counter. */

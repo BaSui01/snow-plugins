@@ -71,7 +71,14 @@ var relativePath = (record) => {
   return contained && relative && !relative.split("/").some((part) => part === "." || part === "..") ? relative : record.filePath;
 };
 var linesFor = (record) => {
-  if (record.source === "terminal" || record.diff?.isBinary || typeof record.diff?.patch !== "string" || !record.diff.patch) {
+  const stats = record.lineStats;
+  if (stats) {
+    const { additions: additions2, deletions: deletions2 } = stats;
+    if (typeof additions2 === "number" && Number.isSafeInteger(additions2) && additions2 >= 0 && typeof deletions2 === "number" && Number.isSafeInteger(deletions2) && deletions2 >= 0) {
+      return { additions: additions2, deletions: deletions2 };
+    }
+  }
+  if (record.diff?.isBinary || typeof record.diff?.patch !== "string" || !record.diff.patch) {
     return null;
   }
   let additions = 0;
